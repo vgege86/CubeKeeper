@@ -1,0 +1,261 @@
+@page "/cuenta"
+@using System.ComponentModel.DataAnnotations
+@using System.Globalization
+@using Microsoft.AspNetCore.Identity
+@using Net.Codecrete.QrCodeGenerator
+@inject UserManager<PanelUser> Users
+@inject SignInManager<PanelUser> SignInManager
+@inject CubeKeeper.Infrastructure.Audit.AuditLog Audit
+
+<PageTitle>Mi cuenta · CubeKeeper</PageTitle>
+
+<h1>Mi cuenta</h1>
+
+@if (_message is not null)
+{
+    <p class="alert @(_messageIsError ? "alert-error" : "alert-ok")" role="status">@_message</p>
+}
+
+@if (_user is not null)
+{
+    <div class="grid">
+        <section class="card">
+            <h2>Contraseña</h2>
+            <p class="muted small">Usuario <strong>@_user.UserName</strong> · @string.Join(", ", _roles.Select(PanelRoles.ToSpanish))</p>
+            <EditForm Model="Password" method="post" OnValidSubmit="ChangePasswordAsync" FormName="password">
+                <DataAnnotationsValidator />
+                <label>Contraseña actual<InputText type="password" @bind-Value="Password!.Current" autocomplete="current-password" /></label>
+                <ValidationMessage For="() => Password!.Current" />
+                <label>Contraseña nueva <span class="muted small">(10 caracteres o más)</span><InputText type="password" @bind-Value="Password!.New" autocomplete="new-password" /></label>
+                <ValidationMessage For="() => Password!.New" />
+                <label>Repite la nueva<InputText type="password" @bind-Value="Password!.Confirm" autocomplete="new-password" /></label>
+                <ValidationMessage For="() => Password!.Confirm" />
+                <div class="actions"><button type="submit" class="btn btn-primary">Cambiar contraseña</button></div>
+            </EditForm>
+        </section>
+
+        <section class="card">
+            <h2>Verificación en dos pasos</h2>
+            @if (_recoveryCodes is not null)
+            {
+                <p class="alert alert-warn">Guarda estos códigos de recuperación en un sitio seguro. Cada uno sirve una vez si pierdes el móvil. <strong>No se volverán a mostrar.</strong></p>
+                <ul class="codes">
+                    @foreach (var c in _recoveryCodes)
+                    {
+                        <li><code>@c</code></li>
+                    }
+                </ul>
+            }
+            @if (_user.TwoFactorEnabled)
+            {
+                <p><span class="badge badge-ok">Activada</span> Al entrar se pide también el código de tu aplicación de autenticación.</p>
+                <p class="muted small">Códigos de recuperación que te quedan: @_recoveryLeft.</p>
+                <EditForm Model="Empty" method="post" OnSubmit="NewRecoveryCodesAsync" FormName="recovery-codes">
+                    <div class="actions"><button type="submit" class="btn">Generar códigos de recuperación nuevos</button></div>
+                </EditForm>
+                <EditForm Model="Disable" method="post" OnValidSubmit="DisableAsync" FormName="disable-2fa">
+                    <DataAnnotationsValidator />
+                    <label>Para desactivarla, tu contraseña<InputText type="password" @bind-Value="Disable!.Password" autocomplete="current-password" /></label>
+                    <ValidationMessage For="() => Disable!.Password" />
+                    <div class="actions"><button type="submit" class="btn btn-ghost">Desactivar</button></div>
+                </EditForm>
+            }
+            else
+            {
+                <p>Añade un segundo paso al entrar con una aplicación como Google Authenticator, Microsoft Authenticator o Aegis.</p>
+                <ol class="steps">
+                    <li>En la aplicación, añade una cuenta escaneando este código:</li>
+                </ol>
+                <div class="qr" aria-label="Código QR para la aplicación de autenticación">@((MarkupString)_qrSvg!)</div>
+                <p class="muted small">O escribe la clave a mano: <code class="wrap">@FormatKey(_key!)</code></p>
+                <ol class="steps" start="2">
+                    <li>Escribe el código de 6 cifras que te muestra:</li>
+                </ol>
+                <EditForm Model="Enable" method="post" OnValidSubmit="EnableAsync" FormName="enable-2fa">
+                    <DataAnnotationsValidator />
+                    <label>Código<InputText @bind-Value="Enable!.Code" autocomplete="one-time-code" inputmode="numeric" /></label>
+                    <ValidationMessage For="() => Enable!.Code" />
+                    <div class="actions"><button type="submit" class="btn btn-primary">Activar</button></div>
+                </EditForm>
+            }
+        </section>
+    </div>
+}
+
+@code {
+    private PanelUser? _user;
+    private IList<string> _roles = [];
+    private string? _key;
+    private string? _qrSvg;
+    private int _recoveryLeft;
+    private IEnumerable<string>? _recoveryCodes;
+    private string? _message;
+    private bool _messageIsError;
+
+    [CascadingParameter]
+    private HttpContext HttpContext { get; set; } = default!;
+
+    [SupplyParameterFromForm(FormName = "password")]
+    private PasswordInput? Password { get; set; }
+
+    [SupplyParameterFromForm(FormName = "enable-2fa")]
+    private CodeInput? Enable { get; set; }
+
+    [SupplyParameterFromForm(FormName = "disable-2fa")]
+    private DisableInput? Disable { get; set; }
+
+    [SupplyParameterFromForm(FormName = "recovery-codes")]
+    private object? Empty { get; set; }
+
+    protected override async Task OnInitializedAsync()
+    {
+        Password ??= new PasswordInput();
+        Enable ??= new CodeInput();
+        Disable ??= new DisableInput();
+        Empty ??= new object();
+        await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        _user = await Users.GetUserAsync(HttpContext.User);
+        if (_user is null)
+        {
+            return;
+        }
+        _roles = await Users.GetRolesAsync(_user);
+        _recoveryLeft = await Users.CountRecoveryCodesAsync(_user);
+        if (!_user.TwoFactorEnabled)
+        {
+            _key = await Users.GetAuthenticatorKeyAsync(_user);
+            if (string.IsNullOrEmpty(_key))
+            {
+                await Users.ResetAuthenticatorKeyAsync(_user);
+                _key = await Users.GetAuthenticatorKeyAsync(_user);
+            }
+            var label = Uri.EscapeDataString($"CubeKeeper:{_user.UserName}");
+            var uri = $"otpauth://totp/{label}?secret={_key}&issuer=CubeKeeper&algorithm=SHA1&digits=6&period=30";
+            _qrSvg = QrCode.EncodeText(uri, QrCode.Ecc.Medium).ToSvgString(border: 2);
+        }
+    }
+
+    private async Task ChangePasswordAsync()
+    {
+        if (_user is null)
+        {
+            return;
+        }
+        if (Password!.New != Password.Confirm)
+        {
+            Fail("Las dos contraseñas nuevas no coinciden.");
+            return;
+        }
+        var result = await Users.ChangePasswordAsync(_user, Password.Current, Password.New);
+        if (!result.Succeeded)
+        {
+            Fail(string.Join(" ", result.Errors.Select(e => e.Code switch
+            {
+                "PasswordMismatch" => "La contraseña actual no es correcta.",
+                "PasswordTooShort" => "La contraseña nueva es demasiado corta (mínimo 10 caracteres).",
+                _ => e.Description,
+            })));
+            return;
+        }
+        await SignInManager.RefreshSignInAsync(_user);
+        await Audit.RecordAsync(_user.UserName!, "account.password");
+        Ok("Contraseña cambiada.");
+        Password = new PasswordInput();
+    }
+
+    private async Task EnableAsync()
+    {
+        if (_user is null)
+        {
+            return;
+        }
+        var code = new string(Enable!.Code.Where(char.IsDigit).ToArray());
+        if (!await Users.VerifyTwoFactorTokenAsync(_user, Users.Options.Tokens.AuthenticatorTokenProvider, code))
+        {
+            Fail("El código no es correcto. Comprueba que la hora del móvil esté bien y vuelve a probar.");
+            await LoadAsync();
+            return;
+        }
+        await Users.SetTwoFactorEnabledAsync(_user, true);
+        _recoveryCodes = await Users.GenerateNewTwoFactorRecoveryCodesAsync(_user, 10);
+        await SignInManager.RefreshSignInAsync(_user);
+        await Audit.RecordAsync(_user.UserName!, "account.2fa.enable");
+        Ok("Verificación en dos pasos activada.");
+        await LoadAsync();
+    }
+
+    private async Task DisableAsync()
+    {
+        if (_user is null)
+        {
+            return;
+        }
+        if (!await Users.CheckPasswordAsync(_user, Disable!.Password))
+        {
+            Fail("La contraseña no es correcta.");
+            return;
+        }
+        await Users.SetTwoFactorEnabledAsync(_user, false);
+        await Users.ResetAuthenticatorKeyAsync(_user);
+        await SignInManager.RefreshSignInAsync(_user);
+        await Audit.RecordAsync(_user.UserName!, "account.2fa.disable");
+        Ok("Verificación en dos pasos desactivada.");
+        await LoadAsync();
+    }
+
+    private async Task NewRecoveryCodesAsync()
+    {
+        if (_user is null || !_user.TwoFactorEnabled)
+        {
+            return;
+        }
+        _recoveryCodes = await Users.GenerateNewTwoFactorRecoveryCodesAsync(_user, 10);
+        await Audit.RecordAsync(_user.UserName!, "account.2fa.recovery");
+        Ok("Códigos de recuperación nuevos generados. Los anteriores ya no sirven.");
+        await LoadAsync();
+    }
+
+    private void Ok(string m)
+    {
+        _message = m;
+        _messageIsError = false;
+    }
+
+    private void Fail(string m)
+    {
+        _message = m;
+        _messageIsError = true;
+    }
+
+    private static string FormatKey(string key) =>
+        string.Join(' ', Enumerable.Range(0, (key.Length + 3) / 4).Select(i => key.Substring(i * 4, Math.Min(4, key.Length - i * 4)))).ToLower(CultureInfo.InvariantCulture);
+
+    private sealed class PasswordInput
+    {
+        [Required(ErrorMessage = "Escribe tu contraseña actual.")]
+        public string Current { get; set; } = string.Empty;
+
+        [Required(ErrorMessage = "Escribe la contraseña nueva.")]
+        [MinLength(10, ErrorMessage = "Mínimo 10 caracteres.")]
+        public string New { get; set; } = string.Empty;
+
+        [Required(ErrorMessage = "Repite la contraseña nueva.")]
+        public string Confirm { get; set; } = string.Empty;
+    }
+
+    private sealed class CodeInput
+    {
+        [Required(ErrorMessage = "Escribe el código.")]
+        public string Code { get; set; } = string.Empty;
+    }
+
+    private sealed class DisableInput
+    {
+        [Required(ErrorMessage = "Escribe tu contraseña.")]
+        public string Password { get; set; } = string.Empty;
+    }
+}

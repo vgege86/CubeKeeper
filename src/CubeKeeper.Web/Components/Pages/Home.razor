@@ -101,12 +101,14 @@
         }
         <div class="actions">
             <button class="btn" disabled="@_busy" @onclick="CheckAsync">Comprobar</button>
-            @if (_latest is not null && (_snap.InstalledVersion is null || IsNewer))
-            {
-                <button class="btn btn-primary" disabled="@(_busy || !Options.Value.Bds.AcceptEula)" @onclick="InstallAsync">
-                    @(_snap.InstalledVersion is null || IsPinned ? $"Instalar {_latest.Version}" : $"Actualizar a {_latest.Version}")
-                </button>
-            }
+            <AuthorizeView Roles="@PanelRoles.Admin" Context="adminContext">
+                @if (_latest is not null && (_snap.InstalledVersion is null || IsNewer))
+                {
+                    <button class="btn btn-primary" disabled="@(_busy || !Options.Value.Bds.AcceptEula)" @onclick="InstallAsync">
+                        @(_snap.InstalledVersion is null || IsPinned ? $"Instalar {_latest.Version}" : $"Actualizar a {_latest.Version}")
+                    </button>
+                }
+            </AuthorizeView>
         </div>
         @if (_progress is not null)
         {
@@ -134,7 +136,7 @@
                 <dd class="@(last.Succeeded ? null : "hint-warn")">@Format.When(last.At, Time): @last.Message</dd>
             }
         </dl>
-        @if (Updates.PreviousVersion is { } prev && _snap.InstalledVersion is not null)
+        @if (Updates.PreviousVersion is { } prev && _snap.InstalledVersion is not null && _isAdmin)
         {
             @if (_confirmRollback)
             {
@@ -164,7 +166,7 @@
         <p><code class="wrap">@XboxLink</code></p>
     </section>
 
-    @if (_deviations.Count > 0)
+    @if (_deviations.Count > 0 && _isAdmin)
     {
         <section class="card wide">
             <h2>Configuración recomendada</h2>
@@ -199,6 +201,7 @@
     private bool _messageIsError;
     private string? _progress;
     private int _gamePort = 19132;
+    private bool _isAdmin;
     private IReadOnlyList<CubeKeeper.Core.Properties.SettingDeviation> _deviations = [];
 
     private bool IsPinned => !string.IsNullOrWhiteSpace(Options.Value.Bds.PinnedVersion);
@@ -223,6 +226,7 @@
         Server.StateChanged += OnStateChanged;
         Presence.Changed += OnPresenceChanged;
         await LoadPropertiesAsync();
+        _isAdmin = await IsAdminAsync();
     }
 
     private async Task LoadPropertiesAsync()
@@ -236,6 +240,10 @@
 
     private Task RollbackAsync() => RunAsync(async () =>
     {
+        if (!await IsAdminAsync())
+        {
+            throw new InvalidOperationException("Solo un administrador puede cambiar de versión.");
+        }
         var result = await Updates.RollbackAsync();
         _confirmRollback = false;
         _message = result.Message;
@@ -248,6 +256,10 @@
 
     private Task ApplyRecommendedAsync() => RunAsync(async () =>
     {
+        if (!await IsAdminAsync())
+        {
+            throw new InvalidOperationException("Solo un administrador puede cambiar los ajustes.");
+        }
         var changed = await Advisor.ApplyAsync();
         await LoadPropertiesAsync();
         await AuditAsync("settings.recommended", null, string.Join(", ", changed));
@@ -279,6 +291,10 @@
 
     private Task InstallAsync() => RunAsync(async () =>
     {
+        if (!await IsAdminAsync())
+        {
+            throw new InvalidOperationException("Solo un administrador puede instalar o actualizar.");
+        }
         var progress = new Progress<string>(m =>
         {
             _progress = m;

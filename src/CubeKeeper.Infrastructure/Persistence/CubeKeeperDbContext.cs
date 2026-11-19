@@ -12,7 +12,20 @@ public sealed class PanelUser : IdentityUser
 
 public static class PanelRoles
 {
+    /// <summary>Todo.</summary>
     public const string Admin = "Admin";
+
+    /// <summary>Arrancar, parar y reiniciar; Jugadores, Juego y Familia.</summary>
+    public const string Operator = "Operator";
+
+    public static readonly IReadOnlyList<string> All = [Admin, Operator];
+
+    public static string ToSpanish(string role) => role switch
+    {
+        Admin => "Administrador",
+        Operator => "Operador",
+        _ => role,
+    };
 }
 
 public sealed class CubeKeeperDbContext(DbContextOptions<CubeKeeperDbContext> options)

@@ -91,7 +91,16 @@
     {
         var result = await SignInManager.PasswordSignInAsync(Input!.UserName, Input.Password, Input.RememberMe, lockoutOnFailure: true);
         var ip = HttpContext?.Connection.RemoteIpAddress?.ToString();
-        await Audit.RecordAsync(Input.UserName, result.Succeeded ? "login.success" : result.IsLockedOut ? "login.locked" : "login.failed", ip);
+        if (!result.RequiresTwoFactor)
+        {
+            await Audit.RecordAsync(Input.UserName, result.Succeeded ? "login.success" : result.IsLockedOut ? "login.locked" : "login.failed", ip);
+        }
+        if (result.RequiresTwoFactor)
+        {
+            var query = $"?RememberMe={Input.RememberMe}" + (string.IsNullOrEmpty(ReturnUrl) ? "" : $"&ReturnUrl={Uri.EscapeDataString(ReturnUrl)}");
+            Navigation.NavigateTo("/login/2fa" + query, forceLoad: true);
+            return;
+        }
         if (result.Succeeded)
         {
             var target = !string.IsNullOrEmpty(ReturnUrl) && Uri.IsWellFormedUriString(ReturnUrl, UriKind.Relative) && ReturnUrl.StartsWith('/') && !ReturnUrl.StartsWith("//")
