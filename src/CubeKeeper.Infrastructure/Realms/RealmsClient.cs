@@ -4,7 +4,8 @@ using CubeKeeper.Infrastructure.Configuration;
 
 namespace CubeKeeper.Infrastructure.Realms;
 
-public sealed record RealmInfo(long Id, string Name, string? Owner, string? State, int ActiveSlot, bool Expired, bool IsOwner, IReadOnlyList<(int Slot, string Name)> Slots);
+/// <summary>Un Realm. <see cref="IsOwner"/> es null si no se puede saber (Realms decide al descargar).</summary>
+public sealed record RealmInfo(long Id, string Name, string? Owner, string? State, int ActiveSlot, bool Expired, bool? IsOwner, IReadOnlyList<(int Slot, string Name)> Slots);
 
 public sealed record RealmDownload(Uri Url, string? Token, long? Size);
 
@@ -47,18 +48,38 @@ public sealed class RealmsClient(HttpClient http, RealmsOptions options, Func<st
                     }
                 }
             }
+            var activeSlot = s["activeSlot"]?.GetValue<int>() ?? 1;
+            // Un Realm tiene tres ranuras y se pueden descargar todas, estén activas o no. Bedrock no siempre las
+            // manda: se ofrecen siempre las tres, con el nombre que traigan si lo traen.
+            var count = Math.Max(3, Math.Max(activeSlot, slots.Count == 0 ? 0 : slots.Max(x => x.Item1)));
+            var named = slots.ToDictionary(x => x.Item1, x => x.Item2);
+            slots = [.. Enumerable.Range(1, count).Select(i => (i, named.TryGetValue(i, out var n) ? n : $"Mundo {i}"))];
             var ownerUuid = s["ownerUUID"]?.GetValue<string>();
+            var owner = s["owner"]?.GetValue<string>();
             list.Add(new RealmInfo(
                 s["id"]!.GetValue<long>(),
                 s["name"]?.GetValue<string>() ?? "(sin nombre)",
-                s["owner"]?.GetValue<string>(),
+                string.IsNullOrWhiteSpace(owner) ? null : owner,
                 s["state"]?.GetValue<string>(),
-                s["activeSlot"]?.GetValue<int>() ?? 1,
+                activeSlot,
                 s["expired"]?.GetValue<bool>() ?? false,
-                ownerUuid is not null && ownerUuid == xsts.Xuid,
+                IsOwner(ownerUuid, owner, xsts),
                 slots));
         }
         return list;
+    }
+
+    private static bool? IsOwner(string? ownerUuid, string? owner, XstsToken xsts)
+    {
+        if (!string.IsNullOrEmpty(ownerUuid) && xsts.Xuid is not null)
+        {
+            return string.Equals(ownerUuid, xsts.Xuid, StringComparison.OrdinalIgnoreCase);
+        }
+        if (!string.IsNullOrWhiteSpace(owner) && xsts.Gamertag is not null)
+        {
+            return string.Equals(owner, xsts.Gamertag, StringComparison.OrdinalIgnoreCase);
+        }
+        return null;
     }
 
     /// <summary>Enlace de descarga del mundo de una ranura tal como está ahora («latest»).</summary>
@@ -115,7 +136,7 @@ public sealed class RealmsClient(HttpClient http, RealmsOptions options, Func<st
                     new RealmsAuthException("Realms ha denegado la descarga: solo el dueño del Realm puede descargar sus mundos."),
                 HttpStatusCode.Forbidden or HttpStatusCode.UpgradeRequired =>
                     new RealmsAuthException($"Realms ha rechazado la petición ({(int)response.StatusCode}). Puede que exija una versión del juego más reciente que la enviada ({clientVersion()}): ajusta CUBEKEEPER_REALMS_CLIENT_VERSION."),
-                HttpStatusCode.NotFound => new RealmsAuthException("Realms no encuentra ese Realm o esa ranura."),
+                HttpStatusCode.NotFound => new RealmsAuthException("Realms no encuentra ese Realm o esa ranura (puede que esa ranura no tenga ningún mundo)."),
                 _ => new RealmsAuthException($"Realms respondió {(int)response.StatusCode} {response.ReasonPhrase}."),
             };
         }

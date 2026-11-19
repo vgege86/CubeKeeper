@@ -183,6 +183,9 @@ public sealed class RealmsOptions
 
     public string RelyingParty { get; set; } = "https://pocket.realms.minecraft.net/";
 
+    /// <summary>Token solo para leer el XUID y el gamertag de la cuenta.</summary>
+    public string IdentityRelyingParty { get; set; } = "http://xboxlive.com";
+
     /// <summary>Cabecera Client-Version. Vacío = la versión de BDS instalada (o 0.0.0).</summary>
     public string? ClientVersion { get; set; }
 

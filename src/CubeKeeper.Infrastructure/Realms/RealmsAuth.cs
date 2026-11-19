@@ -161,9 +161,9 @@ public sealed class RealmsAuth(HttpClient http, RealmsOptions options, TimeProvi
             ["TokenType"] = "JWT",
         }, contractVersion: "1", "obtener el token de título de Xbox", ct).ConfigureAwait(false);
 
-        var xsts = await PostSignedAsync(options.XstsUrl, signer, new JsonObject
+        JsonObject XstsRequest(string relyingParty) => new()
         {
-            ["RelyingParty"] = options.RelyingParty,
+            ["RelyingParty"] = relyingParty,
             ["TokenType"] = "JWT",
             ["Properties"] = new JsonObject
             {
@@ -173,15 +173,37 @@ public sealed class RealmsAuth(HttpClient http, RealmsOptions options, TimeProvi
                 ["ProofKey"] = proofKey.DeepClone(),
                 ["SandboxId"] = "RETAIL",
             },
-        }, contractVersion: "1", "obtener el token de Realms (XSTS)", ct).ConfigureAwait(false);
+        };
 
+        var xsts = await PostSignedAsync(options.XstsUrl, signer, XstsRequest(options.RelyingParty), contractVersion: "1",
+            "obtener el token de Realms (XSTS)", ct).ConfigureAwait(false);
         var claims = xsts["DisplayClaims"]?["xui"]?[0];
         var uhs = claims?["uhs"]?.GetValue<string>() ?? throw new RealmsAuthException("Xbox no devolvió el identificador de usuario (uhs).");
+        var xuid = claims?["xid"]?.GetValue<string>();
+        var gamertag = claims?["gtg"]?.GetValue<string>();
+
+        // El token de Realms solo trae «uhs». El XUID y el gamertag (para saber de qué Realms eres dueño) vienen en el
+        // token de xboxlive.com. Si falla, se sigue sin ellos: Realms decide al descargar.
+        if (xuid is null || gamertag is null)
+        {
+            try
+            {
+                var identity = await PostSignedAsync(options.XstsUrl, signer, XstsRequest(options.IdentityRelyingParty), contractVersion: "1",
+                    "obtener el perfil de Xbox", ct).ConfigureAwait(false);
+                var id = identity["DisplayClaims"]?["xui"]?[0];
+                xuid ??= id?["xid"]?.GetValue<string>();
+                gamertag ??= id?["gtg"]?.GetValue<string>();
+            }
+            catch (RealmsAuthException)
+            {
+            }
+        }
+
         return new XstsToken(
             uhs,
             xsts["Token"]!.GetValue<string>(),
-            claims?["xid"]?.GetValue<string>(),
-            claims?["gtg"]?.GetValue<string>(),
+            xuid,
+            gamertag,
             DateTimeOffset.TryParse(xsts["NotAfter"]?.GetValue<string>(), out var notAfter) ? notAfter : time.GetUtcNow().AddHours(1));
     }
 
