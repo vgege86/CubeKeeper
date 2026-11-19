@@ -22,6 +22,8 @@ public sealed class CubeKeeperOptions
 
     public NotificationOptions Notifications { get; set; } = new();
 
+    public RealmsOptions Realms { get; set; } = new();
+
     public NetworkOptions Network { get; set; } = new();
 }
 
@@ -151,4 +153,38 @@ public sealed class NotificationOptions
 
     /// <summary>Dirección del panel, para que al tocar el aviso se abra (por ejemplo https://cubekeeper.alucard86.fyi).</summary>
     public string? PanelUrl { get; set; }
+}
+
+/// <summary>
+/// API no oficial de Realms (Bedrock). Los valores por defecto son los del cliente de Switch, como prismarine-auth y
+/// prismarine-realms. Si Mojang o Microsoft cambian algo, se pueden ajustar aquí sin recompilar.
+/// </summary>
+public sealed class RealmsOptions
+{
+    public string ClientId { get; set; } = "00000000441cc96b";
+
+    public string Scope { get; set; } = "service::user.auth.xboxlive.com::MBI_SSL";
+
+    public string DeviceCodeUrl { get; set; } = "https://login.live.com/oauth20_connect.srf";
+
+    public string TokenUrl { get; set; } = "https://login.live.com/oauth20_token.srf";
+
+    public string UserAuthUrl { get; set; } = "https://user.auth.xboxlive.com/user/authenticate";
+
+    public string DeviceAuthUrl { get; set; } = "https://device.auth.xboxlive.com/device/authenticate";
+
+    public string TitleAuthUrl { get; set; } = "https://title.auth.xboxlive.com/title/authenticate";
+
+    public string XstsUrl { get; set; } = "https://xsts.auth.xboxlive.com/xsts/authorize";
+
+    public string DeviceType { get; set; } = "Nintendo";
+
+    public string Host { get; set; } = "https://pocket.realms.minecraft.net";
+
+    public string RelyingParty { get; set; } = "https://pocket.realms.minecraft.net/";
+
+    /// <summary>Cabecera Client-Version. Vacío = la versión de BDS instalada (o 0.0.0).</summary>
+    public string? ClientVersion { get; set; }
+
+    public string UserAgent { get; set; } = "MCPE/UWP";
 }

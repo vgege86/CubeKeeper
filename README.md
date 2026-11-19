@@ -28,6 +28,8 @@ lo descarga, lo arranca y lo para, lee su consola y le envía comandos. No neces
 - **Fase 3C ✅** Avisos al móvil con ntfy: solicitudes de acceso, caídas, copias fallidas, actualizaciones y versiones nuevas
   de BDS (y, si se activan, entradas y salidas).
 - **Fase 3D ✅** Mapa del mundo con uNmINeD o bedrock-viz (se instalan desde el panel), cada noche y bajo demanda.
+- **Realms ✅** Conectar la cuenta de Microsoft con un código (microsoft.com/link) y descargar los mundos de tus
+  Realms para importarlos.
 - El MCP queda aparcado por ahora.
 
 Plan completo y decisiones: [docs/ARQUITECTURA.md](docs/ARQUITECTURA.md) ·
@@ -65,6 +67,7 @@ Todo se configura con variables de entorno. Para los secretos se admite el sufij
 | `CUBEKEEPER_PANEL_URL` | — | Dirección del panel para los avisos (también desde la página Avisos) |
 | `CUBEKEEPER_ALLOWED_NETWORKS` | redes privadas | CIDR desde los que se permite el panel |
 | `CUBEKEEPER_TRUSTED_PROXIES` | `172.16.0.0/12` | Proxies cuyo `X-Forwarded-For` se acepta |
+| `CUBEKEEPER_REALMS_CLIENT_VERSION` | versión de BDS | Versión del juego que se manda a Realms (solo si Realms la rechaza) |
 
 Otros ajustes avanzados se pueden dar con la notación de .NET, por ejemplo
 `CubeKeeper__Bds__StopTimeoutSeconds=45` o `CubeKeeper__Bds__MaxRestarts=5`.
@@ -74,7 +77,7 @@ Otros ajustes avanzados se pueden dar con la notación de .NET, por ejemplo
 ```
 /data
 ├── cubekeeper.db      usuarios del panel, jugadores y sesiones (SQLite)
-├── state.json         estado deseado, versión instalada, modo de acceso e inscripción
+├── state.json         estado deseado, versión instalada, modo de acceso, ajustes y sesión de Realms (cifrada)
 ├── keys/              claves de las cookies
 ├── server/            directorio de trabajo de bedrock_server (worlds/, server.properties…)
 ├── versions/<v>/      versiones de BDS descargadas (se guardan 2)

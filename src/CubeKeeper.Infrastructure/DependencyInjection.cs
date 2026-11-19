@@ -73,6 +73,10 @@ public static class DependencyInjection
             sp.GetRequiredService<IHttpClientFactory>().CreateClient(Maps.MapService.HttpClientName)));
         services.AddSingleton<Maps.MapScheduler>();
         services.AddHostedService(sp => sp.GetRequiredService<Maps.MapScheduler>());
+        // Realms: una descarga de mundo puede tardar; las llamadas a la API llevan su propio límite.
+        services.AddHttpClient(Realms.RealmsService.HttpClientName, c => c.Timeout = TimeSpan.FromMinutes(30));
+        services.AddSingleton(sp => ActivatorUtilities.CreateInstance<Realms.RealmsService>(sp,
+            sp.GetRequiredService<IHttpClientFactory>().CreateClient(Realms.RealmsService.HttpClientName)));
         services.AddSingleton<Family.FamilyService>();
         services.AddHostedService(sp => sp.GetRequiredService<Family.FamilyService>());
         services.AddSingleton<Addons.AddonService>();
