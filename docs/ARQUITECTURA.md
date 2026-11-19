@@ -134,7 +134,12 @@ socket de Docker, otro contenedor no puede llegar a esa consola.
 - **Seguridad.** Usuario 568, `read_only`, `cap_drop: ALL`, `no-new-privileges` y límites de CPU y memoria. Panel
   detrás de NPM (Access List) **y** filtro de IP propio, porque con Host Network el puerto también responde en la
   IP del NAS. Cookie `HttpOnly` y `SameSite=Strict`, bloqueo tras 5 intentos fallidos y contraseña inicial por
-  variable de entorno (o `_FILE`).
+  variable de entorno (o `_FILE`). Claves de Data Protection cifradas con AES-256-GCM y una clave derivada (PBKDF2)
+  de `CUBEKEEPER_KEY_SECRET`, que va en la configuración de la app y no en el dataset; si el secreto falta o no
+  coincide, la app no arranca (Data Protection crearía otra clave en silencio). Cabeceras: CSP estricta (sin
+  `<ImportMap />`, que es un script en línea), `X-Frame-Options`, `nosniff`, `Referrer-Policy`, `Permissions-Policy`.
+- **Pruebas.** Unitarias (Core e Infrastructure, con `FakeBedrockServer` y servidores HTTP simulados) y de navegador
+  con Playwright (`e2e/`) contra el panel publicado. En CI la imagen solo se publica si pasan todas.
 
 ## Valores acordados
 
@@ -167,6 +172,7 @@ socket de Docker, otro contenedor no puede llegar a esa consola.
 | **3C** ✅ | Avisos al móvil con ntfy |
 | **3D** ✅ | Mapa del mundo con uNmINeD o bedrock-viz (MCP aparcado) |
 | **4A** ✅ | Realms: conectar la cuenta de Microsoft con un código y descargar mundos como `.mcworld` |
+| **4B** ✅ | Claves cifradas, cabeceras de seguridad, avisos de mantenimiento, pruebas de navegador en CI, documentación reorganizada |
 | ~~3~~ | Horarios y límites por jugador, estadísticas, usuarios con roles, auditoría, notificaciones, MCP para Home365 (`ModelContextProtocol.AspNetCore`, como Home365), mapa con uNmINeD |
 
 ### Pendiente de comprobar en el NAS

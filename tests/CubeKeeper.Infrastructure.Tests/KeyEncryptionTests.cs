@@ -88,6 +88,7 @@ public sealed class KeyEncryptionTests : IDisposable
     public void Short_secrets_are_rejected()
     {
         Assert.Throws<InvalidOperationException>(() => new KeyEncryptionSecret("corta"));
+        Assert.Throws<InvalidOperationException>(() => new KeyEncryptionSecret(KeyEncryptionSecret.Placeholder));
         Assert.False(new KeyEncryptionSecret("").IsSet);
     }
 

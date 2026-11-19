@@ -14,11 +14,18 @@ public sealed class KeyEncryptionSecret
 {
     public const int MinLength = 16;
 
+    /// <summary>El valor de ejemplo de deploy/docker-compose.yml: no vale como secreto.</summary>
+    public const string Placeholder = "pega-aquí-el-secreto-generado";
+
     public KeyEncryptionSecret(string? value)
     {
         if (!string.IsNullOrEmpty(value) && value.Length < MinLength)
         {
             throw new InvalidOperationException($"CUBEKEEPER_KEY_SECRET es demasiado corto: usa al menos {MinLength} caracteres (mejor 32 o más, al azar).");
+        }
+        if (value == Placeholder)
+        {
+            throw new InvalidOperationException("CUBEKEEPER_KEY_SECRET tiene el valor de ejemplo: genera uno con «openssl rand -base64 32».");
         }
         Value = string.IsNullOrEmpty(value) ? null : value;
     }
