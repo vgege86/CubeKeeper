@@ -127,7 +127,12 @@ else
                         }
                         else if (f.FileComment is not null)
                         {
-                            <span class="muted" lang="en">@f.FileComment</span>
+                            <span class="muted">Ajuste que CubeKeeper aún no conoce. Texto original de Mojang (sin traducir):</span>
+                            <span class="muted" lang="en"><em>@f.FileComment</em></span>
+                        }
+                        else
+                        {
+                            <span class="muted">Ajuste que CubeKeeper aún no conoce y sin descripción en el archivo.</span>
                         }
                     </div>
                 </div>

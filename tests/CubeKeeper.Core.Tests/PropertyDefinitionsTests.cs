@@ -66,3 +66,25 @@ public class PropertyDefinitionsTests
         Assert.Null(doc.GetComment("no-existe"));
     }
 }
+
+public class PropertyDefinitionsSpanishTests
+{
+    [Fact]
+    public void Every_known_setting_has_a_spanish_description()
+    {
+        Assert.All(PropertyDefinitions.All, d =>
+        {
+            Assert.False(string.IsNullOrWhiteSpace(d.Help), $"{d.Key} no tiene descripción");
+            Assert.NotEqual(d.Key, d.Label);
+        });
+    }
+
+    [Theory]
+    [InlineData("server-authoritative-movement-strict")]
+    [InlineData("chat-restriction")]
+    [InlineData("disable-custom-skins")]
+    [InlineData("emit-server-telemetry")]
+    [InlineData("allow-outbound-script-debugging")]
+    [InlineData("client-side-chunk-generation-enabled")]
+    public void Common_bds_settings_are_known(string key) => Assert.NotNull(PropertyDefinitions.Find(key));
+}
