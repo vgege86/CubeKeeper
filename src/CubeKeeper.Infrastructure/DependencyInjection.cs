@@ -77,6 +77,7 @@ public static class DependencyInjection
         services.AddHttpClient(Realms.RealmsService.HttpClientName, c => c.Timeout = TimeSpan.FromMinutes(30));
         services.AddSingleton(sp => ActivatorUtilities.CreateInstance<Realms.RealmsService>(sp,
             sp.GetRequiredService<IHttpClientFactory>().CreateClient(Realms.RealmsService.HttpClientName)));
+        services.AddHostedService<Realms.RealmsSessionMonitor>();
         services.AddSingleton<Family.FamilyService>();
         services.AddHostedService(sp => sp.GetRequiredService<Family.FamilyService>());
         services.AddSingleton<Addons.AddonService>();

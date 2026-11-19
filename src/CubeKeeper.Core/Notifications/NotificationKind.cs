@@ -17,9 +17,11 @@ public enum NotificationKind
     NewVersion = 16,
     /// <summary>Un jugador entra o sale.</summary>
     PlayerJoin = 32,
+    /// <summary>Falla una tarea de mantenimiento: el mapa nocturno, el segundo destino de copias o la cuenta de Realms.</summary>
+    Maintenance = 64,
 
-    /// <summary>Lo que elegiste al planificar la fase 3C.</summary>
-    Defaults = AccessRequest | ServerDown | BackupFailed | Update | NewVersion,
+    /// <summary>Lo que elegiste al planificar la fase 3C, más los fallos de mantenimiento.</summary>
+    Defaults = AccessRequest | ServerDown | BackupFailed | Update | NewVersion | Maintenance,
 }
 
 public static class NotificationKindText
@@ -31,6 +33,7 @@ public static class NotificationKindText
         (NotificationKind.BackupFailed, "Copias fallidas", "No se ha podido hacer una copia programada del mundo."),
         (NotificationKind.Update, "Actualizaciones", "Una actualización ha fallado (y se ha vuelto atrás), o la programada ha ido bien."),
         (NotificationKind.NewVersion, "Versión nueva de BDS", "Mojang ha publicado una versión más nueva que la instalada (también con la versión fijada)."),
+        (NotificationKind.Maintenance, "Fallos de mantenimiento", "Falla el mapa nocturno, el segundo destino de las copias no está montado o la cuenta de Realms deja de funcionar."),
         (NotificationKind.PlayerJoin, "Entradas y salidas", "Cada vez que un jugador entra o sale."),
     ];
 }

@@ -24,6 +24,9 @@ public sealed record AppState
     /// <summary>Ajustes de ntfy guardados desde el panel (si no, se usan las variables de entorno).</summary>
     public NtfySettings? Ntfy { get; init; }
 
+    /// <summary>Tipos de aviso que ya existían la última vez (para activar por defecto los que se añadan).</summary>
+    public CubeKeeper.Core.Notifications.NotificationKind? KnownNotificationKinds { get; init; }
+
     /// <summary>Ajustes y último resultado del mapa del mundo.</summary>
     public MapSettings Map { get; init; } = new();
 

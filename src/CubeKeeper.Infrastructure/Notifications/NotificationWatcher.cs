@@ -11,6 +11,7 @@ public sealed class NotificationWatcher(IServerController server, Notifier notif
 {
     public Task StartAsync(CancellationToken cancellationToken)
     {
+        notifier.EnableNewDefaultKinds();
         server.StateChanged += OnState;
         server.LogEvent += OnLogEvent;
         return Task.CompletedTask;

@@ -185,6 +185,24 @@ public sealed class NotifierTests : IDisposable
             new(new DbContextOptionsBuilder<CubeKeeperDbContext>().UseSqlite($"Data Source={path}").Options);
     }
 
+    [Fact]
+    public void New_default_kinds_are_enabled_once_for_existing_installations()
+    {
+        var notifier = Create(_root, new CaptureHandler());
+        var state = new AppStateStore(new DataPaths(_root));
+        // Como un state.json de antes: sin KnownNotificationKinds y con «Entradas y salidas» activado a mano.
+        const NotificationKind old = NotificationKind.AccessRequest | NotificationKind.ServerDown | NotificationKind.PlayerJoin;
+        state.Update(s => s with { Notifications = old, KnownNotificationKinds = null });
+        notifier = Create(_root, new CaptureHandler());
+
+        notifier.EnableNewDefaultKinds();
+        Assert.Equal(old | NotificationKind.Maintenance, notifier.Enabled);
+
+        notifier.SetEnabled(old);
+        notifier.EnableNewDefaultKinds();
+        Assert.Equal(old, notifier.Enabled);
+    }
+
     public void Dispose()
     {
         if (Directory.Exists(_root))
