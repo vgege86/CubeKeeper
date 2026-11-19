@@ -1,7 +1,8 @@
 .topbar {
     display: flex;
+    flex-wrap: wrap;
     align-items: center;
-    gap: 1.5rem;
+    gap: 0.5rem 1.5rem;
     padding: 0.6rem 1.25rem;
     background: var(--surface);
     border-bottom: 1px solid var(--border);
@@ -29,12 +30,15 @@
 
 nav {
     display: flex;
+    flex-wrap: wrap;
     gap: 0.25rem;
     flex: 1;
+    min-width: 0;
 }
 
 nav ::deep a {
-    padding: 0.35rem 0.75rem;
+    padding: 0.35rem 0.6rem;
+    white-space: nowrap;
     border-radius: 6px;
     color: var(--muted);
     text-decoration: none;
@@ -83,7 +87,10 @@ nav ::deep a.active {
     top: 0.5rem;
 }
 
-@media (max-width: 600px) {
-    .topbar { flex-wrap: wrap; gap: 0.5rem; }
+@media (max-width: 900px) {
+    .topbar { gap: 0.4rem 1rem; padding: 0.5rem 0.75rem; }
+    .brand { flex: 1; }
+    /* El menú pasa a su propia fila, a todo el ancho, debajo de la marca y «Salir». */
+    nav { order: 3; flex-basis: 100%; }
     .user { display: none; }
 }

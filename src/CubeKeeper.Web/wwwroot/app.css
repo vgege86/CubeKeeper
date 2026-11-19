@@ -244,3 +244,14 @@ a.btn { display: inline-block; }
 .segmented button + button { border-left: 1px solid var(--border); }
 .segmented button.on { background: var(--accent); color: #fff; }
 .segmented button:disabled { cursor: not-allowed; opacity: 0.6; }
+
+h3.sub { font-size: 0.95rem; margin: 1.1rem 0 0.4rem; }
+.schedule-row { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem; padding: 0.4rem 0; border-bottom: 1px solid var(--border); }
+.schedule-row input[type=time] { width: auto; margin: 0; }
+.day-chips { display: inline-flex; gap: 0.2rem; }
+.chip { font: inherit; font-size: 0.85rem; width: 2rem; height: 2rem; border-radius: 50%; border: 1px solid var(--border); background: var(--surface-2); color: var(--muted); cursor: pointer; }
+.chip.on { background: var(--accent); border-color: var(--accent); color: #fff; }
+.chip:disabled { opacity: 0.5; cursor: not-allowed; }
+.table.compact td { padding: 0.25rem 0.5rem; }
+.num { text-align: right; font-variant-numeric: tabular-nums; }
+.nowrap { white-space: nowrap; }

@@ -1,0 +1,321 @@
+@page "/familia"
+@rendermode InteractiveServer
+@inherits AuditedPage
+@implements IDisposable
+@using CubeKeeper.Core.Family
+@using CubeKeeper.Infrastructure.Family
+@using CubeKeeper.Infrastructure.Players
+@using CubeKeeper.Web.Formatting
+@inject FamilyService Family
+@inject PlayerStatsService Stats
+@inject IPlayerPresence Presence
+@inject TimeProvider Time
+@inject ILogger<FamilyPage> Logger
+
+<PageTitle>Familia · CubeKeeper</PageTitle>
+
+<h1>Familia</h1>
+<p class="muted">Horarios y tiempo de juego por jugador. Cuando se acaba, CubeKeeper avisa por mensaje privado a los 5 minutos y a 1 minuto, y después le expulsa explicándole por qué.</p>
+
+@if (_message is not null)
+{
+    <p class="alert @(_messageIsError ? "alert-error" : "alert-ok")" role="status">@_message</p>
+}
+
+<section class="card">
+    <h2>Jugadores</h2>
+    @if (_players.Count == 0)
+    {
+        <p class="muted">Todavía no ha entrado nadie. Los jugadores aparecen aquí cuando se conectan por primera vez.</p>
+    }
+    else
+    {
+        <table class="table">
+            <thead><tr><th>Jugador</th><th>Hoy</th><th>Normas</th><th>Ahora</th><th></th></tr></thead>
+            <tbody>
+                @foreach (var p in _players)
+                {
+                    var rules = _rules.GetValueOrDefault(p.Xuid) ?? PlayerRules.None;
+                    var status = _status.GetValueOrDefault(p.Xuid);
+                    <tr class="@(p.Xuid == _selected ? "selected" : null)">
+                        <td><strong>@p.Name</strong>@if (Presence.Online.Any(o => o.Xuid == p.Xuid)) {<span class="badge badge-ok small-badge">dentro</span>}</td>
+                        <td>@Format.Duration(p.PlayedToday)@if (status?.DailyAllowance is { } a) {<span class="muted"> / @FamilyPolicy.FormatDuration(a)</span>}</td>
+                        <td class="small">@Summary(rules)</td>
+                        <td class="small">
+                            @if (!rules.Enabled || status is null)
+                            {
+                                <span class="muted">—</span>
+                            }
+                            else if (!status.Allowed)
+                            {
+                                <span class="hint-warn">@(status.Reason == BlockReason.DailyLimit ? "Sin tiempo hoy" : "Fuera de horario")</span>
+                            }
+                            else if (status.Remaining is { } r)
+                            {
+                                <span>Le quedan @FamilyPolicy.FormatDuration(r)</span>
+                            }
+                            else
+                            {
+                                <span class="ok">Puede jugar</span>
+                            }
+                        </td>
+                        <td class="row-actions"><button class="btn btn-ghost" @onclick="() => SelectAsync(p.Xuid)">Editar</button></td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    }
+</section>
+
+@if (_selected is not null && _edit is not null)
+{
+    var player = _players.First(p => p.Xuid == _selected);
+    <div class="grid">
+        <section class="card">
+            <h2>Normas de @player.Name</h2>
+            <label class="check"><input type="checkbox" @bind="_edit.Enabled" /> Aplicar normas a este jugador</label>
+
+            <h3 class="sub">Tiempo máximo al día</h3>
+            <div class="actions">
+                <select class="inline-select" @bind="_edit.DailyMinutes" disabled="@(!_edit.Enabled)" aria-label="Tiempo máximo al día">
+                    <option value="-1">Sin límite</option>
+                    @foreach (var m in new[] { 30, 45, 60, 90, 120, 150, 180, 240, 300 })
+                    {
+                        <option value="@m">@FamilyPolicy.FormatDuration(TimeSpan.FromMinutes(m))</option>
+                    }
+                </select>
+            </div>
+
+            <h3 class="sub">Horario permitido</h3>
+            @if (_edit.Rules.Count == 0)
+            {
+                <p class="muted small">Sin franjas: puede jugar a cualquier hora (dentro del tiempo diario).</p>
+            }
+            @foreach (var rule in _edit.Rules)
+            {
+                <div class="schedule-row">
+                    <div class="day-chips" role="group" aria-label="Días">
+                        @foreach (var (day, shortName, longName) in WeekDaysExtensions.Ordered)
+                        {
+                            <button type="button" class="chip @(rule.Days.HasFlag(day) ? "on" : null)" title="@longName" disabled="@(!_edit.Enabled)"
+                                    @onclick="() => rule.Days ^= day">@shortName</button>
+                        }
+                    </div>
+                    <input type="time" @bind="rule.From" disabled="@(!_edit.Enabled)" aria-label="Desde" />
+                    <span class="muted">a</span>
+                    <input type="time" @bind="rule.To" disabled="@(!_edit.Enabled)" aria-label="Hasta" />
+                    <button class="btn btn-ghost" disabled="@(!_edit.Enabled)" @onclick="() => _edit.Rules.Remove(rule)" aria-label="Quitar franja">✕</button>
+                </div>
+            }
+            <div class="actions">
+                <button class="btn btn-ghost" disabled="@(!_edit.Enabled)" @onclick='() => _edit.Rules.Add(new RuleEdit { Days = WeekDays.Weekdays, From = new TimeOnly(17, 0), To = new TimeOnly(20, 30) })'>+ Entre semana</button>
+                <button class="btn btn-ghost" disabled="@(!_edit.Enabled)" @onclick='() => _edit.Rules.Add(new RuleEdit { Days = WeekDays.Weekend, From = new TimeOnly(10, 0), To = new TimeOnly(21, 0) })'>+ Fin de semana</button>
+            </div>
+
+            <div class="actions mt">
+                <button class="btn btn-primary" disabled="@_busy" @onclick="SaveAsync">Guardar</button>
+                <button class="btn btn-ghost" @onclick="() => { _selected = null; _edit = null; }">Cerrar</button>
+            </div>
+        </section>
+
+        <section class="card">
+            <h2>Hoy</h2>
+            @if (_status.GetValueOrDefault(player.Xuid) is { } st)
+            {
+                <dl class="facts">
+                    <dt>Jugado hoy</dt>
+                    <dd>@Format.Duration(st.PlayedToday)</dd>
+                    <dt>Permitido hoy</dt>
+                    <dd>@(st.DailyAllowance is { } a ? FamilyPolicy.FormatDuration(a) : "sin límite")</dd>
+                    <dt>Ahora</dt>
+                    <dd>@(!_rules.GetValueOrDefault(player.Xuid, PlayerRules.None).Enabled ? "sin normas" : st.Allowed ? (st.Remaining is { } r ? $"puede jugar ({FamilyPolicy.FormatDuration(r)} más)" : "puede jugar") : st.Reason == BlockReason.DailyLimit ? "sin tiempo hoy" : "fuera de horario")</dd>
+                </dl>
+            }
+            <h3 class="sub">Tiempo extra solo para hoy</h3>
+            <div class="actions">
+                @foreach (var m in new[] { 15, 30, 60 })
+                {
+                    <button class="btn" disabled="@(_busy || !_rules.GetValueOrDefault(player.Xuid, PlayerRules.None).Enabled)" @onclick="() => AddExtraAsync(player.Xuid, player.Name, m)">+@m min</button>
+                }
+                @if (_rules.GetValueOrDefault(player.Xuid)?.ExtraFor(Today) is > 0 and var extra)
+                {
+                    <button class="btn btn-ghost" disabled="@_busy" @onclick="() => ClearExtraAsync(player.Xuid, player.Name)">Quitar extra (@extra min)</button>
+                }
+            </div>
+            <p class="muted small">El tiempo extra amplía el límite diario de hoy; no cambia el horario.</p>
+
+            <h3 class="sub">Últimos 7 días</h3>
+            <table class="table compact">
+                <tbody>
+                    @foreach (var (day, played) in _history)
+                    {
+                        <tr>
+                            <td>@DayName(day)</td>
+                            <td class="num">@(played > TimeSpan.Zero ? Format.Duration(played) : "—")</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+            <p class="muted small">Total de la semana: @Format.Duration(TimeSpan.FromTicks(_history.Sum(h => h.Played.Ticks)))</p>
+        </section>
+    </div>
+}
+
+@code {
+    private IReadOnlyList<PlayerSummary> _players = [];
+    private IReadOnlyDictionary<string, PlayerRules> _rules = new Dictionary<string, PlayerRules>();
+    private Dictionary<string, FamilyStatus> _status = [];
+    private IReadOnlyList<(DateOnly Day, TimeSpan Played)> _history = [];
+    private string? _selected;
+    private EditModel? _edit;
+    private string? _message;
+    private bool _messageIsError;
+    private bool _busy;
+    private Timer? _refresh;
+
+    private DateOnly Today => DateOnly.FromDateTime(Time.GetLocalNow().DateTime);
+
+    protected override async Task OnInitializedAsync()
+    {
+        Family.Changed += OnChanged;
+        Presence.Changed += OnChanged;
+        await LoadAsync();
+        _refresh = new Timer(_ => OnChanged(), null, TimeSpan.FromSeconds(30), TimeSpan.FromSeconds(30));
+    }
+
+    private async Task LoadAsync()
+    {
+        _players = await Stats.GetPlayersAsync();
+        _rules = await Family.GetAllRulesAsync();
+        var status = new Dictionary<string, FamilyStatus>();
+        foreach (var p in _players)
+        {
+            status[p.Xuid] = await Family.GetStatusAsync(p.Xuid);
+        }
+        _status = status;
+        if (_selected is not null)
+        {
+            _history = await Stats.GetDailyAsync(_selected, 7);
+        }
+    }
+
+    private void OnChanged() => _ = InvokeAsync(async () =>
+    {
+        await LoadAsync();
+        StateHasChanged();
+    });
+
+    private async Task SelectAsync(string xuid)
+    {
+        _selected = xuid;
+        var rules = _rules.GetValueOrDefault(xuid) ?? PlayerRules.None;
+        _edit = new EditModel
+        {
+            // Al editar por primera vez, se proponen las normas activadas.
+            Enabled = rules.Enabled || !_rules.ContainsKey(xuid),
+            DailyMinutes = rules.DailyMinutes ?? -1,
+            Rules = rules.Schedule.Select(r => new RuleEdit { Days = r.Days, From = r.From, To = r.To }).ToList(),
+        };
+        _history = await Stats.GetDailyAsync(xuid, 7);
+    }
+
+    private async Task SaveAsync()
+    {
+        var player = _players.First(p => p.Xuid == _selected);
+        var current = _rules.GetValueOrDefault(player.Xuid) ?? PlayerRules.None;
+        var rules = new PlayerRules(
+            _edit!.Enabled,
+            _edit.DailyMinutes < 0 ? null : _edit.DailyMinutes,
+            _edit.Rules.Select(r => new ScheduleRule(r.Days, r.From, r.To)).ToList(),
+            current.ExtraMinutes,
+            current.ExtraDate);
+        await RunAsync(async () =>
+        {
+            await Family.SaveRulesAsync(player.Xuid, rules);
+            await AuditAsync("family.rules", player.Name, Summary(rules));
+        }, $"Normas de {player.Name} guardadas.");
+    }
+
+    private Task AddExtraAsync(string xuid, string name, int minutes) => RunAsync(async () =>
+    {
+        var current = _rules.GetValueOrDefault(xuid)?.ExtraFor(Today) ?? 0;
+        await Family.SetExtraTodayAsync(xuid, current + minutes);
+        await AuditAsync("family.extra", name, $"+{minutes} min (total hoy: {current + minutes})");
+    }, $"{name} tiene {minutes} minutos más hoy.");
+
+    private Task ClearExtraAsync(string xuid, string name) => RunAsync(async () =>
+    {
+        await Family.SetExtraTodayAsync(xuid, 0);
+        await AuditAsync("family.extra", name, "sin tiempo extra");
+    }, $"Quitado el tiempo extra de {name}.");
+
+    private async Task RunAsync(Func<Task> action, string ok)
+    {
+        _busy = true;
+        _message = null;
+        try
+        {
+            await action();
+            _message = ok;
+            _messageIsError = false;
+        }
+        catch (Exception ex) when (ex is ArgumentException or InvalidOperationException)
+        {
+            Logger.LogInformation(ex, "Normas no válidas");
+            _message = ex.Message;
+            _messageIsError = true;
+        }
+        finally
+        {
+            _busy = false;
+            await LoadAsync();
+        }
+    }
+
+    private static string Summary(PlayerRules r)
+    {
+        if (!r.Enabled)
+        {
+            return "Sin normas";
+        }
+        var parts = new List<string>();
+        parts.Add(r.DailyMinutes is int m ? $"{FamilyPolicy.FormatDuration(TimeSpan.FromMinutes(m))} al día" : "sin límite diario");
+        parts.Add(r.Schedule.Count == 0 ? "a cualquier hora" : string.Join("; ", r.Schedule));
+        return string.Join(" · ", parts);
+    }
+
+    private string DayName(DateOnly d)
+    {
+        if (d == Today)
+        {
+            return "Hoy";
+        }
+        if (d == Today.AddDays(-1))
+        {
+            return "Ayer";
+        }
+        var name = WeekDaysExtensions.Ordered.First(o => o.Day == WeekDaysExtensions.From(d.DayOfWeek)).Long;
+        return $"{char.ToUpperInvariant(name[0])}{name[1..]} {d:dd/MM}";
+    }
+
+    public void Dispose()
+    {
+        Family.Changed -= OnChanged;
+        Presence.Changed -= OnChanged;
+        _refresh?.Dispose();
+    }
+
+    private sealed class EditModel
+    {
+        public bool Enabled { get; set; }
+        public int DailyMinutes { get; set; } = -1;
+        public List<RuleEdit> Rules { get; set; } = [];
+    }
+
+    private sealed class RuleEdit
+    {
+        public WeekDays Days { get; set; }
+        public TimeOnly From { get; set; }
+        public TimeOnly To { get; set; }
+    }
+}

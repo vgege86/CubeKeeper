@@ -1,5 +1,6 @@
 @page "/"
 @rendermode InteractiveServer
+@inherits AuditedPage
 @implements IDisposable
 @using CubeKeeper.Core.Properties
 @using CubeKeeper.Core.Versions
@@ -238,6 +239,7 @@
         var result = await Updates.RollbackAsync();
         _confirmRollback = false;
         _message = result.Message;
+        await AuditAsync("server.rollback", result.To, result.Message);
         if (!result.Succeeded)
         {
             throw new InvalidOperationException(result.Message);
@@ -248,6 +250,7 @@
     {
         var changed = await Advisor.ApplyAsync();
         await LoadPropertiesAsync();
+        await AuditAsync("settings.recommended", null, string.Join(", ", changed));
         _message = changed.Count == 0
             ? "No había nada que cambiar."
             : $"Cambiado: {string.Join(", ", changed)}. Reinicia el servidor para aplicarlo.";
@@ -259,11 +262,11 @@
         _ = InvokeAsync(StateHasChanged);
     }
 
-    private Task StartAsync() => RunAsync(() => Server.StartAsync(), "Servidor arrancado.");
+    private Task StartAsync() => RunAsync(() => Server.StartAsync(), "Servidor arrancado.", "server.start");
 
-    private Task StopAsync() => RunAsync(() => Server.StopAsync(), "Servidor parado.");
+    private Task StopAsync() => RunAsync(() => Server.StopAsync(), "Servidor parado.", "server.stop");
 
-    private Task RestartAsync() => RunAsync(() => Server.RestartAsync(), "Servidor reiniciado.");
+    private Task RestartAsync() => RunAsync(() => Server.RestartAsync(), "Servidor reiniciado.", "server.restart");
 
     private Task CheckAsync() => RunAsync(async () =>
     {
@@ -296,9 +299,10 @@
         _message = result.Message;
         _messageIsError = !result.Succeeded;
         await LoadPropertiesAsync();
+        await AuditAsync("server.install", _latest!.Version.Text, result.Message);
     }, null);
 
-    private async Task RunAsync(Func<Task> action, string? okMessage)
+    private async Task RunAsync(Func<Task> action, string? okMessage, string? auditAction = null)
     {
         _busy = true;
         _message = null;
@@ -310,6 +314,10 @@
                 _message = okMessage;
             }
             _messageIsError = false;
+            if (auditAction is not null)
+            {
+                await AuditAsync(auditAction);
+            }
         }
         catch (Exception ex)
         {

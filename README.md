@@ -21,6 +21,10 @@ lo descarga, lo arranca y lo para, lee su consola y le envía comandos. No neces
   reglas del juego.
 - **Fase 2B ✅** Mundos (crear, cambiar, importar y exportar `.mcworld`, borrar con copia previa) y complementos
   (`.mcpack`, `.mcaddon`: instalar, activar, desactivar y quitar en el mundo activo).
+- **Fase 3A ✅** Familia: horarios y tiempo máximo al día por jugador, con avisos y expulsión, tiempo extra para hoy e
+  historial de 7 días; auditoría de las acciones del panel y de CubeKeeper.
+- **Fase 3B** Usuarios del panel con roles y verificación en dos pasos (TOTP).
+- **Fase 3C** Notificaciones, MCP para Home365 y mapa del mundo.
 
 Plan completo y decisiones: [docs/ARQUITECTURA.md](docs/ARQUITECTURA.md) ·
 Instalación en el NAS y pruebas: [docs/TRUENAS.md](docs/TRUENAS.md).

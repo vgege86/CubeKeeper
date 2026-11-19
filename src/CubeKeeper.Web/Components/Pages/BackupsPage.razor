@@ -1,5 +1,6 @@
 @page "/copias"
 @rendermode InteractiveServer
+@inherits AuditedPage
 @implements IDisposable
 @using CubeKeeper.Core.Backups
 @using CubeKeeper.Infrastructure.Backups
@@ -168,19 +169,21 @@
     {
         var b = await Backups.CreateAsync(BackupKind.Manual);
         _message = $"Copia creada ({Size(b.Size)}).";
+        await AuditAsync("backup.create", b.FileName);
     });
 
     private Task RestoreAsync(string file) => RunAsync(async () =>
     {
         await Backups.RestoreAsync(file);
         _message = "Mundo restaurado.";
+        await AuditAsync("backup.restore", file);
     });
 
     private Task Delete(string file) => RunAsync(() =>
     {
         Backups.Delete(file);
         _message = "Copia borrada.";
-        return Task.CompletedTask;
+        return AuditAsync("backup.delete", file);
     });
 
     private async Task RunAsync(Func<Task> action)

@@ -8,6 +8,7 @@
 @inject UserManager<PanelUser> UserManager
 @inject NavigationManager Navigation
 @inject CubeKeeper.Web.Hosting.AdminSeedStatus SeedStatus
+@inject CubeKeeper.Infrastructure.Audit.AuditLog Audit
 
 <PageTitle>Entrar · CubeKeeper</PageTitle>
 
@@ -76,6 +77,9 @@
     [SupplyParameterFromQuery]
     private string? ReturnUrl { get; set; }
 
+    [CascadingParameter]
+    private HttpContext? HttpContext { get; set; }
+
     protected override async Task OnInitializedAsync()
     {
         Input ??= new LoginInput();
@@ -86,6 +90,8 @@
     private async Task LoginAsync()
     {
         var result = await SignInManager.PasswordSignInAsync(Input!.UserName, Input.Password, Input.RememberMe, lockoutOnFailure: true);
+        var ip = HttpContext?.Connection.RemoteIpAddress?.ToString();
+        await Audit.RecordAsync(Input.UserName, result.Succeeded ? "login.success" : result.IsLockedOut ? "login.locked" : "login.failed", ip);
         if (result.Succeeded)
         {
             var target = !string.IsNullOrEmpty(ReturnUrl) && Uri.IsWellFormedUriString(ReturnUrl, UriKind.Relative) && ReturnUrl.StartsWith('/') && !ReturnUrl.StartsWith("//")

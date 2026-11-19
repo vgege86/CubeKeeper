@@ -1,5 +1,6 @@
 @page "/complementos"
 @rendermode InteractiveServer
+@inherits AuditedPage
 @implements IDisposable
 @using CubeKeeper.Core.Addons
 @using CubeKeeper.Infrastructure.Addons
@@ -117,6 +118,7 @@
     {
         await using var stream = _file!.OpenReadStream(AddonService.MaxUploadBytes);
         var installed = await Addons.InstallAsync(stream, _file.Name);
+        await AuditAsync("addon.install", _file.Name, string.Join(", ", installed.Select(m => $"{m.Name} {m.VersionText}")));
         _file = null;
         _fileInputKey++;
         _message = $"Instalado: {string.Join(", ", installed.Select(m => $"{m.Name} {m.VersionText}"))}. Reinicia el servidor para cargarlo.";
@@ -125,12 +127,14 @@
     private Task ToggleAsync(InstalledPack p) => RunAsync(async () =>
     {
         await Addons.SetEnabledAsync(p.Manifest.Uuid, p.Manifest.Type, !p.Enabled);
+        await AuditAsync(p.Enabled ? "addon.disable" : "addon.enable", p.Manifest.Name);
         _message = $"{p.Manifest.Name} {(p.Enabled ? "desactivado" : "activado")}. Reinicia el servidor para aplicarlo.";
     });
 
     private Task RemoveAsync(InstalledPack p) => RunAsync(async () =>
     {
         await Addons.RemoveAsync(p.Manifest.Uuid, p.Manifest.Type);
+        await AuditAsync("addon.remove", p.Manifest.Name);
         _confirmRemove = null;
         _message = $"{p.Manifest.Name} quitado. Reinicia el servidor para aplicarlo.";
     });
@@ -141,6 +145,7 @@
         try
         {
             await Server.RestartAsync();
+            await AuditAsync("server.restart");
             _message = "Servidor reiniciado.";
             _needsRestart = false;
         }

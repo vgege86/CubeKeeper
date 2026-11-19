@@ -1,0 +1,111 @@
+@page "/auditoria"
+@rendermode InteractiveServer
+@implements IDisposable
+@using CubeKeeper.Infrastructure.Audit
+@using CubeKeeper.Infrastructure.Persistence
+@using CubeKeeper.Web.Formatting
+@inject AuditLog Audit
+@inject TimeProvider Time
+
+<PageTitle>Auditoría · CubeKeeper</PageTitle>
+
+<h1>Auditoría</h1>
+<p class="muted">Acciones hechas desde el panel y por CubeKeeper («@AuditLog.SystemActor»): quién, qué y cuándo.</p>
+
+<section class="card">
+    <div class="actions">
+        <select class="inline-select" @bind="Actor" @bind:after="LoadAsync" aria-label="Usuario">
+            <option value="">Todos los usuarios</option>
+            @foreach (var a in _actors)
+            {
+                <option value="@a">@a</option>
+            }
+        </select>
+        <select class="inline-select" @bind="Category" @bind:after="LoadAsync" aria-label="Tipo">
+            <option value="">Todas las acciones</option>
+            @foreach (var (prefix, label) in Categories)
+            {
+                <option value="@prefix">@label</option>
+            }
+        </select>
+    </div>
+    @if (_entries.Count == 0)
+    {
+        <p class="muted">Sin entradas.</p>
+    }
+    else
+    {
+        <table class="table">
+            <thead><tr><th>Cuándo</th><th>Quién</th><th>Acción</th><th>Sobre</th><th>Detalles</th></tr></thead>
+            <tbody>
+                @foreach (var e in _entries)
+                {
+                    <tr>
+                        <td class="nowrap">@Format.When(e.At, Time)</td>
+                        <td>@e.Actor</td>
+                        <td>@Describe(e.Action)</td>
+                        <td>@e.Target</td>
+                        <td class="small muted">@e.Details</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+        <p class="muted small">Se muestran las últimas @_entries.Count.</p>
+    }
+</section>
+
+@code {
+    private static readonly (string Prefix, string Label)[] Categories =
+    [
+        ("login", "Inicios de sesión"), ("server.", "Servidor"), ("settings.", "Ajustes"), ("access.", "Acceso"),
+        ("family.", "Familia"), ("game.", "Juego"), ("world.", "Mundos"), ("addon.", "Complementos"),
+        ("backup.", "Copias"), ("console.", "Consola"),
+    ];
+
+    private static readonly Dictionary<string, string> Labels = new()
+    {
+        ["login.success"] = "Entró al panel", ["login.failed"] = "Contraseña incorrecta", ["login.locked"] = "Cuenta bloqueada por intentos",
+        ["logout"] = "Salió del panel",
+        ["server.start"] = "Arrancó el servidor", ["server.stop"] = "Paró el servidor", ["server.restart"] = "Reinició el servidor",
+        ["server.install"] = "Instaló o actualizó BDS", ["server.rollback"] = "Volvió a la versión anterior",
+        ["settings.save"] = "Cambió ajustes", ["settings.recommended"] = "Aplicó los ajustes recomendados",
+        ["access.mode"] = "Cambió el modo de acceso", ["access.enrollment.start"] = "Activó la inscripción", ["access.enrollment.stop"] = "Terminó la inscripción",
+        ["access.approve"] = "Aprobó", ["access.reject"] = "Rechazó la solicitud", ["access.revoke"] = "Quitó de la lista",
+        ["access.block"] = "Bloqueó", ["access.unblock"] = "Desbloqueó", ["access.permission"] = "Cambió el permiso",
+        ["family.rules"] = "Cambió las normas", ["family.extra"] = "Tiempo extra", ["family.kick"] = "Expulsado por las normas",
+        ["game.time"] = "Cambió la hora", ["game.weather"] = "Cambió el clima", ["game.say"] = "Mensaje a todos", ["game.kick"] = "Expulsó", ["game.rule"] = "Cambió una regla",
+        ["world.switch"] = "Cambió de mundo", ["world.create"] = "Creó un mundo", ["world.import"] = "Importó un mundo", ["world.delete"] = "Borró un mundo",
+        ["addon.install"] = "Instaló un complemento", ["addon.enable"] = "Activó un complemento", ["addon.disable"] = "Desactivó un complemento", ["addon.remove"] = "Quitó un complemento",
+        ["backup.create"] = "Hizo una copia", ["backup.restore"] = "Restauró una copia", ["backup.delete"] = "Borró una copia",
+        ["console.command"] = "Comando en la consola",
+    };
+
+    private IReadOnlyList<AuditEntry> _entries = [];
+    private IReadOnlyList<string> _actors = [];
+
+    private string Actor { get; set; } = string.Empty;
+
+    private string Category { get; set; } = string.Empty;
+
+    protected override async Task OnInitializedAsync()
+    {
+        Audit.Changed += OnChanged;
+        await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        _actors = await Audit.GetActorsAsync();
+        _entries = await Audit.GetRecentAsync(300, Actor, Category);
+    }
+
+    private void OnChanged() => _ = InvokeAsync(async () =>
+    {
+        await LoadAsync();
+        StateHasChanged();
+    });
+
+    private static string Describe(string action) => Labels.GetValueOrDefault(action, action);
+
+    public void Dispose() => Audit.Changed -= OnChanged;
+}

@@ -120,8 +120,9 @@ app.MapHealthChecks("/health", new HealthCheckOptions
     },
 }).AllowAnonymous();
 
-app.MapPost("/logout", async (SignInManager<PanelUser> signIn) =>
+app.MapPost("/logout", async (SignInManager<PanelUser> signIn, HttpContext http, CubeKeeper.Infrastructure.Audit.AuditLog audit) =>
 {
+    await audit.RecordAsync(http.User.Identity?.Name ?? "?", "logout", http.Connection.RemoteIpAddress?.ToString());
     await signIn.SignOutAsync();
     return Results.LocalRedirect("/login");
 });

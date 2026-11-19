@@ -200,6 +200,18 @@ Al actualizar, la base de datos se migra sola (se añaden las tablas de jugadore
 Los complementos con scripts pueden necesitar activar funciones experimentales («API beta») en el mundo, y eso se hace
 desde Minecraft al crear o editar el mundo, no desde CubeKeeper.
 
+## 7f. Fase 3A: familia y auditoría
+
+| # | Prueba | Resultado esperado |
+|---|---|---|
+| 1 | **Familia** → Editar a un jugador → «Tiempo máximo al día» 30 min, Guardar | En «Ahora» pone cuánto le queda |
+| 2 | Que juegue hasta que falten 5 min | Le llega un mensaje privado «Te quedan 5 minutos…» y otro al quedar 1 |
+| 3 | Al acabarse | Le expulsa con «Se acabó el tiempo de juego de hoy (30 min). Puedes volver mañana…» y no puede volver a entrar hoy |
+| 4 | **+15 min** | Puede volver a entrar 15 minutos más |
+| 5 | Añadir una franja «Entre semana 17:00–20:30» y probar fuera de ese horario | Le expulsa con «Ahora no es horario de juego. Puedes volver hoy/mañana a las 17:00» |
+| 6 | «Últimos 7 días» | El tiempo jugado de cada día |
+| 7 | **Auditoría** | Están tus acciones, los inicios de sesión (con la IP) y las expulsiones de «CubeKeeper» por las normas |
+
 ## 8. Si no puedes entrar
 
 - La pantalla de login dice por qué no hay usuario, por ejemplo si la contraseña es demasiado corta. Corrígelo en
