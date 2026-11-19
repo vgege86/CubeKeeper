@@ -65,6 +65,18 @@ socket de Docker, otro contenedor no puede llegar a esa consola.
   ayuda en español). Los desconocidos se editan como texto libre y muestran el comentario original del archivo. Se
   valida todo antes de escribir (si algo falla no se guarda nada), se hace una copia `.bak` y solo cambian las líneas
   tocadas.
+- **Copias.** `BackupService` genera `.mcworld` (zip con `level.dat` en la raíz). En marcha: `save hold` →
+  `save query` (se repite hasta «Files are now ready to be copied» y la línea con `ruta:longitud`) → copiar cada archivo
+  **truncado** a esa longitud → `save resume` siempre, en un `finally`. Parado: se comprime la carpeta. Los metadatos
+  van en el nombre (`<mundo>__<AAAAMMDD-HHMMSS>Z__<tipo>.mcworld`), sin base de datos. Retención abuelo-padre-hijo
+  (`RetentionPolicy`) para las programadas y contadores aparte para manuales y de seguridad, aplicada en los dos
+  destinos. Restaurar: descomprimir y validar en una carpeta temporal, copia `prerestore` del mundo actual, parar,
+  cambiar carpetas y arrancar. `ConsoleCommandRunner` serializa los comandos que esperan respuesta.
+- **Actualizaciones.** `UpdateService`: avisos por el chat (5 y 1 min) si hay gente, copia `preupdate` (si falla, no
+  se actualiza), instalación y espera a «En marcha». Si no arranca: parar, restaurar la copia y reinstalar la versión
+  anterior desde `/data/versions`, en ese orden, para que la versión vieja no abra un mundo tocado por la nueva.
+  `MaintenanceScheduler` lanza las copias cada N minutos (solo si alguien ha jugado) y la comprobación diaria, que no
+  hace nada con una versión fijada.
 - **Salud por TCP**, no por RakNet. Con NetherNet, BDS escucha en TCP en `server-port`. Se usa `server-ip` si está
   definida. Con el servidor parado a propósito, `/health` responde sano: el contenedor funciona.
 - **Imagen** `mcr.microsoft.com/dotnet/aspnet:10.0` (Ubuntu 24.04, la base de BDS) con `curl` y `tzdata`. Sin la
@@ -96,7 +108,7 @@ socket de Docker, otro contenedor no puede llegar a esa consola.
 |---|---|
 | **1A** ✅ | Esqueleto, Dockerfile, compose, CI hacia GHCR, login, instalación de BDS (versión fijable, EULA), arrancar/parar/reiniciar, reinicio automático con límite, consola en vivo, `/health`, revisión de `server.properties`, ayuda para conectarse (PC y Xbox) |
 | **1B** ✅ | Jugadores conectados (eventos del log + resincronización con `list`), historial en SQLite, editor de `server.properties` con validación |
-| **1C** | Copias consistentes (`save hold` → `save query` → copiar truncando a la longitud indicada → `save resume`), programadas y con retención, restauración, actualización con rollback automático, tarea programada con avisos |
+| **1C** ✅ | Copias consistentes (`save hold` → `save query` → copiar truncando a la longitud indicada → `save resume`), programadas y con retención, restauración, actualización con rollback automático, tarea programada con avisos |
 | **2** | Lista de permitidos por XUID (`allowlist reload`), solicitudes o modo inscripción, permisos, bloquear, gamerules, controles rápidos, mundos (crear, cambiar, importar y exportar `.mcworld`, incluidos los de Realms), complementos |
 | **3** | Horarios y límites por jugador, estadísticas, usuarios con roles, auditoría, notificaciones, MCP para Home365 (`ModelContextProtocol.AspNetCore`, como Home365), mapa con uNmINeD |
 

@@ -4,7 +4,11 @@
 @using CubeKeeper.Core.Properties
 @using CubeKeeper.Core.Versions
 @using CubeKeeper.Infrastructure.Configuration
+@using CubeKeeper.Infrastructure.State
 @using CubeKeeper.Infrastructure.Settings
+@using CubeKeeper.Infrastructure.Updates
+@using CubeKeeper.Infrastructure.Scheduling
+@using CubeKeeper.Web.Formatting
 @using Microsoft.Extensions.Options
 @inject IServerController Server
 @inject IPlayerPresence Presence
@@ -12,6 +16,9 @@
 @inject IOptions<CubeKeeperOptions> Options
 @inject DataPaths Paths
 @inject ConfigurationAdvisor Advisor
+@inject UpdateService Updates
+@inject MaintenanceScheduler Scheduler
+@inject TimeProvider Time
 @inject NavigationManager Navigation
 @inject ILogger<Home> Logger
 
@@ -104,6 +111,43 @@
         {
             <p class="muted small">@_progress</p>
         }
+        <dl class="facts small">
+            <dt>Automática</dt>
+            <dd>
+                @if (Updates.IsPinned)
+                {
+                    <span>No (versión fijada)</span>
+                }
+                else if (!Updates.AutoUpdateActive)
+                {
+                    <span>Desactivada</span>
+                }
+                else
+                {
+                    <span>Cada día a las @Options.Value.Updates.Time@(Scheduler.NextUpdateCheckAt is { } n ? $" · próxima: {Format.When(n, Time)}" : "")</span>
+                }
+            </dd>
+            @if (Updates.LastUpdate is { } last)
+            {
+                <dt>Última</dt>
+                <dd class="@(last.Succeeded ? null : "hint-warn")">@Format.When(last.At, Time): @last.Message</dd>
+            }
+        </dl>
+        @if (Updates.PreviousVersion is { } prev && _snap.InstalledVersion is not null)
+        {
+            @if (_confirmRollback)
+            {
+                <p class="hint-warn small">Se hará una copia del mundo y se instalará la @prev. Un mundo abierto con una versión más nueva podría no cargar en una anterior.</p>
+                <div class="actions">
+                    <button class="btn btn-primary" disabled="@_busy" @onclick="RollbackAsync">Volver a @prev</button>
+                    <button class="btn btn-ghost" @onclick="() => _confirmRollback = false">Cancelar</button>
+                </div>
+            }
+            else
+            {
+                <div class="actions"><button class="btn btn-ghost" disabled="@_busy" @onclick="() => _confirmRollback = true">Volver a la versión anterior (@prev)…</button></div>
+            }
+        }
     </section>
 
     <section class="card">
@@ -187,6 +231,19 @@
         _deviations = await Advisor.CheckAsync();
     }
 
+    private bool _confirmRollback;
+
+    private Task RollbackAsync() => RunAsync(async () =>
+    {
+        var result = await Updates.RollbackAsync();
+        _confirmRollback = false;
+        _message = result.Message;
+        if (!result.Succeeded)
+        {
+            throw new InvalidOperationException(result.Message);
+        }
+    }, null);
+
     private Task ApplyRecommendedAsync() => RunAsync(async () =>
     {
         var changed = await Advisor.ApplyAsync();
@@ -224,9 +281,20 @@
             _progress = m;
             _ = InvokeAsync(StateHasChanged);
         });
-        var result = await Server.InstallAsync(_latest!, progress);
+        UpdateRecord result;
+        // Instalación nueva: directa. Actualización: copia del mundo, instalación, comprobación y vuelta atrás si falla.
+        if (_snap.InstalledVersion is null)
+        {
+            var installed = await Server.InstallAsync(_latest!, progress);
+            result = new UpdateRecord(Time.GetUtcNow(), null, installed.Version, true, $"Instalado {installed.Version}.");
+        }
+        else
+        {
+            result = await Updates.UpdateAsync(_latest!, []);
+        }
         _progress = null;
-        _message = result.WasUpdate ? $"Actualizado a {result.Version}." : $"Instalado {result.Version}.";
+        _message = result.Message;
+        _messageIsError = !result.Succeeded;
         await LoadPropertiesAsync();
     }, null);
 

@@ -47,6 +47,11 @@ public static class DependencyInjection
         services.AddHostedService(sp => sp.GetRequiredService<Players.PlayerTrackingService>());
         services.AddSingleton<Players.PlayerStatsService>();
         services.AddSingleton<Settings.PropertiesEditor>();
+        services.AddSingleton<ConsoleCommandRunner>();
+        services.AddSingleton<Backups.BackupService>();
+        services.AddSingleton<Updates.UpdateService>();
+        services.AddSingleton<Scheduling.MaintenanceScheduler>();
+        services.AddHostedService(sp => sp.GetRequiredService<Scheduling.MaintenanceScheduler>());
 
         services.AddSingleton<Settings.ConfigurationAdvisor>();
         services.AddHealthChecks().AddCheck<BdsHealthProbe>("bds");

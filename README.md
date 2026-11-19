@@ -13,6 +13,9 @@ lo descarga, lo arranca y lo para, lee su consola y le envía comandos. No neces
   reinicio automático con límite, consola en vivo, `/health` por TCP y revisión de `server.properties`.
 - **Fase 1B ✅** Jugadores conectados (log + `list`), historial de sesiones y tiempo jugado en SQLite, y editor de
   `server.properties` con validación que conserva los comentarios.
+- **Fase 1C ✅** Copias del mundo consistentes en caliente, bajo demanda y programadas, con retención y segundo destino;
+  restaurar y descargar como `.mcworld`; actualización con copia previa y vuelta atrás automática; comprobación diaria
+  con avisos por el chat.
 
 Plan completo y decisiones: [docs/ARQUITECTURA.md](docs/ARQUITECTURA.md) ·
 Instalación en el NAS y pruebas: [docs/TRUENAS.md](docs/TRUENAS.md).
@@ -36,6 +39,15 @@ Todo se configura con variables de entorno. Para los secretos se admite el sufij
 | `CUBEKEEPER_DIRECT_DOWNLOAD_URL` | — | Enlace directo a un zip concreto (último recurso) |
 | `CUBEKEEPER_AUTOSTART` | `true` | Arrancar BDS al iniciar el contenedor si estaba encendido |
 | `CUBEKEEPER_PUBLIC_HOST` | host de la petición | Dirección que se muestra para conectarse |
+| `CUBEKEEPER_BACKUP_INTERVAL_MINUTES` | `60` | Copias programadas cada N minutos (`0` = desactivadas) |
+| `CUBEKEEPER_BACKUP_SKIP_IF_IDLE` | `true` | Saltarse la copia programada si nadie ha jugado desde la anterior |
+| `CUBEKEEPER_BACKUP_KEEP_HOURLY` / `_DAILY` / `_WEEKLY` | `24` / `14` / `8` | Retención de las copias programadas |
+| `CUBEKEEPER_BACKUP_KEEP_MANUAL` | `20` | Copias manuales que se conservan |
+| `CUBEKEEPER_BACKUP_SECONDARY` | — | Segundo destino de las copias (p. ej. `/backups`) |
+| `CUBEKEEPER_UPDATE_AUTO` | `true` | Comprobar y actualizar cada día (sin efecto con versión fijada) |
+| `CUBEKEEPER_UPDATE_TIME` | `05:00` | Hora local de la comprobación |
+| `CUBEKEEPER_UPDATE_WARN_MINUTES` | `5,1` | Avisos por el chat antes de reiniciar |
+| `CUBEKEEPER_UPDATE_SKIP_IF_PLAYERS` | `false` | Si hay alguien jugando, dejarlo para el día siguiente |
 | `CUBEKEEPER_ALLOWED_NETWORKS` | redes privadas | CIDR desde los que se permite el panel |
 | `CUBEKEEPER_TRUSTED_PROXIES` | `172.16.0.0/12` | Proxies cuyo `X-Forwarded-For` se acepta |
 
@@ -52,7 +64,7 @@ Otros ajustes avanzados se pueden dar con la notación de .NET, por ejemplo
 ├── server/            directorio de trabajo de bedrock_server (worlds/, server.properties…)
 ├── versions/<v>/      versiones de BDS descargadas (se guardan 2)
 ├── downloads/         temporales
-└── backups/           copias del mundo (fase 1C)
+└── backups/           copias del mundo (.mcworld; el nombre lleva mundo, fecha UTC y tipo)
 ```
 
 ## Desarrollo
