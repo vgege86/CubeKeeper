@@ -25,7 +25,9 @@ lo descarga, lo arranca y lo para, lee su consola y le envía comandos. No neces
   historial de 7 días; auditoría de las acciones del panel y de CubeKeeper.
 - **Fase 3B ✅** Usuarios del panel con roles (administrador y operador), Mi cuenta (contraseña y verificación en dos
   pasos con TOTP y códigos de recuperación) y login en dos pasos.
-- **Fase 3C** Notificaciones, MCP para Home365 y mapa del mundo.
+- **Fase 3C ✅** Avisos al móvil con ntfy: solicitudes de acceso, caídas, copias fallidas, actualizaciones y versiones nuevas
+  de BDS (y, si se activan, entradas y salidas).
+- **Pendiente** Mapa del mundo. El MCP queda aparcado por ahora.
 
 Plan completo y decisiones: [docs/ARQUITECTURA.md](docs/ARQUITECTURA.md) ·
 Instalación en el NAS y pruebas: [docs/TRUENAS.md](docs/TRUENAS.md).
@@ -58,6 +60,8 @@ Todo se configura con variables de entorno. Para los secretos se admite el sufij
 | `CUBEKEEPER_UPDATE_TIME` | `05:00` | Hora local de la comprobación |
 | `CUBEKEEPER_UPDATE_WARN_MINUTES` | `5,1` | Avisos por el chat antes de reiniciar |
 | `CUBEKEEPER_UPDATE_SKIP_IF_PLAYERS` | `false` | Si hay alguien jugando, dejarlo para el día siguiente |
+| `CUBEKEEPER_NTFY_URL` / `_TOPIC` / `_TOKEN` | — | Avisos con ntfy. **Mejor desde la página Avisos**; estas variables solo se usan si allí no hay nada guardado |
+| `CUBEKEEPER_PANEL_URL` | — | Dirección del panel para los avisos (también desde la página Avisos) |
 | `CUBEKEEPER_ALLOWED_NETWORKS` | redes privadas | CIDR desde los que se permite el panel |
 | `CUBEKEEPER_TRUSTED_PROXIES` | `172.16.0.0/12` | Proxies cuyo `X-Forwarded-For` se acepta |
 

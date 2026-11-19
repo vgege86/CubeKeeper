@@ -1,0 +1,151 @@
+@page "/avisos"
+@attribute [Authorize(Roles = PanelRoles.Admin)]
+@rendermode InteractiveServer
+@inherits AuditedPage
+@using CubeKeeper.Core.Notifications
+@using CubeKeeper.Infrastructure.Notifications
+@inject Notifier Notifier
+
+<PageTitle>Avisos · CubeKeeper</PageTitle>
+
+<h1>Avisos al móvil</h1>
+<p class="muted">CubeKeeper te avisa con notificaciones push de <a href="https://ntfy.sh" target="_blank" rel="noopener">ntfy</a>.</p>
+
+@if (_message is not null)
+{
+    <p class="alert @(_messageIsError ? "alert-error" : "alert-ok")" role="status">@_message</p>
+}
+
+<div class="grid">
+    <section class="card">
+        <h2>Conexión</h2>
+        <p>
+            @if (Notifier.Configured)
+            {
+                <span class="badge badge-ok">Configurado</span>
+            }
+            else
+            {
+                <span class="badge badge-idle">Sin configurar</span>
+            }
+            @if (!Notifier.Config.FromPanel && Notifier.Configured)
+            {
+                <span class="muted small"> · con las variables de entorno</span>
+            }
+        </p>
+        <ol class="steps">
+            <li>Instala la app <strong>ntfy</strong> en el móvil (Android o iPhone).</li>
+            <li>Elige un tema difícil de adivinar (en ntfy.sh cualquiera que lo sepa puede leer los avisos) y suscríbete a él en la app.</li>
+            <li>Escríbelo aquí, guarda y envía un aviso de prueba.</li>
+        </ol>
+
+        <label>Servidor ntfy<input @bind="_url" @bind:event="oninput" placeholder="https://ntfy.sh" autocomplete="off" /></label>
+        <label>
+            Tema
+            <span class="input-with-button">
+                <input @bind="_topic" @bind:event="oninput" placeholder="cubekeeper-..." autocomplete="off" spellcheck="false" />
+                <button type="button" class="btn btn-ghost" @onclick="GenerateTopic">Generar</button>
+            </span>
+        </label>
+        @if (!string.IsNullOrWhiteSpace(_topic))
+        {
+            <p class="muted small">En la app, suscríbete a <code class="wrap">@(_url.TrimEnd('/'))/@_topic.Trim()</code></p>
+        }
+        <label>
+            Token <span class="muted small">(solo si el tema está protegido)</span>
+            <input type="password" @bind="_token" @bind:event="oninput" autocomplete="new-password"
+                   placeholder="@(Notifier.Config.HasToken ? "(guardado; escribe otro para cambiarlo)" : "")" />
+        </label>
+        @if (Notifier.Config.HasToken && Notifier.Config.FromPanel)
+        {
+            <label class="check"><input type="checkbox" @bind="_clearToken" /> Quitar el token guardado</label>
+        }
+        <label>Dirección del panel <span class="muted small">(opcional: al tocar el aviso se abre)</span>
+            <input @bind="_panelUrl" @bind:event="oninput" placeholder="https://cubekeeper.alucard86.fyi" autocomplete="off" />
+        </label>
+        <div class="actions">
+            <button class="btn btn-primary" disabled="@_busy" @onclick="SaveAsync">Guardar</button>
+            <button class="btn" disabled="@(_busy || !Notifier.Configured)" @onclick="TestAsync">Enviar aviso de prueba</button>
+        </div>
+        <p class="muted small">El token se guarda cifrado. Si dejas el tema vacío, no se envía ningún aviso.</p>
+    </section>
+
+    <section class="card">
+        <h2>Qué avisar</h2>
+        @foreach (var (kind, label, help) in NotificationKindText.All)
+        {
+            <label class="check notif-option">
+                <input type="checkbox" checked="@_enabled.HasFlag(kind)" disabled="@_busy" @onchange="e => ToggleAsync(kind, e.Value is true)" />
+                <span><strong>@label</strong><br /><span class="muted small">@help</span></span>
+            </label>
+        }
+        <p class="muted small">El mismo aviso no se repite antes de 10 minutos, para que una racha de caídas no llene el móvil.</p>
+    </section>
+</div>
+
+@code {
+    private NotificationKind _enabled;
+    private string? _message;
+    private bool _messageIsError;
+    private bool _busy;
+    private string _url = "https://ntfy.sh";
+    private string _topic = string.Empty;
+    private string _token = string.Empty;
+    private bool _clearToken;
+    private string _panelUrl = string.Empty;
+
+    protected override void OnInitialized()
+    {
+        _enabled = Notifier.Enabled;
+        var c = Notifier.Config;
+        _url = c.Url;
+        _topic = c.Topic ?? string.Empty;
+        _panelUrl = c.PanelUrl ?? string.Empty;
+    }
+
+    private void GenerateTopic() =>
+        _topic = "cubekeeper-" + Convert.ToHexString(System.Security.Cryptography.RandomNumberGenerator.GetBytes(8)).ToLowerInvariant();
+
+    private async Task SaveAsync()
+    {
+        try
+        {
+            string? newToken = _clearToken ? string.Empty : string.IsNullOrEmpty(_token) ? null : _token;
+            Notifier.SaveSettings(_url, _topic, newToken, _panelUrl);
+            await AuditAsync("notifications.settings", _topic, $"servidor {_url}{(newToken is null ? "" : newToken.Length == 0 ? ", token quitado" : ", token cambiado")}");
+            _token = string.Empty;
+            _clearToken = false;
+            _message = Notifier.Configured ? "Guardado. Envía un aviso de prueba para comprobarlo." : "Guardado. Sin tema, no se envían avisos.";
+            _messageIsError = false;
+        }
+        catch (Exception ex) when (ex is ArgumentException or InvalidOperationException)
+        {
+            _message = ex.Message;
+            _messageIsError = true;
+        }
+    }
+
+    private async Task ToggleAsync(NotificationKind kind, bool on)
+    {
+        _enabled = on ? _enabled | kind : _enabled & ~kind;
+        Notifier.SetEnabled(_enabled);
+        await AuditAsync("notifications.change", kind.ToString(), on ? "activado" : "desactivado");
+        _message = "Guardado.";
+        _messageIsError = false;
+    }
+
+    private async Task TestAsync()
+    {
+        _busy = true;
+        try
+        {
+            var result = await Notifier.SendTestAsync();
+            _message = result.Sent ? "Aviso de prueba enviado: debería llegarte al móvil." : result.Detail;
+            _messageIsError = !result.Sent;
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+}

@@ -56,6 +56,7 @@ public sealed class AccessService : BackgroundService
     private HashSet<string> _approved = new(StringComparer.Ordinal);
     private HashSet<string> _blocked = new(StringComparer.Ordinal);
     private ServerStatus _lastStatus;
+    private readonly Notifications.Notifier? _notifier;
 
     public AccessService(
         IServerController server,
@@ -64,8 +65,10 @@ public sealed class AccessService : BackgroundService
         AppStateStore state,
         IDbContextFactory<CubeKeeperDbContext> dbFactory,
         TimeProvider time,
-        ILogger<AccessService> logger)
+        ILogger<AccessService> logger,
+        Notifications.Notifier? notifier = null)
     {
+        _notifier = notifier;
         _server = server;
         _presence = presence;
         _paths = paths;
@@ -430,6 +433,16 @@ public sealed class AccessService : BackgroundService
         await db.SaveChangesAsync(ct).ConfigureAwait(false);
         _logger.LogInformation("Solicitud de acceso de {Name} ({Xuid})", name, xuid);
         RaiseChanged();
+        if (_notifier is not null)
+        {
+            await _notifier.NotifyAsync(new Core.Notifications.Notification(
+                Core.Notifications.NotificationKind.AccessRequest,
+                $"Solicitud de acceso: {name}",
+                $"{name} quiere entrar al servidor. Apruébalo o recházalo en Acceso.",
+                xuid,
+                Core.Notifications.NotificationPriority.High,
+                "/acceso"), ct).ConfigureAwait(false);
+        }
     }
 
     private async Task WatchEnrollmentAsync(CancellationToken ct)

@@ -33,6 +33,9 @@ public sealed class VersionResolver(
         return latest.WithVersion(pinned);
     }
 
+    public Task<BdsRelease?> GetNewestPublishedAsync(ReleaseChannel channel, CancellationToken ct = default) =>
+        ResolveLatestAsync(channel, ct);
+
     private async Task<BdsRelease?> ResolveLatestAsync(ReleaseChannel channel, CancellationToken ct)
     {
         if (!string.IsNullOrWhiteSpace(_options.DirectDownloadUrl))

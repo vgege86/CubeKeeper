@@ -271,3 +271,9 @@ a.user:hover { text-decoration: underline; }
 .btn-xbox { background: #107c10; border-color: #107c10; color: #fff; text-align: center; text-decoration: none; font-weight: 600; }
 .btn-xbox:hover:not(:disabled) { background: #0e6b0e; border-color: #0e6b0e; }
 .btn-xbox.wide { display: block; }
+
+.notif-option { align-items: flex-start; padding: 0.4rem 0; margin: 0; border-bottom: 1px solid var(--border); }
+.notif-option input { margin-top: 0.3rem; }
+
+.input-with-button { display: flex; gap: 0.5rem; margin-top: 0.25rem; }
+.input-with-button input { margin: 0 !important; }

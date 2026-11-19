@@ -229,6 +229,21 @@ Si pierdes el móvil y los códigos de recuperación: otro administrador puede q
 Usuarios. Si eres el único administrador, usa `CUBEKEEPER_ADMIN_RESET` (sección 8): restablece la contraseña, desbloquea
 la cuenta y quita la verificación en dos pasos. Después vuelve a activarla desde Mi cuenta.
 
+## 7h. Fase 3C: avisos al móvil (ntfy)
+
+1. Instala la app **ntfy** en el móvil.
+2. En CubeKeeper, **Avisos** → pulsa «Generar» para crear un tema difícil de adivinar, escribe la dirección del panel
+   (`https://cubekeeper.alucard86.fyi`) y **Guardar**. No hace falta tocar la app de TrueNAS.
+3. En la app ntfy, suscríbete al tema que aparece debajo.
+
+| # | Prueba | Resultado esperado |
+|---|---|---|
+| 1 | **Avisos** → Enviar aviso de prueba | Llega «CubeKeeper: prueba» al móvil; al tocarlo se abre el panel |
+| 2 | Activar la inscripción y que alguien no aprobado intente entrar | Aviso «Solicitud de acceso: …» |
+| 3 | `sudo pkill -9 bedrock_server` en el NAS | Aviso «El servidor se ha caído» |
+| 4 | Esperar a que Mojang publique una versión más nueva que la fijada (o comprobarlo a las 6 h de arrancar) | Aviso «BDS x.y.z disponible», una sola vez |
+| 5 | Activar «Entradas y salidas» y entrar al juego | Aviso «… ha entrado» |
+
 ## 8. Si no puedes entrar
 
 - La pantalla de login dice por qué no hay usuario, por ejemplo si la contraseña es demasiado corta. Corrígelo en

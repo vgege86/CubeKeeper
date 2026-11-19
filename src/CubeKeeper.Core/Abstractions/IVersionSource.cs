@@ -6,6 +6,9 @@ namespace CubeKeeper.Core.Abstractions;
 public interface IVersionSource
 {
     Task<BdsRelease?> GetLatestAsync(ReleaseChannel channel, CancellationToken ct = default);
+
+    /// <summary>La última publicada por Mojang, aunque haya una versión fijada (para avisar de que existe).</summary>
+    Task<BdsRelease?> GetNewestPublishedAsync(ReleaseChannel channel, CancellationToken ct = default) => GetLatestAsync(channel, ct);
 }
 
 public sealed record InstallResult(string Version, bool WasUpdate, IReadOnlyList<string> AddedProperties);

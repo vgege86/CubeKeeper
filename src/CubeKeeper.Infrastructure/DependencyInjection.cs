@@ -55,6 +55,15 @@ public static class DependencyInjection
         services.AddSingleton<Game.GameControlService>();
         services.AddSingleton<Worlds.WorldService>();
         services.AddSingleton<Audit.AuditLog>();
+        // Un único Notifier (lleva la memoria de qué se avisó hace poco), con su HttpClient de la fábrica.
+        services.AddHttpClient(Notifications.Notifier.HttpClientName, c =>
+        {
+            c.Timeout = TimeSpan.FromSeconds(15);
+            c.DefaultRequestHeaders.UserAgent.ParseAdd(userAgent);
+        });
+        services.AddSingleton(sp => ActivatorUtilities.CreateInstance<Notifications.Notifier>(sp,
+            sp.GetRequiredService<IHttpClientFactory>().CreateClient(Notifications.Notifier.HttpClientName)));
+        services.AddHostedService<Notifications.NotificationWatcher>();
         services.AddSingleton<Family.FamilyService>();
         services.AddHostedService(sp => sp.GetRequiredService<Family.FamilyService>());
         services.AddSingleton<Addons.AddonService>();
