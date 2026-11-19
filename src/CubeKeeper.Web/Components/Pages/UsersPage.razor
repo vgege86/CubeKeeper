@@ -1,0 +1,186 @@
+@page "/usuarios"
+@attribute [Authorize(Roles = PanelRoles.Admin)]
+@rendermode InteractiveServer
+@inherits AuditedPage
+@using CubeKeeper.Infrastructure.Users
+@inject PanelUserService UserService
+@inject ILogger<UsersPage> Logger
+
+<PageTitle>Usuarios · CubeKeeper</PageTitle>
+
+<h1>Usuarios del panel</h1>
+
+@if (_message is not null)
+{
+    <p class="alert @(_messageIsError ? "alert-error" : "alert-ok")" role="status">@_message</p>
+}
+
+<section class="card">
+    <h2>Usuarios <span class="count">@_users.Count</span></h2>
+    <table class="table">
+        <thead><tr><th>Usuario</th><th>Rol</th><th>Dos pasos</th><th></th></tr></thead>
+        <tbody>
+            @foreach (var u in _users)
+            {
+                <tr>
+                    <td>
+                        <strong>@u.UserName</strong>
+                        @if (u.UserName == _me) {<span class="muted small"> (tú)</span>}
+                        @if (u.LockedOut) {<span class="badge badge-error small-badge">bloqueado</span>}
+                    </td>
+                    <td>
+                        <select class="inline-select" value="@u.Role" disabled="@_busy" aria-label="Rol de @u.UserName"
+                                @onchange="e => SetRoleAsync(u, e.Value?.ToString() ?? u.Role)">
+                            @foreach (var r in PanelRoles.All)
+                            {
+                                <option value="@r">@PanelRoles.ToSpanish(r)</option>
+                            }
+                        </select>
+                    </td>
+                    <td>@(u.TwoFactorEnabled ? "Sí" : "No")</td>
+                    <td class="row-actions">
+                        @if (_resetFor == u.Id)
+                        {
+                            <input type="password" @bind="_resetPassword" placeholder="Contraseña nueva (10+)" autocomplete="new-password" aria-label="Contraseña nueva" class="inline-input" />
+                            <button class="btn btn-primary" disabled="@_busy" @onclick="() => ResetAsync(u)">Guardar</button>
+                            <button class="btn btn-ghost" @onclick="() => _resetFor = null">Cancelar</button>
+                        }
+                        else if (_deleteFor == u.Id)
+                        {
+                            <button class="btn btn-primary" disabled="@_busy" @onclick="() => DeleteAsync(u)">Borrar</button>
+                            <button class="btn btn-ghost" @onclick="() => _deleteFor = null">Cancelar</button>
+                        }
+                        else
+                        {
+                            <button class="btn btn-ghost" disabled="@_busy" @onclick="() => { _resetFor = u.Id; _resetPassword = string.Empty; }">Contraseña…</button>
+                            @if (u.LockedOut)
+                            {
+                                <button class="btn btn-ghost" disabled="@_busy" @onclick="() => UnlockAsync(u)">Desbloquear</button>
+                            }
+                            @if (u.TwoFactorEnabled && u.UserName != _me)
+                            {
+                                <button class="btn btn-ghost" disabled="@_busy" @onclick="() => DisableTwoFactorAsync(u)" title="Si ha perdido el móvil y los códigos de recuperación">Quitar dos pasos</button>
+                            }
+                            @if (u.UserName != _me)
+                            {
+                                <button class="btn btn-ghost" disabled="@_busy" @onclick="() => _deleteFor = u.Id">Borrar…</button>
+                            }
+                        }
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+    <p class="muted small">
+        <strong>Administrador:</strong> todo. <strong>Operador:</strong> arrancar, parar y reiniciar el servidor, y usar Jugadores, Juego y Familia.
+        Al cambiar el rol o la contraseña de alguien, se cierran sus sesiones abiertas.
+    </p>
+</section>
+
+<section class="card">
+    <h2>Añadir usuario</h2>
+    <div class="form-row">
+        <label>Usuario<input @bind="_newName" @bind:event="oninput" maxlength="32" autocomplete="off" /></label>
+        <label>Contraseña <span class="muted small">(10+)</span><input type="password" @bind="_newPassword" @bind:event="oninput" autocomplete="new-password" /></label>
+        <label>Rol
+            <select @bind="_newRole">
+                @foreach (var r in PanelRoles.All)
+                {
+                    <option value="@r">@PanelRoles.ToSpanish(r)</option>
+                }
+            </select>
+        </label>
+    </div>
+    <div class="actions"><button class="btn btn-primary" disabled="@(_busy || string.IsNullOrWhiteSpace(_newName) || string.IsNullOrEmpty(_newPassword))" @onclick="CreateAsync">Añadir</button></div>
+</section>
+
+@code {
+    private IReadOnlyList<PanelUserInfo> _users = [];
+    private string _me = string.Empty;
+    private string _newName = string.Empty;
+    private string _newPassword = string.Empty;
+    private string _newRole = PanelRoles.Operator;
+    private string? _resetFor;
+    private string _resetPassword = string.Empty;
+    private string? _deleteFor;
+    private string? _message;
+    private bool _messageIsError;
+    private bool _busy;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _me = await CurrentUserAsync();
+        await LoadAsync();
+    }
+
+    private async Task LoadAsync() => _users = await UserService.ListAsync();
+
+    private Task CreateAsync() => RunAsync(async () =>
+    {
+        var u = await UserService.CreateAsync(_newName, _newPassword, _newRole);
+        await AuditAsync("user.create", u.UserName, PanelRoles.ToSpanish(u.Role));
+        _message = $"Usuario {u.UserName} creado como {PanelRoles.ToSpanish(u.Role).ToLowerInvariant()}.";
+        _newName = string.Empty;
+        _newPassword = string.Empty;
+    });
+
+    private Task SetRoleAsync(PanelUserInfo u, string role) => RunAsync(async () =>
+    {
+        await UserService.SetRoleAsync(u.Id, role);
+        await AuditAsync("user.role", u.UserName, PanelRoles.ToSpanish(role));
+        _message = $"{u.UserName}: {PanelRoles.ToSpanish(role).ToLowerInvariant()}.";
+    });
+
+    private Task ResetAsync(PanelUserInfo u) => RunAsync(async () =>
+    {
+        await UserService.ResetPasswordAsync(u.Id, _resetPassword);
+        await AuditAsync("user.password", u.UserName);
+        _message = $"Contraseña de {u.UserName} cambiada.";
+        _resetFor = null;
+        _resetPassword = string.Empty;
+    });
+
+    private Task UnlockAsync(PanelUserInfo u) => RunAsync(async () =>
+    {
+        await UserService.UnlockAsync(u.Id);
+        await AuditAsync("user.unlock", u.UserName);
+        _message = $"{u.UserName} desbloqueado.";
+    });
+
+    private Task DisableTwoFactorAsync(PanelUserInfo u) => RunAsync(async () =>
+    {
+        await UserService.DisableTwoFactorAsync(u.Id);
+        await AuditAsync("user.2fa.disable", u.UserName);
+        _message = $"Verificación en dos pasos de {u.UserName} quitada.";
+    });
+
+    private Task DeleteAsync(PanelUserInfo u) => RunAsync(async () =>
+    {
+        await UserService.DeleteAsync(u.Id, _me);
+        await AuditAsync("user.delete", u.UserName);
+        _message = $"Usuario {u.UserName} borrado.";
+        _deleteFor = null;
+    });
+
+    private async Task RunAsync(Func<Task> action)
+    {
+        _busy = true;
+        _message = null;
+        try
+        {
+            await action();
+            _messageIsError = false;
+        }
+        catch (Exception ex) when (ex is InvalidOperationException or ArgumentException)
+        {
+            Logger.LogInformation(ex, "Acción sobre usuarios fallida");
+            _message = ex.Message;
+            _messageIsError = true;
+        }
+        finally
+        {
+            _busy = false;
+            await LoadAsync();
+        }
+    }
+}

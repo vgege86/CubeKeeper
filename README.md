@@ -23,7 +23,8 @@ lo descarga, lo arranca y lo para, lee su consola y le envía comandos. No neces
   (`.mcpack`, `.mcaddon`: instalar, activar, desactivar y quitar en el mundo activo).
 - **Fase 3A ✅** Familia: horarios y tiempo máximo al día por jugador, con avisos y expulsión, tiempo extra para hoy e
   historial de 7 días; auditoría de las acciones del panel y de CubeKeeper.
-- **Fase 3B** Usuarios del panel con roles y verificación en dos pasos (TOTP).
+- **Fase 3B ✅** Usuarios del panel con roles (administrador y operador), Mi cuenta (contraseña y verificación en dos
+  pasos con TOTP y códigos de recuperación) y login en dos pasos.
 - **Fase 3C** Notificaciones, MCP para Home365 y mapa del mundo.
 
 Plan completo y decisiones: [docs/ARQUITECTURA.md](docs/ARQUITECTURA.md) ·
@@ -41,7 +42,7 @@ Todo se configura con variables de entorno. Para los secretos se admite el sufij
 | `TZ` | `Europe/Madrid` | Zona horaria |
 | `CUBEKEEPER_ADMIN_USER` | `admin` | Usuario inicial |
 | `CUBEKEEPER_ADMIN_PASSWORD` | — | Contraseña inicial (mínimo 10 caracteres); solo se usa si no hay usuarios |
-| `CUBEKEEPER_ADMIN_RESET` | `false` | Con `true`, pone `CUBEKEEPER_ADMIN_PASSWORD` al administrador y lo desbloquea (para recuperar el acceso) |
+| `CUBEKEEPER_ADMIN_RESET` | `false` | Con `true`, pone `CUBEKEEPER_ADMIN_PASSWORD` al administrador, lo desbloquea y le quita la verificación en dos pasos (para recuperar el acceso) |
 | `CUBEKEEPER_ACCEPT_EULA` | `false` | Aceptación de la EULA; sin ella no se descarga BDS |
 | `CUBEKEEPER_CHANNEL` | `Stable` | `Stable` o `Preview` |
 | `CUBEKEEPER_BDS_VERSION` | — | Versión fijada (p. ej. `1.26.65.1`); vacía = la última |

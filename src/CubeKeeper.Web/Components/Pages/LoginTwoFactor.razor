@@ -1,0 +1,133 @@
+@page "/login/2fa"
+@layout EmptyLayout
+@attribute [AllowAnonymous]
+@using System.ComponentModel.DataAnnotations
+@using Microsoft.AspNetCore.Identity
+@inject SignInManager<PanelUser> SignInManager
+@inject NavigationManager Navigation
+@inject CubeKeeper.Infrastructure.Audit.AuditLog Audit
+
+<PageTitle>Verificación en dos pasos · CubeKeeper</PageTitle>
+
+<div class="card login-card">
+    <div class="login-title">
+        <span class="brand-cube big" aria-hidden="true"></span>
+        <h1>Verificación</h1>
+    </div>
+
+    @if (_error is not null)
+    {
+        <p class="alert alert-error" role="alert">@_error</p>
+    }
+
+    @if (!UseRecovery)
+    {
+        <p class="muted">Escribe el código de 6 cifras de tu aplicación de autenticación.</p>
+        <EditForm Model="Input" method="post" OnValidSubmit="VerifyAsync" FormName="totp">
+            <DataAnnotationsValidator />
+            <label>
+                Código
+                <InputText @bind-Value="Input!.Code" autocomplete="one-time-code" inputmode="numeric" autofocus />
+            </label>
+            <ValidationMessage For="() => Input!.Code" />
+            <label class="check">
+                <InputCheckbox @bind-Value="Input!.RememberMachine" /> No volver a pedirlo en este equipo
+            </label>
+            <button type="submit" class="btn btn-primary wide">Entrar</button>
+        </EditForm>
+        <p class="small mt"><a href="@($"/login/2fa?UseRecovery=true&RememberMe={RememberMe}{ReturnQuery}")">¿Sin el móvil? Usa un código de recuperación</a></p>
+    }
+    else
+    {
+        <p class="muted">Escribe uno de tus códigos de recuperación. Cada código sirve una sola vez.</p>
+        <EditForm Model="Recovery" method="post" OnValidSubmit="RecoverAsync" FormName="recovery">
+            <DataAnnotationsValidator />
+            <label>
+                Código de recuperación
+                <InputText @bind-Value="Recovery!.Code" autocomplete="off" autofocus />
+            </label>
+            <ValidationMessage For="() => Recovery!.Code" />
+            <button type="submit" class="btn btn-primary wide">Entrar</button>
+        </EditForm>
+        <p class="small mt"><a href="@($"/login/2fa?RememberMe={RememberMe}{ReturnQuery}")">Usar el código de la aplicación</a></p>
+    }
+</div>
+
+@code {
+    private string? _error;
+    private PanelUser? _user;
+
+    [CascadingParameter]
+    private HttpContext? HttpContext { get; set; }
+
+    [SupplyParameterFromForm(FormName = "totp")]
+    private TotpInput? Input { get; set; }
+
+    [SupplyParameterFromForm(FormName = "recovery")]
+    private RecoveryInput? Recovery { get; set; }
+
+    [SupplyParameterFromQuery]
+    private string? ReturnUrl { get; set; }
+
+    [SupplyParameterFromQuery]
+    private bool RememberMe { get; set; }
+
+    [SupplyParameterFromQuery]
+    private bool UseRecovery { get; set; }
+
+    private string ReturnQuery => string.IsNullOrEmpty(ReturnUrl) ? "" : $"&ReturnUrl={Uri.EscapeDataString(ReturnUrl)}";
+
+    protected override async Task OnInitializedAsync()
+    {
+        Input ??= new TotpInput();
+        Recovery ??= new RecoveryInput();
+        // Solo se llega aquí tras acertar la contraseña: si no, a empezar.
+        _user = await SignInManager.GetTwoFactorAuthenticationUserAsync();
+        if (_user is null)
+        {
+            Navigation.NavigateTo("/login", forceLoad: true);
+        }
+    }
+
+    private async Task VerifyAsync()
+    {
+        var code = new string(Input!.Code.Where(char.IsDigit).ToArray());
+        var result = await SignInManager.TwoFactorAuthenticatorSignInAsync(code, RememberMe, Input.RememberMachine);
+        await FinishAsync(result, "login.2fa");
+    }
+
+    private async Task RecoverAsync()
+    {
+        var code = Recovery!.Code.Replace(" ", string.Empty, StringComparison.Ordinal);
+        var result = await SignInManager.TwoFactorRecoveryCodeSignInAsync(code);
+        await FinishAsync(result, "login.recovery");
+    }
+
+    private async Task FinishAsync(SignInResult result, string action)
+    {
+        var ip = HttpContext?.Connection.RemoteIpAddress?.ToString();
+        await Audit.RecordAsync(_user?.UserName ?? "?", result.Succeeded ? "login.success" : result.IsLockedOut ? "login.locked" : action + ".failed", ip);
+        if (result.Succeeded)
+        {
+            var target = !string.IsNullOrEmpty(ReturnUrl) && ReturnUrl.StartsWith('/') && !ReturnUrl.StartsWith("//") ? ReturnUrl : "/";
+            Navigation.NavigateTo(target, forceLoad: true);
+            return;
+        }
+        _error = result.IsLockedOut ? "Demasiados intentos fallidos. Espera 15 minutos." : "Código incorrecto.";
+    }
+
+    private sealed class TotpInput
+    {
+        [Required(ErrorMessage = "Escribe el código.")]
+        [StringLength(7, MinimumLength = 6, ErrorMessage = "El código tiene 6 cifras.")]
+        public string Code { get; set; } = string.Empty;
+
+        public bool RememberMachine { get; set; }
+    }
+
+    private sealed class RecoveryInput
+    {
+        [Required(ErrorMessage = "Escribe el código.")]
+        public string Code { get; set; } = string.Empty;
+    }
+}

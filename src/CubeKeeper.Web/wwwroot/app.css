@@ -255,3 +255,19 @@ h3.sub { font-size: 0.95rem; margin: 1.1rem 0 0.4rem; }
 .table.compact td { padding: 0.25rem 0.5rem; }
 .num { text-align: right; font-variant-numeric: tabular-nums; }
 .nowrap { white-space: nowrap; }
+
+.form-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 0 1rem; }
+.inline-input { display: inline-block !important; width: 12rem !important; margin: 0 !important; }
+.qr { width: 200px; max-width: 100%; background: #fff; padding: 6px; border-radius: 8px; margin: 0.5rem 0; }
+.qr svg { display: block; width: 100%; height: auto; }
+.codes { columns: 2; list-style: none; padding: 0; margin: 0.5rem 0 1rem; }
+.codes li { padding: 0.15rem 0; }
+.steps { padding-left: 1.25rem; margin: 0.75rem 0 0.25rem; }
+a.user { color: var(--muted); text-decoration: none; }
+a.user:hover { text-decoration: underline; }
+
+.join-box { margin-top: 1.5rem; padding-top: 1.25rem; border-top: 1px solid var(--border); }
+.join-box h2 { font-size: 1rem; margin: 0 0 0.6rem; }
+.btn-xbox { background: #107c10; border-color: #107c10; color: #fff; text-align: center; text-decoration: none; font-weight: 600; }
+.btn-xbox:hover:not(:disabled) { background: #0e6b0e; border-color: #0e6b0e; }
+.btn-xbox.wide { display: block; }

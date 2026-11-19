@@ -20,6 +20,7 @@
 @inject UpdateService Updates
 @inject MaintenanceScheduler Scheduler
 @inject TimeProvider Time
+@inject CubeKeeper.Web.Hosting.ConnectionInfoService Connection
 @inject NavigationManager Navigation
 @inject ILogger<Home> Logger
 
@@ -101,12 +102,14 @@
         }
         <div class="actions">
             <button class="btn" disabled="@_busy" @onclick="CheckAsync">Comprobar</button>
-            @if (_latest is not null && (_snap.InstalledVersion is null || IsNewer))
-            {
-                <button class="btn btn-primary" disabled="@(_busy || !Options.Value.Bds.AcceptEula)" @onclick="InstallAsync">
-                    @(_snap.InstalledVersion is null || IsPinned ? $"Instalar {_latest.Version}" : $"Actualizar a {_latest.Version}")
-                </button>
-            }
+            <AuthorizeView Roles="@PanelRoles.Admin" Context="adminContext">
+                @if (_latest is not null && (_snap.InstalledVersion is null || IsNewer))
+                {
+                    <button class="btn btn-primary" disabled="@(_busy || !Options.Value.Bds.AcceptEula)" @onclick="InstallAsync">
+                        @(_snap.InstalledVersion is null || IsPinned ? $"Instalar {_latest.Version}" : $"Actualizar a {_latest.Version}")
+                    </button>
+                }
+            </AuthorizeView>
         </div>
         @if (_progress is not null)
         {
@@ -134,7 +137,7 @@
                 <dd class="@(last.Succeeded ? null : "hint-warn")">@Format.When(last.At, Time): @last.Message</dd>
             }
         </dl>
-        @if (Updates.PreviousVersion is { } prev && _snap.InstalledVersion is not null)
+        @if (Updates.PreviousVersion is { } prev && _snap.InstalledVersion is not null && _isAdmin)
         {
             @if (_confirmRollback)
             {
@@ -153,18 +156,23 @@
 
     <section class="card">
         <h2>Cómo conectarse</h2>
-        <p class="connect">Dirección <code>@Host</code> · puerto <code>@_gamePort</code></p>
+        <p class="connect">Dirección <code>@_connection?.Host</code> · puerto <code>@_connection?.Port</code></p>
         <p class="muted small">
             En PC (ROG Ally): Servidores → Añadir servidor, con esa dirección y ese puerto. Es la forma que funciona hoy.
         </p>
         <p>
             En la Xbox, unirse desde «Partidas LAN» falla con NetherNet (error «Boat») y no se pueden añadir servidores por IP.
-            Prueba a abrir este enlace con <strong>Microsoft Edge en la Xbox</strong>: debería añadir el servidor a la pestaña «Servidores».
+            Abre la página de entrada de CubeKeeper con <strong>Microsoft Edge en la Xbox</strong> y pulsa
+            «Añadir el servidor en Xbox»: debería añadirlo a la pestaña «Servidores».
         </p>
-        <p><code class="wrap">@XboxLink</code></p>
+        @if (_connection is not null)
+        {
+            <p><a class="btn btn-xbox" href="@_connection.MinecraftLink">Añadir el servidor en Xbox</a></p>
+            <p><code class="wrap small">@_connection.MinecraftLink</code></p>
+        }
     </section>
 
-    @if (_deviations.Count > 0)
+    @if (_deviations.Count > 0 && _isAdmin)
     {
         <section class="card wide">
             <h2>Configuración recomendada</h2>
@@ -198,7 +206,7 @@
     private string? _message;
     private bool _messageIsError;
     private string? _progress;
-    private int _gamePort = 19132;
+    private bool _isAdmin;
     private IReadOnlyList<CubeKeeper.Core.Properties.SettingDeviation> _deviations = [];
 
     private bool IsPinned => !string.IsNullOrWhiteSpace(Options.Value.Bds.PinnedVersion);
@@ -211,11 +219,7 @@
         (!BdsVersion.TryParse(_snap.InstalledVersion, out var installed) || installed is null ||
          (IsPinned ? !_latest.Version.Equals(installed) : _latest.Version > installed));
 
-    private string Host => string.IsNullOrWhiteSpace(Options.Value.PublicHost)
-        ? new Uri(Navigation.BaseUri).Host
-        : Options.Value.PublicHost!;
-
-    private string XboxLink => $"minecraft://?addExternalServer=CubeKeeper|{Host}:{_gamePort}";
+    private CubeKeeper.Web.Hosting.ServerConnection? _connection;
 
     protected override async Task OnInitializedAsync()
     {
@@ -223,12 +227,12 @@
         Server.StateChanged += OnStateChanged;
         Presence.Changed += OnPresenceChanged;
         await LoadPropertiesAsync();
+        _isAdmin = await IsAdminAsync();
     }
 
     private async Task LoadPropertiesAsync()
     {
-        var props = await ServerPropertiesDocument.LoadAsync(Paths.ServerProperties);
-        _gamePort = props.GetInt("server-port") ?? 19132;
+        _connection = await Connection.GetAsync(new Uri(Navigation.BaseUri).Host);
         _deviations = await Advisor.CheckAsync();
     }
 
@@ -236,6 +240,10 @@
 
     private Task RollbackAsync() => RunAsync(async () =>
     {
+        if (!await IsAdminAsync())
+        {
+            throw new InvalidOperationException("Solo un administrador puede cambiar de versión.");
+        }
         var result = await Updates.RollbackAsync();
         _confirmRollback = false;
         _message = result.Message;
@@ -248,6 +256,10 @@
 
     private Task ApplyRecommendedAsync() => RunAsync(async () =>
     {
+        if (!await IsAdminAsync())
+        {
+            throw new InvalidOperationException("Solo un administrador puede cambiar los ajustes.");
+        }
         var changed = await Advisor.ApplyAsync();
         await LoadPropertiesAsync();
         await AuditAsync("settings.recommended", null, string.Join(", ", changed));
@@ -279,6 +291,10 @@
 
     private Task InstallAsync() => RunAsync(async () =>
     {
+        if (!await IsAdminAsync())
+        {
+            throw new InvalidOperationException("Solo un administrador puede instalar o actualizar.");
+        }
         var progress = new Progress<string>(m =>
         {
             _progress = m;

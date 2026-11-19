@@ -4,6 +4,8 @@
     <UserSecretsId>cubekeeper-web</UserSecretsId>
   </PropertyGroup>
   <ItemGroup>
+    <!-- QR del segundo factor: C# puro, sin dependencias nativas (lo mismo que usa Home365). -->
+    <PackageReference Include="Net.Codecrete.QrCodeGenerator" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Design">
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>

@@ -108,7 +108,7 @@ La imagen `ghcr.io/vgege86/cubekeeper` la publica GitHub Actions al fusionar en 
 | 5 | Consola: `list` | `There are 0/10 players online:` |
 | 6 | ROG Ally: Servidores → Añadir `192.168.1.21` : `19132` y entrar | Entras al mundo. La consola muestra `Player connected: …, xuid: …` |
 | 7 | Consola: `say Hola` | El mensaje aparece en el chat del juego |
-| 8 | Xbox: abrir con Edge `minecraft://?addExternalServer=CubeKeeper\|192.168.1.21:19132` | **A comprobar.** Si funciona, el servidor aparece en «Servidores» |
+| 8 | Xbox: abrir con Edge la página de entrada de CubeKeeper (`https://cubekeeper.alucard86.fyi` o `http://192.168.1.21:8765`) y pulsar **Añadir el servidor en Xbox** | **A comprobar.** Si funciona, Minecraft se abre y el servidor aparece en «Servidores» |
 | 9 | Xbox: «Partidas LAN» | Aparece el servidor (unirse probablemente siga dando «Boat») |
 | 10 | Panel → Parar, con alguien dentro | La consola muestra `Quit correctly`; el mundo se guarda |
 | 11 | Simular una caída: `sudo pkill -9 bedrock_server` en la shell del NAS | «Se ha cerrado inesperadamente» y, a los 5 s, vuelve a arrancar solo |
@@ -212,12 +212,30 @@ desde Minecraft al crear o editar el mundo, no desde CubeKeeper.
 | 6 | «Últimos 7 días» | El tiempo jugado de cada día |
 | 7 | **Auditoría** | Están tus acciones, los inicios de sesión (con la IP) y las expulsiones de «CubeKeeper» por las normas |
 
+## 7g. Fase 3B: usuarios y verificación en dos pasos
+
+| # | Prueba | Resultado esperado |
+|---|---|---|
+| 1 | **Usuarios** → Añadir «papa» como Operador | Aparece en la lista |
+| 2 | Entrar como «papa» (otro navegador o ventana privada) | Solo ve Panel, Jugadores, Familia y Juego; en Panel no puede instalar ni cambiar de versión |
+| 3 | Como «papa», abrir `/ajustes` a mano | Página «Sin permiso» |
+| 4 | **Mi cuenta** (clic en tu nombre arriba a la derecha) → escanear el QR con Google/Microsoft Authenticator → escribir el código → Activar | Muestra 10 códigos de recuperación: guárdalos |
+| 5 | Salir y volver a entrar | Tras la contraseña pide el código de la app |
+| 6 | Entrar con un código de recuperación | Funciona una vez; «Te quedan 9» |
+| 7 | Como administrador, cambiar el rol de «papa» a Administrador | En menos de un minuto, en su sesión aparecen las secciones de administrador |
+| 8 | Intentar quitarte a ti mismo el rol de administrador siendo el único | «Tiene que quedar al menos un administrador» |
+
+Si pierdes el móvil y los códigos de recuperación: otro administrador puede quitarte la verificación en dos pasos desde
+Usuarios. Si eres el único administrador, usa `CUBEKEEPER_ADMIN_RESET` (sección 8): restablece la contraseña, desbloquea
+la cuenta y quita la verificación en dos pasos. Después vuelve a activarla desde Mi cuenta.
+
 ## 8. Si no puedes entrar
 
 - La pantalla de login dice por qué no hay usuario, por ejemplo si la contraseña es demasiado corta. Corrígelo en
   **Apps → cubekeeper → Edit** y reinicia la app.
-- Si olvidas la contraseña o la cuenta queda bloqueada: añade `CUBEKEEPER_ADMIN_RESET: "true"` junto a
-  `CUBEKEEPER_ADMIN_PASSWORD` con la nueva, reinicia, entra y quita las dos variables.
+- Si olvidas la contraseña, la cuenta queda bloqueada o pierdes el móvil de la verificación en dos pasos: añade
+  `CUBEKEEPER_ADMIN_RESET: "true"` junto a `CUBEKEEPER_ADMIN_PASSWORD` con la nueva, reinicia, entra y quita las dos
+  variables. (También quita la verificación en dos pasos de ese usuario.)
 - En los registros de la app aparece `Administrador inicial 'admin' creado` o el motivo del fallo.
 
 ## 9. Volver a itzg

@@ -53,13 +53,19 @@ builder.Services.ConfigureApplicationCookie(o =>
     o.Cookie.HttpOnly = true;
     o.Cookie.SameSite = SameSiteMode.Strict;
     o.LoginPath = "/login";
-    o.AccessDeniedPath = "/login";
+    o.AccessDeniedPath = "/sin-permiso";
     o.ExpireTimeSpan = TimeSpan.FromDays(7);
     o.SlidingExpiration = true;
 });
 builder.Services.AddAuthorizationBuilder()
-    .SetFallbackPolicy(new AuthorizationPolicyBuilder().RequireAuthenticatedUser().Build());
+    .SetFallbackPolicy(new AuthorizationPolicyBuilder().RequireAuthenticatedUser().Build())
+    .AddPolicy("Admin", p => p.RequireRole(PanelRoles.Admin));
 builder.Services.AddCascadingAuthenticationState();
+builder.Services.AddScoped<Microsoft.AspNetCore.Components.Authorization.AuthenticationStateProvider, RevalidatingAuthStateProvider>();
+// Las cookies también se revalidan cada minuto (contraseña, rol o segundo factor cambiados).
+builder.Services.Configure<SecurityStampValidatorOptions>(o => o.ValidationInterval = TimeSpan.FromMinutes(1));
+builder.Services.AddScoped<CubeKeeper.Infrastructure.Users.PanelUserService>();
+builder.Services.AddSingleton<ConnectionInfoService>();
 
 // Detrás de Nginx Proxy Manager: aceptar X-Forwarded-* solo de los proxies de confianza.
 builder.Services.Configure<ForwardedHeadersOptions>(o =>
@@ -127,11 +133,11 @@ app.MapPost("/logout", async (SignInManager<PanelUser> signIn, HttpContext http,
     return Results.LocalRedirect("/login");
 });
 
-// Descarga de copias (requiere sesión, por la política por defecto).
+// Descarga de copias (solo administradores).
 app.MapGet("/copias/descargar/{file}", (string file, CubeKeeper.Infrastructure.Backups.BackupService backups) =>
     backups.ResolveExisting(file) is { } path
         ? Results.File(path, "application/octet-stream", file, enableRangeProcessing: true)
-        : Results.NotFound());
+        : Results.NotFound()).RequireAuthorization("Admin");
 
 // Descarga de un mundo como .mcworld (el activo se copia en caliente).
 app.MapGet("/mundos/descargar/{name}", async (string name, CubeKeeper.Infrastructure.Worlds.WorldService worlds, CancellationToken ct) =>
@@ -145,7 +151,7 @@ app.MapGet("/mundos/descargar/{name}", async (string name, CubeKeeper.Infrastruc
     {
         return Results.NotFound();
     }
-});
+}).RequireAuthorization("Admin");
 
 app.MapStaticAssets().AllowAnonymous();
 app.MapRazorComponents<App>().AddInteractiveServerRenderMode();

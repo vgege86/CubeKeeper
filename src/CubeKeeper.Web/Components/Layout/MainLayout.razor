@@ -8,21 +8,24 @@
     <nav>
         <NavLink href="/" Match="NavLinkMatch.All">Panel</NavLink>
         <NavLink href="/jugadores">Jugadores</NavLink>
-        <NavLink href="/acceso">Acceso</NavLink>
         <NavLink href="/familia">Familia</NavLink>
         <NavLink href="/juego">Juego</NavLink>
-        <NavLink href="/mundos">Mundos</NavLink>
-        <NavLink href="/complementos">Complementos</NavLink>
-        <NavLink href="/ajustes">Ajustes</NavLink>
-        <NavLink href="/copias">Copias</NavLink>
-        <NavLink href="/consola">Consola</NavLink>
-        <NavLink href="/auditoria">Auditoría</NavLink>
+        <AuthorizeView Roles="@PanelRoles.Admin">
+            <NavLink href="/acceso">Acceso</NavLink>
+            <NavLink href="/mundos">Mundos</NavLink>
+            <NavLink href="/complementos">Complementos</NavLink>
+            <NavLink href="/ajustes">Ajustes</NavLink>
+            <NavLink href="/copias">Copias</NavLink>
+            <NavLink href="/consola">Consola</NavLink>
+            <NavLink href="/auditoria">Auditoría</NavLink>
+            <NavLink href="/usuarios">Usuarios</NavLink>
+        </AuthorizeView>
     </nav>
     <AuthorizeView>
         <Authorized>
             <form method="post" action="/logout" class="logout">
                 <AntiforgeryToken />
-                <span class="user">@context.User.Identity?.Name</span>
+                <a class="user" href="/cuenta" title="Mi cuenta">@context.User.Identity?.Name</a>
                 <button type="submit" class="btn btn-ghost">Salir</button>
             </form>
         </Authorized>

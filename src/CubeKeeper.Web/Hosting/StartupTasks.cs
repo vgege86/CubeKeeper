@@ -21,11 +21,7 @@ public static class StartupTasks
         var db = sp.GetRequiredService<CubeKeeperDbContext>();
         await db.Database.MigrateAsync();
 
-        var roles = sp.GetRequiredService<RoleManager<IdentityRole>>();
-        if (!await roles.RoleExistsAsync(PanelRoles.Admin))
-        {
-            await roles.CreateAsync(new IdentityRole(PanelRoles.Admin));
-        }
+        await sp.GetRequiredService<CubeKeeper.Infrastructure.Users.PanelUserService>().EnsureRolesAsync();
 
         var users = sp.GetRequiredService<UserManager<PanelUser>>();
         var status = sp.GetRequiredService<AdminSeedStatus>();
@@ -77,6 +73,13 @@ public static class StartupTasks
                 if (!await users.IsInRoleAsync(user, PanelRoles.Admin))
                 {
                     await users.AddToRoleAsync(user, PanelRoles.Admin);
+                }
+                // Recuperar el acceso incluye quitar la verificación en dos pasos (móvil perdido): solo puede hacerlo
+                // quien controla la configuración de la app.
+                if (user.TwoFactorEnabled)
+                {
+                    await users.SetTwoFactorEnabledAsync(user, false);
+                    await users.ResetAuthenticatorKeyAsync(user);
                 }
                 status.WasReset = true;
             }

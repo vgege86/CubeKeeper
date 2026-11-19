@@ -98,6 +98,13 @@ socket de Docker, otro contenedor no puede llegar a esa consola.
   cuenta hasta ahora), así que reiniciar el servidor no lo pone a cero.
 - **Auditoría (3A).** `AuditLog` guarda quién (usuario del panel o «CubeKeeper»), qué acción, sobre qué y detalles.
   Las páginas heredan de `AuditedPage`, que toma el usuario de la sesión; el login guarda también la IP.
+- **Usuarios y roles (3B).** Roles `Admin` y `Operator` de Identity. Las páginas de administración llevan
+  `[Authorize(Roles = Admin)]`, las descargas `RequireAuthorization("Admin")`, y el menú y los botones delicados del panel
+  se ocultan con `AuthorizeView` (y se comprueban otra vez en el servidor). `PanelUserService` no deja borrar ni degradar
+  al último administrador. Cambiar rol o contraseña cambia el sello de seguridad: las cookies se revalidan cada minuto y los
+  circuitos de Blazor también (`RevalidatingAuthStateProvider`). Verificación en dos pasos con el autenticador TOTP de
+  Identity (QR con Net.Codecrete.QrCodeGenerator, el de Home365) y 10 códigos de recuperación; Mi cuenta usa formularios
+  estáticos para poder renovar la cookie (`RefreshSignInAsync`) sin expulsar al usuario.
 - **Salud por TCP**, no por RakNet. Con NetherNet, BDS escucha en TCP en `server-port`. Se usa `server-ip` si está
   definida. Con el servidor parado a propósito, `/health` responde sano: el contenedor funciona.
 - **Imagen** `mcr.microsoft.com/dotnet/aspnet:10.0` (Ubuntu 24.04, la base de BDS) con `curl` y `tzdata`. Sin la
@@ -134,7 +141,7 @@ socket de Docker, otro contenedor no puede llegar a esa consola.
 | **2B** ✅ | Mundos (crear, cambiar, importar y exportar `.mcworld`, incluidos los de Realms), complementos (`.mcpack`, `.mcaddon`) |
 | ~~2~~ | Lista de permitidos por XUID (`allowlist reload`), solicitudes o modo inscripción, permisos, bloquear, gamerules, controles rápidos, mundos (crear, cambiar, importar y exportar `.mcworld`, incluidos los de Realms), complementos |
 | **3A** ✅ | Horarios y límite diario por jugador (avisos y expulsión), tiempo extra, historial de juego; auditoría |
-| **3B** | Usuarios del panel con roles; verificación en dos pasos (TOTP) |
+| **3B** ✅ | Usuarios del panel con roles; verificación en dos pasos (TOTP) |
 | **3C** | Notificaciones, MCP para Home365, mapa con uNmINeD |
 | ~~3~~ | Horarios y límites por jugador, estadísticas, usuarios con roles, auditoría, notificaciones, MCP para Home365 (`ModelContextProtocol.AspNetCore`, como Home365), mapa con uNmINeD |
 
