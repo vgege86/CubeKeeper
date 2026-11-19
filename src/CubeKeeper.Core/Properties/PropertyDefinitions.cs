@@ -114,7 +114,7 @@ public static class PropertyDefinitions
             Warning: "Con false los XUID no son fiables y cualquiera puede suplantar un nombre."),
         new("allow-list", "Lista de permitidos", Players, PropertyKind.Boolean,
             "Si está activado, solo pueden entrar los jugadores de allowlist.json.",
-            Warning: "La lista de permitidos la gestionará CubeKeeper en la fase 2; de momento se recomienda false."),
+            Warning: "Lo controla la página Acceso (modo «Solo aprobados»): cámbialo allí, no aquí."),
         new("default-player-permission-level", "Permiso por defecto", Players, PropertyKind.Choice,
             "Permiso de quien entra por primera vez: visitante (solo mirar), miembro (jugar normal) u operador (también comandos).",
             Choices: ["visitor", "member", "operator"]),

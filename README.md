@@ -16,6 +16,10 @@ lo descarga, lo arranca y lo para, lee su consola y le envía comandos. No neces
 - **Fase 1C ✅** Copias del mundo consistentes en caliente, bajo demanda y programadas, con retención y segundo destino;
   restaurar y descargar como `.mcworld`; actualización con copia previa y vuelta atrás automática; comprobación diaria
   con avisos por el chat.
+- **Fase 2A ✅** Acceso: modo abierto o «solo aprobados» con lista de permitidos por XUID, modo inscripción con
+  solicitudes, permisos (visitante, miembro, operador), bloquear; controles rápidos (hora, clima, mensaje, expulsar) y
+  reglas del juego.
+- **Fase 2B** Mundos (crear, cambiar, importar y exportar `.mcworld`) y complementos (`.mcpack`, `.mcaddon`).
 
 Plan completo y decisiones: [docs/ARQUITECTURA.md](docs/ARQUITECTURA.md) ·
 Instalación en el NAS y pruebas: [docs/TRUENAS.md](docs/TRUENAS.md).
@@ -59,7 +63,7 @@ Otros ajustes avanzados se pueden dar con la notación de .NET, por ejemplo
 ```
 /data
 ├── cubekeeper.db      usuarios del panel, jugadores y sesiones (SQLite)
-├── state.json         estado deseado y versión instalada
+├── state.json         estado deseado, versión instalada, modo de acceso e inscripción
 ├── keys/              claves de las cookies
 ├── server/            directorio de trabajo de bedrock_server (worlds/, server.properties…)
 ├── versions/<v>/      versiones de BDS descargadas (se guardan 2)

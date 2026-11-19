@@ -167,53 +167,65 @@ public sealed class PlayerTrackingService : BackgroundService, IPlayerPresence
 
     private async Task PersistAsync(IReadOnlyList<PlayerChange> changes, CancellationToken ct)
     {
-        await using var db = await _dbFactory.CreateDbContextAsync(ct).ConfigureAwait(false);
         foreach (var change in changes)
         {
-            var p = change.Player;
-            if (p.Xuid is null)
+            if (change.Player.Xuid is null)
             {
                 // Solo visto en "list" y sin XUID conocido: no se guarda.
                 continue;
             }
-
-            var player = await db.Players.FindAsync([p.Xuid], ct).ConfigureAwait(false);
-            if (player is null)
+            // El servicio de acceso también puede crear la ficha del jugador a la vez (al bloquearlo): si choca con
+            // la clave única, se reintenta una vez con un contexto nuevo.
+            for (var attempt = 1; ; attempt++)
             {
-                player = new Player { Xuid = p.Xuid, Name = p.Name, FirstSeen = change.At, LastSeen = change.At };
-                db.Players.Add(player);
-            }
-            player.Name = p.Name;
-            player.LastSeen = change.At;
-            _xuidByName[p.Name] = p.Xuid;
-
-            switch (change)
-            {
-                case PlayerJoined:
-                    db.PlayerSessions.Add(new PlayerSession { Xuid = p.Xuid, Name = p.Name, ConnectedAt = change.At });
-                    _logger.LogInformation("Entra {Name} ({Xuid})", p.Name, p.Xuid);
+                try
+                {
+                    await PersistOneAsync(change, ct).ConfigureAwait(false);
                     break;
-                case PlayerLeft left:
-                    // Puede estar en la base de datos o pendiente en este mismo lote.
-                    var open = db.PlayerSessions.Local
-                                   .Where(s => s.Xuid == p.Xuid && s.DisconnectedAt is null)
-                                   .OrderByDescending(s => s.ConnectedAt)
-                                   .FirstOrDefault()
-                               ?? (await db.PlayerSessions
-                                   .Where(s => s.Xuid == p.Xuid && s.DisconnectedAt == null)
-                                   .ToListAsync(ct).ConfigureAwait(false))
-                                   .OrderByDescending(s => s.ConnectedAt)
-                                   .FirstOrDefault();
-                    if (open is not null)
-                    {
-                        open.DisconnectedAt = change.At;
-                        open.EndReason = SessionEndReasonMapping.From(left.Reason);
-                    }
-                    _logger.LogInformation("Sale {Name} ({Xuid}): {Reason}", p.Name, p.Xuid, left.Reason);
-                    break;
+                }
+                catch (DbUpdateException) when (attempt == 1)
+                {
+                }
             }
-            await db.SaveChangesAsync(ct).ConfigureAwait(false);
         }
+    }
+
+    private async Task PersistOneAsync(PlayerChange change, CancellationToken ct)
+    {
+        await using var db = await _dbFactory.CreateDbContextAsync(ct).ConfigureAwait(false);
+        var p = change.Player;
+        var xuid = p.Xuid!;
+        var player = await db.Players.FindAsync([xuid], ct).ConfigureAwait(false);
+        if (player is null)
+        {
+            player = new Player { Xuid = xuid, Name = p.Name, FirstSeen = change.At, LastSeen = change.At };
+            db.Players.Add(player);
+        }
+        player.Name = p.Name;
+        player.LastSeen = change.At;
+        _xuidByName[p.Name] = xuid;
+
+        switch (change)
+        {
+            case PlayerJoined:
+                db.PlayerSessions.Add(new PlayerSession { Xuid = xuid, Name = p.Name, ConnectedAt = change.At });
+                _logger.LogInformation("Entra {Name} ({Xuid})", p.Name, xuid);
+                break;
+            case PlayerLeft left:
+                var open = (await db.PlayerSessions
+                        .Where(s => s.Xuid == xuid && s.DisconnectedAt == null)
+                        .ToListAsync(ct).ConfigureAwait(false))
+                    .OrderByDescending(s => s.ConnectedAt)
+                    .FirstOrDefault();
+                if (open is not null)
+                {
+                    open.DisconnectedAt = change.At;
+                    open.EndReason = SessionEndReasonMapping.From(left.Reason);
+                }
+                _logger.LogInformation("Sale {Name} ({Xuid}): {Reason}", p.Name, xuid, left.Reason);
+                break;
+        }
+        await db.SaveChangesAsync(ct).ConfigureAwait(false);
     }
 
     /// <summary>Si CubeKeeper se cerró de golpe, quedan sesiones abiertas: se cierran con la última hora conocida.</summary>

@@ -12,6 +12,12 @@ public sealed record AppState
     /// <summary>Versión de BDS copiada a /data/server.</summary>
     public string? InstalledVersion { get; init; }
 
+    /// <summary>Quién puede entrar.</summary>
+    public CubeKeeper.Core.Access.AccessMode AccessMode { get; init; } = CubeKeeper.Core.Access.AccessMode.Open;
+
+    /// <summary>Hasta cuándo dura el modo inscripción, o null si no está activo.</summary>
+    public DateTimeOffset? EnrollmentUntil { get; init; }
+
     /// <summary>Resultado de la última actualización (manual o programada).</summary>
     public UpdateRecord? LastUpdate { get; init; }
 }

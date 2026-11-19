@@ -22,6 +22,8 @@ public sealed class CubeKeeperDbContext(DbContextOptions<CubeKeeperDbContext> op
 
     public DbSet<PlayerSession> PlayerSessions => Set<PlayerSession>();
 
+    public DbSet<AccessRequest> AccessRequests => Set<AccessRequest>();
+
     protected override void OnModelCreating(ModelBuilder builder)
     {
         base.OnModelCreating(builder);
@@ -34,6 +36,7 @@ public sealed class CubeKeeperDbContext(DbContextOptions<CubeKeeperDbContext> op
             // SQLite no ordena ni compara DateTimeOffset: se guarda como entero (ticks UTC).
             e.Property(p => p.FirstSeen).HasConversion<DateTimeOffsetToBinaryConverter>();
             e.Property(p => p.LastSeen).HasConversion<DateTimeOffsetToBinaryConverter>();
+            e.Property(p => p.BlockedAt).HasConversion<DateTimeOffsetToBinaryConverter>();
             e.HasIndex(p => p.Name);
             e.HasMany(p => p.Sessions).WithOne(s => s.Player).HasForeignKey(s => s.Xuid);
         });
@@ -48,6 +51,16 @@ public sealed class CubeKeeperDbContext(DbContextOptions<CubeKeeperDbContext> op
             e.Ignore(s => s.Duration);
             e.HasIndex(s => s.ConnectedAt);
             e.HasIndex(s => s.DisconnectedAt);
+        });
+
+        builder.Entity<AccessRequest>(e =>
+        {
+            e.Property(r => r.Xuid).HasMaxLength(32);
+            e.Property(r => r.Name).HasMaxLength(64);
+            e.Property(r => r.Status).HasConversion<string>().HasMaxLength(20);
+            e.Property(r => r.RequestedAt).HasConversion<DateTimeOffsetToBinaryConverter>();
+            e.Property(r => r.DecidedAt).HasConversion<DateTimeOffsetToBinaryConverter>();
+            e.HasIndex(r => new { r.Xuid, r.Status });
         });
     }
 }

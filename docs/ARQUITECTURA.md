@@ -77,6 +77,13 @@ socket de Docker, otro contenedor no puede llegar a esa consola.
   anterior desde `/data/versions`, en ese orden, para que la versión vieja no abra un mundo tocado por la nueva.
   `MaintenanceScheduler` lanza las copias cada N minutos (solo si alguien ha jugado) y la comprobación diaria, que no
   hace nada con una versión fijada.
+- **Acceso (2A).** Dos capas. BDS: `allow-list` en server.properties y `allowlist.json` por XUID (`allowlist reload`,
+  `permission reload`). CubeKeeper: `AccessService` recibe cada `Player connected`/`Player Spawned` y decide con
+  `AccessPolicy` (bloqueado → expulsar; solo aprobados sin estar en la lista → expulsar; en inscripción → guardar la
+  solicitud con su XUID y expulsar). Así se aplica sin reiniciar y sirve de «baneo», que Bedrock no tiene. El modo
+  inscripción envía `allowlist off` durante N minutos (y de nuevo si el servidor se reinicia mientras dura) y al acabar
+  `allowlist on`. Los permisos van a `permissions.json`; a un jugador conectado se le aplican al momento con `op`/`deop`.
+  `allow-list` sale de la configuración recomendada: lo controla el modo de acceso.
 - **Salud por TCP**, no por RakNet. Con NetherNet, BDS escucha en TCP en `server-port`. Se usa `server-ip` si está
   definida. Con el servidor parado a propósito, `/health` responde sano: el contenedor funciona.
 - **Imagen** `mcr.microsoft.com/dotnet/aspnet:10.0` (Ubuntu 24.04, la base de BDS) con `curl` y `tzdata`. Sin la
@@ -109,11 +116,16 @@ socket de Docker, otro contenedor no puede llegar a esa consola.
 | **1A** ✅ | Esqueleto, Dockerfile, compose, CI hacia GHCR, login, instalación de BDS (versión fijable, EULA), arrancar/parar/reiniciar, reinicio automático con límite, consola en vivo, `/health`, revisión de `server.properties`, ayuda para conectarse (PC y Xbox) |
 | **1B** ✅ | Jugadores conectados (eventos del log + resincronización con `list`), historial en SQLite, editor de `server.properties` con validación |
 | **1C** ✅ | Copias consistentes (`save hold` → `save query` → copiar truncando a la longitud indicada → `save resume`), programadas y con retención, restauración, actualización con rollback automático, tarea programada con avisos |
-| **2** | Lista de permitidos por XUID (`allowlist reload`), solicitudes o modo inscripción, permisos, bloquear, gamerules, controles rápidos, mundos (crear, cambiar, importar y exportar `.mcworld`, incluidos los de Realms), complementos |
+| **2A** ✅ | Lista de permitidos por XUID (`allowlist reload`), modo inscripción con solicitudes, permisos, bloquear, reglas del juego, controles rápidos |
+| **2B** | Mundos (crear, cambiar, importar y exportar `.mcworld`, incluidos los de Realms), complementos (`.mcpack`, `.mcaddon`) |
+| ~~2~~ | Lista de permitidos por XUID (`allowlist reload`), solicitudes o modo inscripción, permisos, bloquear, gamerules, controles rápidos, mundos (crear, cambiar, importar y exportar `.mcworld`, incluidos los de Realms), complementos |
 | **3** | Horarios y límites por jugador, estadísticas, usuarios con roles, auditoría, notificaciones, MCP para Home365 (`ModelContextProtocol.AspNetCore`, como Home365), mapa con uNmINeD |
 
 ### Pendiente de comprobar en el NAS
 
 - Las dependencias exactas de `bedrock_server` 1.26.65.1 en la imagen (`ldd`). Si falta alguna `.so`, se añade al Dockerfile.
 - El enlace `minecraft://?addExternalServer=…` desde Edge en la Xbox.
-- Si BDS registra en el log los intentos rechazados por la lista de permitidos (decide el diseño de la fase 2).
+- Si BDS registra en el log los intentos rechazados por la lista de permitidos. La fase 2A no depende de ello (usa el
+  modo inscripción), pero si lo registra se podrían crear solicitudes sin abrir la lista.
+- Que BDS 1.26 acepta `allowlist on`/`off` y `permission reload` en la consola. Si no, el modo de acceso se aplica igual
+  (CubeKeeper expulsa), pero `allow-list` en server.properties solo cambia al reiniciar.

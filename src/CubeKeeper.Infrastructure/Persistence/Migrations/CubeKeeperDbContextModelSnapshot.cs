@@ -17,6 +17,43 @@ namespace CubeKeeper.Infrastructure.Persistence.Migrations
 #pragma warning disable 612, 618
             modelBuilder.HasAnnotation("ProductVersion", "10.0.15");
 
+            modelBuilder.Entity("CubeKeeper.Infrastructure.Persistence.AccessRequest", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("Attempts")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<long?>("DecidedAt")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("TEXT");
+
+                    b.Property<long>("RequestedAt")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Xuid")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Xuid", "Status");
+
+                    b.ToTable("AccessRequests");
+                });
+
             modelBuilder.Entity("CubeKeeper.Infrastructure.Persistence.PanelUser", b =>
                 {
                     b.Property<string>("Id")
@@ -86,6 +123,12 @@ namespace CubeKeeper.Infrastructure.Persistence.Migrations
                     b.Property<string>("Xuid")
                         .HasMaxLength(32)
                         .HasColumnType("TEXT");
+
+                    b.Property<bool>("Blocked")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<long?>("BlockedAt")
+                        .HasColumnType("INTEGER");
 
                     b.Property<long>("FirstSeen")
                         .HasColumnType("INTEGER");

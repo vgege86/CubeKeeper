@@ -3,7 +3,10 @@
 // y responde a algunos comandos por stdin.
 //
 // Comandos: stop, list, say <texto>, join <nombre> <xuid>, leave <nombre> <xuid>, crash, hang,
-//           save hold | save query | save resume (la primera "save query" responde que aún no está listo)
+//           save hold | save query | save resume (la primera "save query" responde que aún no está listo),
+//           kick "nombre" motivo, allowlist on|off|reload, permission reload, op|deop "nombre",
+//           gamerule [regla valor], time set X, weather X.
+// Con la lista de permitidos activa, "join" de alguien que no está en allowlist.json no deja rastro (como BDS).
 // Variables: FAKE_BDS_CRASH_ON_START=1 (se cae nada más arrancar), FAKE_BDS_START_DELAY_MS.
 
 using System.Globalization;
@@ -19,6 +22,18 @@ static void Log(string message, string level = "INFO") =>
 var port = 19132;
 var maxPlayers = 10;
 var levelName = "Bedrock level";
+var allowListOn = false;
+var rules = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+{
+    ["commandBlockOutput"] = "true", ["doDaylightCycle"] = "true", ["doEntityDrops"] = "true", ["doFireTick"] = "true",
+    ["doInsomnia"] = "true", ["doImmediateRespawn"] = "false", ["doMobLoot"] = "true", ["doMobSpawning"] = "true",
+    ["doTileDrops"] = "true", ["doWeatherCycle"] = "true", ["drowningDamage"] = "true", ["fallDamage"] = "true",
+    ["fireDamage"] = "true", ["keepInventory"] = "false", ["mobGriefing"] = "true", ["naturalRegeneration"] = "true",
+    ["pvp"] = "true", ["randomTickSpeed"] = "1", ["showCoordinates"] = "false", ["tntExplodes"] = "true",
+};
+bool InAllowList(string xuid) =>
+    File.Exists("allowlist.json") && File.ReadAllText("allowlist.json").Contains($"\"{xuid}\"", StringComparison.Ordinal);
+static string Unquote(string s) => s.Trim().Trim('"');
 if (File.Exists("server.properties"))
 {
     foreach (var raw in File.ReadAllLines("server.properties"))
@@ -40,6 +55,9 @@ if (File.Exists("server.properties"))
                 break;
             case "level-name":
                 levelName = value;
+                break;
+            case "allow-list":
+                allowListOn = value == "true";
                 break;
         }
     }
@@ -121,6 +139,10 @@ while ((input = Console.ReadLine()) is not null)
             Log($"[Server] {string.Join(' ', parts.Skip(1))}");
             break;
         case "join" when parts.Length == 3:
+            if (allowListOn && !InAllowList(parts[2]))
+            {
+                break; // BDS rechaza en silencio: el cliente ve "No estás invitado".
+            }
             players[parts[1]] = parts[2];
             Log($"Player connected: {parts[1]}, xuid: {parts[2]}");
             Log($"Player Spawned: {parts[1]} xuid: {parts[2]}, pfid: 0000000000000000");
@@ -167,6 +189,66 @@ while ((input = Console.ReadLine()) is not null)
         case "save" when parts.Length > 1 && parts[1] == "resume":
             holding = false;
             Log("Changes to the level are resumed.");
+            break;
+        case "kick" when parts.Length > 1:
+        {
+            // kick "Nombre con espacios" motivo
+            var rest = input.Trim()[5..].Trim();
+            string target, reason;
+            if (rest.StartsWith('"'))
+            {
+                var close = rest.IndexOf('"', 1);
+                target = rest[1..close];
+                reason = rest[(close + 1)..].Trim();
+            }
+            else
+            {
+                var sp = rest.IndexOf(' ');
+                target = sp < 0 ? rest : rest[..sp];
+                reason = sp < 0 ? "" : rest[(sp + 1)..];
+            }
+            if (players.Remove(target, out var kx))
+            {
+                Log($"Kicked {target} from the game: '{reason}'");
+                Log($"Player disconnected: {target}, xuid: {kx}, pfid: 0000000000000000");
+            }
+            else
+            {
+                Log("No targets matched selector", "ERROR");
+            }
+            break;
+        }
+        case "allowlist" when parts.Length > 1:
+            switch (parts[1])
+            {
+                case "on": allowListOn = true; Log("Allowlist is now on"); break;
+                case "off": allowListOn = false; Log("Allowlist is now off"); break;
+                case "reload": Log("Allowlist reloaded from file."); break;
+                default: Log("Unknown allowlist command", "ERROR"); break;
+            }
+            break;
+        case "permission" when parts.Length > 1 && parts[1] == "reload":
+            Log("Permissions reloaded from file.");
+            break;
+        case "op" or "deop" when parts.Length > 1:
+            Log(parts[0] == "op" ? $"Opped: {Unquote(input.Trim()[3..])}" : $"De-opped: {Unquote(input.Trim()[5..])}");
+            break;
+        case "gamerule" when parts.Length == 1:
+            Log(string.Join(", ", rules.Select(kv => $"{kv.Key.ToLowerInvariant()} = {kv.Value}")));
+            break;
+        case "gamerule" when parts.Length == 3:
+        {
+            var kv = parts[2].Split(' ', 2);
+            rules[parts[1]] = parts[2].Trim();
+            Log($"Game rule {parts[1]} has been updated to {parts[2].Trim()}");
+            _ = kv;
+            break;
+        }
+        case "time" when parts.Length == 3 && parts[1] == "set":
+            Log($"Set the time to {parts[2]}");
+            break;
+        case "weather" when parts.Length > 1:
+            Log($"Changing to {parts[1]} weather");
             break;
         case "crash":
             Log("Simulated crash", "ERROR");
