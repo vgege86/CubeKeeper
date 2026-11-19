@@ -33,6 +33,16 @@ services:
       CUBEKEEPER_BDS_VERSION: 1.26.65.1
       CUBEKEEPER_ACCEPT_EULA: "true"        # https://www.minecraft.net/eula
       CUBEKEEPER_AUTOSTART: "true"
+      # Copias del mundo: cada 60 min si alguien ha jugado; 24 horarias, 14 diarias y 8 semanales.
+      CUBEKEEPER_BACKUP_INTERVAL_MINUTES: "60"
+      CUBEKEEPER_BACKUP_KEEP_HOURLY: "24"
+      CUBEKEEPER_BACKUP_KEEP_DAILY: "14"
+      CUBEKEEPER_BACKUP_KEEP_WEEKLY: "8"
+      CUBEKEEPER_BACKUP_SECONDARY: /backups
+      # Actualización diaria (no hace nada mientras CUBEKEEPER_BDS_VERSION esté fijada).
+      CUBEKEEPER_UPDATE_TIME: "05:00"
+      CUBEKEEPER_UPDATE_WARN_MINUTES: "5,1"
+      CUBEKEEPER_UPDATE_SKIP_IF_PLAYERS: "false"
       CUBEKEEPER_PUBLIC_HOST: 192.168.1.21  # para el enlace de la Xbox
       CUBEKEEPER_ADMIN_USER: admin
       # Solo hace falta en el primer arranque (crea el usuario). Después, bórrala.
@@ -45,8 +55,8 @@ services:
     volumes:
       # Dataset propio (no el de itzg, /mnt/vms/minecraft): así el antiguo queda intacto para volver atrás.
       - /mnt/vms/cubekeeper:/data
-      # Fase 1C: segundo destino de las copias del mundo en el pool DATOS.
-      # - /mnt/DATOS/backups/cubekeeper:/backups
+      # Segundo destino de las copias del mundo, en el pool DATOS (crea antes el dataset, propiedad de 568).
+      - /mnt/DATOS/backups/cubekeeper:/backups
 
     deploy:
       resources:

@@ -2,7 +2,8 @@
 // Escribe líneas con el mismo formato que BDS, abre el puerto TCP de server.properties (como NetherNet)
 // y responde a algunos comandos por stdin.
 //
-// Comandos: stop, list, say <texto>, join <nombre> <xuid>, leave <nombre> <xuid>, crash, hang
+// Comandos: stop, list, say <texto>, join <nombre> <xuid>, leave <nombre> <xuid>, crash, hang,
+//           save hold | save query | save resume (la primera "save query" responde que aún no está listo)
 // Variables: FAKE_BDS_CRASH_ON_START=1 (se cae nada más arrancar), FAKE_BDS_START_DELAY_MS.
 
 using System.Globalization;
@@ -78,6 +79,19 @@ _ = Task.Run(async () =>
     }
 });
 
+// Crear el mundo si no existe, como hace BDS.
+var worldDir = Path.Combine("worlds", levelName);
+if (!Directory.Exists(worldDir))
+{
+    Directory.CreateDirectory(Path.Combine(worldDir, "db"));
+    File.WriteAllText(Path.Combine(worldDir, "level.dat"), "fake level " + new string('x', 100));
+    File.WriteAllText(Path.Combine(worldDir, "levelname.txt"), levelName);
+    File.WriteAllText(Path.Combine(worldDir, "db", "CURRENT"), "MANIFEST-000001\n");
+    File.WriteAllText(Path.Combine(worldDir, "db", "000005.ldb"), new string('d', 4096));
+}
+var holding = false;
+var queries = 0;
+
 Log("Game mode: 0 Survival");
 Log("Difficulty: 1 EASY");
 Log($"IPv4 supported, port: {port}: Used for gameplay and LAN discovery");
@@ -114,6 +128,45 @@ while ((input = Console.ReadLine()) is not null)
         case "leave" when parts.Length == 3:
             players.Remove(parts[1]);
             Log($"Player disconnected: {parts[1]}, xuid: {parts[2]}, pfid: 0000000000000000");
+            break;
+        case "save" when parts.Length > 1 && parts[1] == "hold":
+            if (holding)
+            {
+                Log("The command is already running", "ERROR");
+            }
+            else
+            {
+                holding = true;
+                queries = 0;
+                Log("Saving...");
+            }
+            break;
+        case "save" when parts.Length > 1 && parts[1] == "query":
+            if (!holding)
+            {
+                Log("A previous save has not been completed.");
+                break;
+            }
+            if (queries++ == 0)
+            {
+                Log("A previous save has not been completed.");
+                break;
+            }
+            Log("Data saved. Files are now ready to be copied.");
+            // Se simula que BDS sigue escribiendo: el archivo crece, pero hay que copiar solo la longitud indicada.
+            var listed = Directory.EnumerateFiles(worldDir, "*", SearchOption.AllDirectories)
+                .Where(f => !f.EndsWith("levelname.txt", StringComparison.Ordinal))
+                .Select(f => $"{Path.GetRelativePath("worlds", f).Replace('\\', '/')}:{new FileInfo(f).Length}")
+                .ToList();
+            foreach (var f in Directory.EnumerateFiles(Path.Combine(worldDir, "db")))
+            {
+                File.AppendAllText(f, "BASURA-POSTERIOR");
+            }
+            Console.WriteLine(string.Join(", ", listed));
+            break;
+        case "save" when parts.Length > 1 && parts[1] == "resume":
+            holding = false;
+            Log("Changes to the level are resumed.");
             break;
         case "crash":
             Log("Simulated crash", "ERROR");

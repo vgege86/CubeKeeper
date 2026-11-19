@@ -1,0 +1,221 @@
+@page "/copias"
+@rendermode InteractiveServer
+@implements IDisposable
+@using CubeKeeper.Core.Backups
+@using CubeKeeper.Infrastructure.Backups
+@using CubeKeeper.Infrastructure.Configuration
+@using CubeKeeper.Infrastructure.Scheduling
+@using CubeKeeper.Web.Formatting
+@using Microsoft.Extensions.Options
+@inject BackupService Backups
+@inject MaintenanceScheduler Scheduler
+@inject IServerController Server
+@inject IOptions<CubeKeeperOptions> Options
+@inject DataPaths Paths
+@inject TimeProvider Time
+@inject ILogger<BackupsPage> Logger
+
+<PageTitle>Copias · CubeKeeper</PageTitle>
+
+<div class="page-head">
+    <h1>Copias del mundo</h1>
+    <div class="actions">
+        <button class="btn btn-primary" disabled="@(_busy || Backups.IsBusy)" @onclick="CreateAsync">Hacer copia ahora</button>
+    </div>
+</div>
+
+@if (_message is not null)
+{
+    <p class="alert @(_messageIsError ? "alert-error" : "alert-ok")" role="status">@_message</p>
+}
+
+<section class="card">
+    <h2>Programación</h2>
+    <dl class="facts">
+        <dt>Copias automáticas</dt>
+        <dd>
+            @if (Scheduler.BackupsEnabled)
+            {
+                <span>Cada @Opt.IntervalMinutes min@(Opt.SkipIfIdle ? ", solo si alguien ha jugado desde la anterior" : "")</span>
+                @if (Scheduler.NextBackupAt is { } next)
+                {
+                    <span class="muted"> · próxima: @(next <= Time.GetUtcNow() ? "en cuanto haya actividad" : Format.When(next, Time))</span>
+                }
+            }
+            else
+            {
+                <span>Desactivadas</span>
+            }
+        </dd>
+        <dt>Se guardan</dt>
+        <dd>@Opt.KeepHourly horarias, @Opt.KeepDaily diarias y @Opt.KeepWeekly semanales; @Opt.KeepManual manuales; @Opt.KeepSafety de seguridad</dd>
+        <dt>Mundo</dt>
+        <dd><code>@_world</code></dd>
+        <dt>Destinos</dt>
+        <dd>
+            <code>@Paths.Backups</code>
+            @if (Backups.SecondaryPath is { } sec)
+            {
+                <span> y <code>@sec</code> </span>
+                @if (Backups.SecondaryAvailable)
+                {
+                    <span class="ok">(montado)</span>
+                }
+                else
+                {
+                    <span class="hint-warn">(no existe: revisa el volumen en la app de TrueNAS)</span>
+                }
+            }
+            else
+            {
+                <span class="muted"> · sin segundo destino (<code>CUBEKEEPER_BACKUP_SECONDARY</code>)</span>
+            }
+        </dd>
+    </dl>
+    <p class="muted small">
+        Con el servidor en marcha la copia es consistente (<code>save hold</code> → <code>save query</code> → copiar → <code>save resume</code>):
+        no hace falta pararlo. Los archivos .mcworld se pueden abrir directamente en Minecraft.
+    </p>
+</section>
+
+<section class="card">
+    <h2>Copias <span class="count">@_entries.Count</span></h2>
+    @if (_entries.Count == 0)
+    {
+        <p class="muted">Todavía no hay copias.</p>
+    }
+    else
+    {
+        <table class="table">
+            <thead><tr><th>Fecha</th><th>Tipo</th><th>Tamaño</th><th>Dónde</th><th></th></tr></thead>
+            <tbody>
+                @foreach (var e in _entries)
+                {
+                    var b = e.File;
+                    <tr>
+                        <td>@Format.When(b.CreatedAt, Time)</td>
+                        <td>@KindText(b.Kind)@if (b.World != _world) {<span class="muted"> · @b.World</span>}</td>
+                        <td>@Size(b.Size)</td>
+                        <td class="small">@(e.InSecondary ? "principal + 2.º destino" : "principal")</td>
+                        <td class="row-actions">
+                            @if (_confirm == b.FileName && _confirmAction == "restore")
+                            {
+                                <span class="hint-warn small">Se copiará antes el mundo actual@(Server.Snapshot.Status.IsProcessAlive() ? " y se reiniciará el servidor" : ""). </span>
+                                <button class="btn btn-primary" disabled="@_busy" @onclick="() => RestoreAsync(b.FileName)">Restaurar</button>
+                                <button class="btn btn-ghost" @onclick="Cancel">Cancelar</button>
+                            }
+                            else if (_confirm == b.FileName && _confirmAction == "delete")
+                            {
+                                <button class="btn btn-primary" disabled="@_busy" @onclick="() => Delete(b.FileName)">Borrar</button>
+                                <button class="btn btn-ghost" @onclick="Cancel">Cancelar</button>
+                            }
+                            else
+                            {
+                                <a class="btn btn-ghost" href="@($"/copias/descargar/{Uri.EscapeDataString(b.FileName)}")" download>Descargar</a>
+                                <button class="btn btn-ghost" disabled="@_busy" @onclick='() => Ask(b.FileName, "restore")'>Restaurar…</button>
+                                <button class="btn btn-ghost" disabled="@_busy" @onclick='() => Ask(b.FileName, "delete")'>Borrar…</button>
+                            }
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    }
+</section>
+
+@code {
+    private IReadOnlyList<BackupEntry> _entries = [];
+    private string _world = BackupService.DefaultLevelName;
+    private string? _message;
+    private bool _messageIsError;
+    private bool _busy;
+    private string? _confirm;
+    private string? _confirmAction;
+
+    private BackupOptions Opt => Options.Value.Backups;
+
+    protected override async Task OnInitializedAsync()
+    {
+        Backups.Changed += OnChanged;
+        await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        _world = await Backups.GetWorldNameAsync();
+        _entries = Backups.List();
+    }
+
+    private void OnChanged() => _ = InvokeAsync(async () =>
+    {
+        await LoadAsync();
+        StateHasChanged();
+    });
+
+    private void Ask(string file, string action)
+    {
+        _confirm = file;
+        _confirmAction = action;
+    }
+
+    private void Cancel()
+    {
+        _confirm = null;
+        _confirmAction = null;
+    }
+
+    private Task CreateAsync() => RunAsync(async () =>
+    {
+        var b = await Backups.CreateAsync(BackupKind.Manual);
+        _message = $"Copia creada ({Size(b.Size)}).";
+    });
+
+    private Task RestoreAsync(string file) => RunAsync(async () =>
+    {
+        await Backups.RestoreAsync(file);
+        _message = "Mundo restaurado.";
+    });
+
+    private Task Delete(string file) => RunAsync(() =>
+    {
+        Backups.Delete(file);
+        _message = "Copia borrada.";
+        return Task.CompletedTask;
+    });
+
+    private async Task RunAsync(Func<Task> action)
+    {
+        _busy = true;
+        _message = null;
+        try
+        {
+            await action();
+            _messageIsError = false;
+        }
+        catch (Exception ex) when (ex is InvalidOperationException or IOException or TimeoutException or InvalidDataException or UnauthorizedAccessException or ArgumentException)
+        {
+            Logger.LogWarning(ex, "Acción sobre copias fallida");
+            _message = ex.Message;
+            _messageIsError = true;
+        }
+        finally
+        {
+            _busy = false;
+            Cancel();
+            await LoadAsync();
+        }
+    }
+
+    private static string KindText(BackupKind k) => k switch
+    {
+        BackupKind.Scheduled => "Programada",
+        BackupKind.Manual => "Manual",
+        BackupKind.PreUpdate => "Antes de actualizar",
+        BackupKind.PreRestore => "Antes de restaurar",
+        _ => k.ToString(),
+    };
+
+    private static string Size(long bytes) => Format.Size(bytes);
+
+    public void Dispose() => Backups.Changed -= OnChanged;
+}

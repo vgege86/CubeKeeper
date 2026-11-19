@@ -126,6 +126,12 @@ app.MapPost("/logout", async (SignInManager<PanelUser> signIn) =>
     return Results.LocalRedirect("/login");
 });
 
+// Descarga de copias (requiere sesión, por la política por defecto).
+app.MapGet("/copias/descargar/{file}", (string file, CubeKeeper.Infrastructure.Backups.BackupService backups) =>
+    backups.ResolveExisting(file) is { } path
+        ? Results.File(path, "application/octet-stream", file, enableRangeProcessing: true)
+        : Results.NotFound());
+
 app.MapStaticAssets().AllowAnonymous();
 app.MapRazorComponents<App>().AddInteractiveServerRenderMode();
 

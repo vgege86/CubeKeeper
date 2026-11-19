@@ -16,6 +16,10 @@ public sealed class CubeKeeperOptions
 
     public AdminOptions Admin { get; set; } = new();
 
+    public BackupOptions Backups { get; set; } = new();
+
+    public UpdateOptions Updates { get; set; } = new();
+
     public NetworkOptions Network { get; set; } = new();
 }
 
@@ -86,4 +90,48 @@ public sealed class NetworkOptions
 
     /// <summary>Proxies inversos de confianza (CIDR) cuya cabecera X-Forwarded-For se acepta.</summary>
     public string? TrustedProxies { get; set; }
+}
+
+public sealed class BackupOptions
+{
+    /// <summary>Cada cuántos minutos se hace una copia programada. 0 = desactivadas.</summary>
+    public int IntervalMinutes { get; set; } = 60;
+
+    /// <summary>No hacer la copia programada si nadie ha jugado desde la anterior.</summary>
+    public bool SkipIfIdle { get; set; } = true;
+
+    public int KeepHourly { get; set; } = 24;
+
+    public int KeepDaily { get; set; } = 14;
+
+    public int KeepWeekly { get; set; } = 8;
+
+    public int KeepManual { get; set; } = 20;
+
+    /// <summary>Copias automáticas antes de actualizar o restaurar.</summary>
+    public int KeepSafety { get; set; } = 5;
+
+    /// <summary>Segundo destino (por ejemplo /backups, montado desde el pool DATOS). Vacío = solo /data/backups.</summary>
+    public string? SecondaryPath { get; set; }
+
+    /// <summary>Cuánto esperar a que BDS deje los archivos listos (save query).</summary>
+    public int SaveTimeoutSeconds { get; set; } = 60;
+}
+
+public sealed class UpdateOptions
+{
+    /// <summary>Comprobar cada día si hay versión nueva y actualizar. No tiene efecto con una versión fijada.</summary>
+    public bool AutoUpdate { get; set; } = true;
+
+    /// <summary>Hora local de la comprobación diaria.</summary>
+    public string Time { get; set; } = "05:00";
+
+    /// <summary>Minutos de antelación de los avisos por el chat, por ejemplo "5,1".</summary>
+    public string WarningMinutes { get; set; } = "5,1";
+
+    /// <summary>Si hay alguien jugando a la hora programada, dejarlo para el día siguiente.</summary>
+    public bool SkipIfPlayersOnline { get; set; }
+
+    /// <summary>Tiempo máximo para que la versión nueva llegue a "En marcha"; si no, se vuelve a la anterior.</summary>
+    public int HealthTimeoutSeconds { get; set; } = 180;
 }

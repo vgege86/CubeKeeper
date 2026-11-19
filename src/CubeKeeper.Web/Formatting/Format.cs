@@ -15,6 +15,13 @@ public static class Format
         return hours > 0 ? $"{hours} h {t.Minutes:00} min" : $"{t.Minutes} min";
     }
 
+    public static string Size(long bytes) => bytes switch
+    {
+        < 1024 * 1024 => $"{Math.Max(1, bytes / 1024)} KB",
+        < 1024L * 1024 * 1024 => $"{bytes / 1024.0 / 1024:0.0} MB",
+        _ => $"{bytes / 1024.0 / 1024 / 1024:0.00} GB",
+    };
+
     public static string When(DateTimeOffset at, TimeProvider time)
     {
         var local = TimeZoneInfo.ConvertTime(at, time.LocalTimeZone);

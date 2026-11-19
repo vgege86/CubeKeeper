@@ -135,6 +135,39 @@ del tipo `error while loading shared libraries: libXXX.so`, dime qué librería 
 
 Al actualizar, la base de datos se migra sola (se añaden las tablas de jugadores); los usuarios del panel se conservan.
 
+## 7c. Fase 1C: copias y actualizaciones
+
+### Preparar el segundo destino (pool DATOS)
+
+1. **Datasets → `DATOS` → Add Dataset** `backups` (si no existe) y dentro `cubekeeper`, preset *Apps*.
+2. Propietario 568:
+
+   ```bash
+   sudo chown -R 568:568 /mnt/DATOS/backups/cubekeeper
+   ```
+
+3. Edita la app y añade (ya viene en `deploy/docker-compose.yml`):
+   - el volumen `- /mnt/DATOS/backups/cubekeeper:/backups`
+   - la variable `CUBEKEEPER_BACKUP_SECONDARY: /backups`
+
+   Crea el dataset **antes** de actualizar la app. Si la ruta no existe, Docker la crea como root y CubeKeeper no podrá
+   escribir en ella (las copias se quedan solo en `/data/backups` y el error sale en los registros). Si no quieres segundo
+   destino, quita esas dos líneas.
+
+### Pruebas
+
+| # | Prueba | Resultado esperado |
+|---|---|---|
+| 1 | **Copias** → «Destinos» | `/data/backups` y `/backups (montado)` |
+| 2 | Entrar al juego, **Hacer copia ahora** | «Copia creada»; en la consola `save hold`, `save query`… y `Changes to the level are resumed`. Sigues jugando sin cortes |
+| 3 | Mirar `/mnt/vms/cubekeeper/backups` y `/mnt/DATOS/backups/cubekeeper` | El mismo `.mcworld` en los dos |
+| 4 | **Descargar** una copia y abrirla con doble clic en el Ally | Minecraft la importa como mundo |
+| 5 | Romper algo en el juego, **Restaurar…** la copia anterior | El servidor se reinicia, el mundo vuelve a como estaba y aparece una copia «Antes de restaurar» |
+| 6 | Jugar más de una hora | Aparece una copia «Programada» cada hora; si nadie juega, no se hacen |
+| 7 | **Panel** → Versión de BDS | «Automática: No (versión fijada)» |
+| 8 | (Opcional) Cambiar `CUBEKEEPER_BDS_VERSION` a otra versión, reiniciar la app y pulsar **Instalar** | Copia «Antes de actualizar», instala y arranca; aparece «Volver a la versión anterior» |
+| 9 | (Opcional) **Volver a la versión anterior…** | Copia previa e instala la anterior sin volver a descargarla |
+
 ## 8. Si no puedes entrar
 
 - La pantalla de login dice por qué no hay usuario, por ejemplo si la contraseña es demasiado corta. Corrígelo en
