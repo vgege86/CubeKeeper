@@ -31,7 +31,20 @@ public class ServerSupervisorTests
         await f.WaitForStatusAsync(ServerStatus.Running);
         await f.Supervisor.SendCommandAsync("join Alucard#9583 2535400000000001");
         await f.Supervisor.SendCommandAsync("list");
-        await f.WaitForLineAsync(l => l.Contains("There are 1/10 players online"));
+        // La línea llega a la consola un instante antes de que se emita el evento: esperar al evento.
+        var deadline = DateTime.UtcNow.AddSeconds(10);
+        while (true)
+        {
+            lock (events)
+            {
+                if (events.Any(e => e is PlayerCountReported))
+                {
+                    break;
+                }
+            }
+            Assert.True(DateTime.UtcNow < deadline, "No llegó el evento de la respuesta a list.");
+            await Task.Delay(20);
+        }
 
         lock (events)
         {
