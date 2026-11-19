@@ -29,7 +29,7 @@ socket de Docker, otro contenedor no puede llegar a esa consola.
 
 | Proyecto | Contenido |
 |---|---|
-| `CubeKeeper.Core` | Dominio y lógica pura, sin E/S: `BdsLogParser`, `ServerPropertiesDocument`, `RecommendedSettings`, `BdsVersion`, `DownloadLinksParser`, `CrashLoopGuard`, interfaces |
+| `CubeKeeper.Core` | Dominio y lógica pura, sin E/S: `BdsLogParser`, `PlayerTracker`, `ServerPropertiesDocument`, `PropertyDefinitions`, `RecommendedSettings`, `BdsVersion`, `DownloadLinksParser`, `CrashLoopGuard`, interfaces |
 | `CubeKeeper.Infrastructure` | Proceso (`ServerSupervisor`, `ServerProcess`, `ConsoleLog`), versiones e instalador, salud, EF Core, estado en `state.json` |
 | `CubeKeeper.Web` | Blazor, Identity, `/health`, mapeo de variables `CUBEKEEPER_*`, filtro de IP |
 | `tests/CubeKeeper.Core.Tests` | Parser del log, `server.properties`, versiones, ajustes recomendados |
@@ -56,6 +56,15 @@ socket de Docker, otro contenedor no puede llegar a esa consola.
 - **Actualización sin pisar el estado.** El zip se extrae en `versions/<v>/` y se copia a `server/` sin tocar `worlds/`,
   `server.properties`, `allowlist.json` ni `permissions.json`. Las claves nuevas de `server.properties` se añaden con
   sus comentarios. Se guardan 2 versiones para volver atrás.
+- **Jugadores.** `PlayerTracker` (Core) deduce quién está conectado de `Player connected/disconnected` y de la respuesta
+  de `list` (dos líneas: `There are N/M players online:` y los nombres). `PlayerTrackingService` lo alimenta con la
+  consola a través de una cola con un único consumidor y guarda en SQLite un `Player` por XUID y una `PlayerSession`
+  por conexión. Mientras haya alguien dentro, envía `list` cada 10 minutos por si se perdió una salida. Las sesiones
+  que quedan abiertas tras un apagado brusco se cierran al arrancar como «interrumpidas».
+- **Editor de `server.properties`.** `PropertyDefinitions` describe los ajustes conocidos (tipo, rango, opciones,
+  ayuda en español). Los desconocidos se editan como texto libre y muestran el comentario original del archivo. Se
+  valida todo antes de escribir (si algo falla no se guarda nada), se hace una copia `.bak` y solo cambian las líneas
+  tocadas.
 - **Salud por TCP**, no por RakNet. Con NetherNet, BDS escucha en TCP en `server-port`. Se usa `server-ip` si está
   definida. Con el servidor parado a propósito, `/health` responde sano: el contenedor funciona.
 - **Imagen** `mcr.microsoft.com/dotnet/aspnet:10.0` (Ubuntu 24.04, la base de BDS) con `curl` y `tzdata`. Sin la
@@ -86,7 +95,7 @@ socket de Docker, otro contenedor no puede llegar a esa consola.
 | Fase | Contenido |
 |---|---|
 | **1A** ✅ | Esqueleto, Dockerfile, compose, CI hacia GHCR, login, instalación de BDS (versión fijable, EULA), arrancar/parar/reiniciar, reinicio automático con límite, consola en vivo, `/health`, revisión de `server.properties`, ayuda para conectarse (PC y Xbox) |
-| **1B** | Jugadores conectados (eventos del log + resincronización con `list`), historial en SQLite, editor de `server.properties` con validación |
+| **1B** ✅ | Jugadores conectados (eventos del log + resincronización con `list`), historial en SQLite, editor de `server.properties` con validación |
 | **1C** | Copias consistentes (`save hold` → `save query` → copiar truncando a la longitud indicada → `save resume`), programadas y con retención, restauración, actualización con rollback automático, tarea programada con avisos |
 | **2** | Lista de permitidos por XUID (`allowlist reload`), solicitudes o modo inscripción, permisos, bloquear, gamerules, controles rápidos, mundos (crear, cambiar, importar y exportar `.mcworld`, incluidos los de Realms), complementos |
 | **3** | Horarios y límites por jugador, estadísticas, usuarios con roles, auditoría, notificaciones, MCP para Home365 (`ModelContextProtocol.AspNetCore`, como Home365), mapa con uNmINeD |

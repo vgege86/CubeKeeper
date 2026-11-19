@@ -9,8 +9,10 @@ lo descarga, lo arranca y lo para, lee su consola y le envía comandos. No neces
 
 ## Estado
 
-**Fase 1A (en curso):** despliegue, login, instalación de BDS (con versión fijable), arrancar, parar y reiniciar,
-reinicio automático con límite, consola en vivo, `/health` por TCP y revisión de `server.properties`.
+- **Fase 1A ✅** Despliegue, login, instalación de BDS (con versión fijable), arrancar, parar y reiniciar,
+  reinicio automático con límite, consola en vivo, `/health` por TCP y revisión de `server.properties`.
+- **Fase 1B ✅** Jugadores conectados (log + `list`), historial de sesiones y tiempo jugado en SQLite, y editor de
+  `server.properties` con validación que conserva los comentarios.
 
 Plan completo y decisiones: [docs/ARQUITECTURA.md](docs/ARQUITECTURA.md) ·
 Instalación en el NAS y pruebas: [docs/TRUENAS.md](docs/TRUENAS.md).
@@ -44,7 +46,7 @@ Otros ajustes avanzados se pueden dar con la notación de .NET, por ejemplo
 
 ```
 /data
-├── cubekeeper.db      usuarios del panel (SQLite)
+├── cubekeeper.db      usuarios del panel, jugadores y sesiones (SQLite)
 ├── state.json         estado deseado y versión instalada
 ├── keys/              claves de las cookies
 ├── server/            directorio de trabajo de bedrock_server (worlds/, server.properties…)

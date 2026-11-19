@@ -7,6 +7,7 @@
 @using CubeKeeper.Infrastructure.Settings
 @using Microsoft.Extensions.Options
 @inject IServerController Server
+@inject IPlayerPresence Presence
 @inject IVersionSource Versions
 @inject IOptions<CubeKeeperOptions> Options
 @inject DataPaths Paths
@@ -38,6 +39,8 @@
             <dd>@(_snap.InstalledVersion ?? "—")</dd>
             <dt>Versión en marcha</dt>
             <dd>@(_snap.RunningVersion ?? "—")</dd>
+            <dt>Jugadores</dt>
+            <dd><a href="/jugadores">@Presence.Online.Count conectado@(Presence.Online.Count == 1 ? "" : "s")</a>@if (Presence.Online.Count > 0) {<span class="muted"> · @string.Join(", ", Presence.Online.Select(p => p.Name))</span>}</dd>
             <dt>PID</dt>
             <dd>@(_snap.ProcessId?.ToString() ?? "—")</dd>
         </dl>
@@ -173,6 +176,7 @@
     {
         _snap = Server.Snapshot;
         Server.StateChanged += OnStateChanged;
+        Presence.Changed += OnPresenceChanged;
         await LoadPropertiesAsync();
     }
 
@@ -260,5 +264,11 @@
         _ => "idle",
     };
 
-    public void Dispose() => Server.StateChanged -= OnStateChanged;
+    private void OnPresenceChanged() => _ = InvokeAsync(StateHasChanged);
+
+    public void Dispose()
+    {
+        Server.StateChanged -= OnStateChanged;
+        Presence.Changed -= OnPresenceChanged;
+    }
 }
