@@ -1,0 +1,11 @@
+{
+  "name": "cubekeeper-e2e",
+  "private": true,
+  "description": "Pruebas del panel en el navegador (Playwright) contra el servidor falso y un Microsoft simulado.",
+  "scripts": {
+    "test": "playwright test"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.63.0"
+  }
+}

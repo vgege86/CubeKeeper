@@ -118,3 +118,21 @@ CubeKeeper__Bds__LaunchCommand=dotnet CubeKeeper__Bds__LaunchArguments="$PWD/tes
 ```
 
 Abre `http://localhost:5229` y entra con `admin` / `desarrollo123` (solo en desarrollo; los datos van a `.devdata/`).
+
+### Pruebas en el navegador
+
+`e2e/` tiene pruebas con Playwright que arrancan el panel publicado (como en el contenedor) con el servidor falso y
+un Microsoft simulado para Realms. Se ejecutan en GitHub Actions en cada cambio; la imagen solo se publica si pasan.
+En local (necesita Node 22):
+
+```bash
+dotnet publish src/CubeKeeper.Web -c Release -o artifacts/web
+```
+
+```bash
+dotnet build tests/FakeBedrockServer -c Release
+```
+
+```bash
+cd e2e && npm ci && npx playwright install chromium && npx playwright test
+```
