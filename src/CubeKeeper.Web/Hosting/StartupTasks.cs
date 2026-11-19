@@ -28,27 +28,70 @@ public static class StartupTasks
         }
 
         var users = sp.GetRequiredService<UserManager<PanelUser>>();
-        if (await users.Users.AnyAsync())
+        var status = sp.GetRequiredService<AdminSeedStatus>();
+        var admin = sp.GetRequiredService<IOptions<CubeKeeperOptions>>().Value.Admin;
+        var anyUser = await users.Users.AnyAsync();
+
+        if (anyUser && !admin.ResetPassword)
         {
             return;
         }
 
-        var admin = sp.GetRequiredService<IOptions<CubeKeeperOptions>>().Value.Admin;
         if (string.IsNullOrWhiteSpace(admin.Password))
         {
-            logger.LogError("No hay usuarios y no se ha indicado CUBEKEEPER_ADMIN_PASSWORD: no se podrá entrar al panel.");
+            status.Problem = anyUser
+                ? "CUBEKEEPER_ADMIN_RESET está activado pero falta CUBEKEEPER_ADMIN_PASSWORD."
+                : "No hay usuarios y no se ha indicado CUBEKEEPER_ADMIN_PASSWORD.";
+            logger.LogError("{Problem}", status.Problem);
             return;
         }
 
-        var user = new PanelUser { UserName = admin.UserName };
-        var result = await users.CreateAsync(user, admin.Password);
-        if (!result.Succeeded)
+        if (admin.Password.Length < AdminSeedStatus.MinPasswordLength)
         {
-            logger.LogError("No se pudo crear el administrador inicial: {Errors}",
-                string.Join("; ", result.Errors.Select(e => e.Description)));
+            status.Problem =
+                $"La contraseña de CUBEKEEPER_ADMIN_PASSWORD tiene {admin.Password.Length} caracteres; " +
+                $"hacen falta al menos {AdminSeedStatus.MinPasswordLength}.";
+            logger.LogError("{Problem}", status.Problem);
             return;
         }
-        await users.AddToRoleAsync(user, PanelRoles.Admin);
-        logger.LogInformation("Administrador inicial '{User}' creado. Ya puedes quitar CUBEKEEPER_ADMIN_PASSWORD.", admin.UserName);
+
+        var user = await users.FindByNameAsync(admin.UserName);
+        IdentityResult result;
+        if (user is null)
+        {
+            user = new PanelUser { UserName = admin.UserName };
+            result = await users.CreateAsync(user, admin.Password);
+            if (result.Succeeded)
+            {
+                await users.AddToRoleAsync(user, PanelRoles.Admin);
+            }
+        }
+        else
+        {
+            var token = await users.GeneratePasswordResetTokenAsync(user);
+            result = await users.ResetPasswordAsync(user, token, admin.Password);
+            if (result.Succeeded)
+            {
+                await users.SetLockoutEndDateAsync(user, null);
+                await users.ResetAccessFailedCountAsync(user);
+                if (!await users.IsInRoleAsync(user, PanelRoles.Admin))
+                {
+                    await users.AddToRoleAsync(user, PanelRoles.Admin);
+                }
+                status.WasReset = true;
+            }
+        }
+
+        if (!result.Succeeded)
+        {
+            status.Problem = "No se pudo preparar el administrador: " + string.Join("; ", result.Errors.Select(e => e.Description));
+            logger.LogError("{Problem}", status.Problem);
+            return;
+        }
+
+        logger.LogInformation(status.WasReset
+                ? "Contraseña de '{User}' restablecida. Quita CUBEKEEPER_ADMIN_RESET y CUBEKEEPER_ADMIN_PASSWORD."
+                : "Administrador inicial '{User}' creado. Ya puedes quitar CUBEKEEPER_ADMIN_PASSWORD.",
+            admin.UserName);
     }
 }

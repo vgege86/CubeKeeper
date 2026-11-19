@@ -21,6 +21,7 @@ if (EnvironmentMapping.PanelPort() is int port)
 builder.Services.Configure<HostOptions>(o => o.ShutdownTimeout = TimeSpan.FromSeconds(60));
 
 builder.Services.AddCubeKeeperInfrastructure(builder.Configuration);
+builder.Services.AddSingleton<AdminSeedStatus>();
 
 var dataPath = builder.Configuration["CubeKeeper:DataPath"] ?? "/data";
 builder.Services.AddDataProtection()
@@ -31,9 +32,13 @@ builder.Services.AddDataProtection()
 builder.Services.AddAuthentication(IdentityConstants.ApplicationScheme).AddIdentityCookies();
 builder.Services.AddIdentityCore<PanelUser>(o =>
     {
-        o.Password.RequiredLength = 10;
+        // Solo cuenta la longitud: una frase larga es mejor que reglas de "una mayúscula y un número".
+        o.Password.RequiredLength = AdminSeedStatus.MinPasswordLength;
+        o.Password.RequiredUniqueChars = 1;
         o.Password.RequireNonAlphanumeric = false;
         o.Password.RequireUppercase = false;
+        o.Password.RequireLowercase = false;
+        o.Password.RequireDigit = false;
         o.Lockout.MaxFailedAccessAttempts = 5;
         o.Lockout.DefaultLockoutTimeSpan = TimeSpan.FromMinutes(15);
         o.User.RequireUniqueEmail = false;

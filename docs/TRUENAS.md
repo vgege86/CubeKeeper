@@ -61,6 +61,7 @@ Para un mundo existente se haría igual con `worlds/`, `allowlist.json` y `permi
 | Variable | Valor | Para qué |
 |---|---|---|
 | `CUBEKEEPER_ADMIN_PASSWORD` | una contraseña de **10 caracteres o más** | Crea el usuario `admin` en el primer arranque. Después, bórrala de la app. |
+| `CUBEKEEPER_ADMIN_RESET` | (no ponerla) | Solo para recuperar el acceso: con `true`, pone esa contraseña al `admin` y lo desbloquea. Quítala después. |
 | `CUBEKEEPER_BDS_VERSION` | `1.26.65.1` | Versión de BDS fijada. Vacía = la última publicada. |
 | `CUBEKEEPER_ACCEPT_EULA` | `true` | Aceptas la [EULA de Minecraft](https://www.minecraft.net/eula). Sin esto no descarga nada. |
 | `CUBEKEEPER_PORT` | `8765` | Puerto del panel. |
@@ -68,9 +69,10 @@ Para un mundo existente se haría igual con `worlds/`, `allowlist.json` y `permi
 | `CUBEKEEPER_ALLOWED_NETWORKS` | `192.168.1.0/24,10.6.0.0/24` | Redes desde las que se puede abrir el panel. |
 | `CUBEKEEPER_TRUSTED_PROXIES` | `172.16.0.0/12,192.168.1.21` | Desde dónde llega NPM (bridge de Docker o el propio NAS). |
 
-La imagen `ghcr.io/vgege86/cubekeeper` la publica GitHub Actions al hacer merge a `main` (y con cada tag `v*`).
-Hasta que la fase 1A esté en `main`, usa la etiqueta de la rama:
-`ghcr.io/vgege86/cubekeeper:claude-gallant-goldberg-0b90ot`.
+> **Ojo con el símbolo `$` en la contraseña.** En el YAML, Docker Compose lo interpreta como una variable y la
+> contraseña llega cambiada. Escríbelo doble (`$$`) o elige una contraseña sin `$`. Ponla siempre entre comillas.
+
+La imagen `ghcr.io/vgege86/cubekeeper` la publica GitHub Actions al fusionar en `main` (y con cada tag `v*`).
 
 > Si TrueNAS no puede descargar la imagen, revisa en GitHub → *Packages → cubekeeper → Package settings*
 > que su visibilidad sea **Public**.
@@ -116,7 +118,15 @@ Hasta que la fase 1A esté en `main`, usa la etiqueta de la rama:
 Si **no arranca**, mira la consola del panel o los registros de la app en TrueNAS. Si sale un error
 del tipo `error while loading shared libraries: libXXX.so`, dime qué librería falta y la añado a la imagen.
 
-## 8. Volver a itzg
+## 8. Si no puedes entrar
+
+- La pantalla de login dice por qué no hay usuario, por ejemplo si la contraseña es demasiado corta. Corrígelo en
+  **Apps → cubekeeper → Edit** y reinicia la app.
+- Si olvidas la contraseña o la cuenta queda bloqueada: añade `CUBEKEEPER_ADMIN_RESET: "true"` junto a
+  `CUBEKEEPER_ADMIN_PASSWORD` con la nueva, reinicia, entra y quita las dos variables.
+- En los registros de la app aparece `Administrador inicial 'admin' creado` o el motivo del fallo.
+
+## 9. Volver a itzg
 
 1. **Apps → cubekeeper → Stop.**
 2. **Apps → minecraft → Start.**

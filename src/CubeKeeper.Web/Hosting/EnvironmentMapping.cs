@@ -18,6 +18,7 @@ public static class EnvironmentMapping
         ("CUBEKEEPER_DIRECT_DOWNLOAD_URL", "CubeKeeper:Bds:DirectDownloadUrl"),
         ("CUBEKEEPER_ADMIN_USER", "CubeKeeper:Admin:UserName"),
         ("CUBEKEEPER_ADMIN_PASSWORD", "CubeKeeper:Admin:Password"),
+        ("CUBEKEEPER_ADMIN_RESET", "CubeKeeper:Admin:ResetPassword"),
         ("CUBEKEEPER_ALLOWED_NETWORKS", "CubeKeeper:Network:AllowedNetworks"),
         ("CUBEKEEPER_TRUSTED_PROXIES", "CubeKeeper:Network:TrustedProxies"),
     ];
