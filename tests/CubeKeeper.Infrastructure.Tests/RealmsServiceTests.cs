@@ -253,7 +253,7 @@ public class RealmsServiceTests
         Assert.Equal(42, casa.Id);
         Assert.True(casa.IsOwner);
         Assert.Equal(2, casa.ActiveSlot);
-        Assert.Equal([(1, "Supervivencia"), (2, "Mundo 2")], casa.Slots);
+        Assert.Equal([(1, "Supervivencia"), (2, "Mundo 2"), (3, "Mundo 3")], casa.Slots);
         Assert.False(list[1].IsOwner);
         Assert.True(list[1].Expired);
         // Sin nombre de dueño ni ranuras (como lo manda Bedrock): se reconoce por el XUID y se ofrecen las tres.

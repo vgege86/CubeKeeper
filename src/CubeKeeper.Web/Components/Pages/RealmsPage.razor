@@ -105,7 +105,7 @@
                             </td>
                             <td>@StateText(r)</td>
                             <td>
-                                @if (r.Slots.Count > 1)
+                                @if (r.Slots.Count > 0)
                                 {
                                     <select value="@SlotOf(r)" @onchange="e => _slots[r.Id] = int.Parse((string)e.Value!)" aria-label="Ranura de @r.Name">
                                         @foreach (var (slot, name) in r.Slots)

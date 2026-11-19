@@ -49,11 +49,11 @@ public sealed class RealmsClient(HttpClient http, RealmsOptions options, Func<st
                 }
             }
             var activeSlot = s["activeSlot"]?.GetValue<int>() ?? 1;
-            if (slots.Count == 0)
-            {
-                // Bedrock no siempre manda las ranuras; un Realm tiene tres.
-                slots.AddRange(Enumerable.Range(1, Math.Max(3, activeSlot)).Select(i => (i, $"Mundo {i}")));
-            }
+            // Un Realm tiene tres ranuras y se pueden descargar todas, estén activas o no. Bedrock no siempre las
+            // manda: se ofrecen siempre las tres, con el nombre que traigan si lo traen.
+            var count = Math.Max(3, Math.Max(activeSlot, slots.Count == 0 ? 0 : slots.Max(x => x.Item1)));
+            var named = slots.ToDictionary(x => x.Item1, x => x.Item2);
+            slots = [.. Enumerable.Range(1, count).Select(i => (i, named.TryGetValue(i, out var n) ? n : $"Mundo {i}"))];
             var ownerUuid = s["ownerUUID"]?.GetValue<string>();
             var owner = s["owner"]?.GetValue<string>();
             list.Add(new RealmInfo(
@@ -136,7 +136,7 @@ public sealed class RealmsClient(HttpClient http, RealmsOptions options, Func<st
                     new RealmsAuthException("Realms ha denegado la descarga: solo el dueño del Realm puede descargar sus mundos."),
                 HttpStatusCode.Forbidden or HttpStatusCode.UpgradeRequired =>
                     new RealmsAuthException($"Realms ha rechazado la petición ({(int)response.StatusCode}). Puede que exija una versión del juego más reciente que la enviada ({clientVersion()}): ajusta CUBEKEEPER_REALMS_CLIENT_VERSION."),
-                HttpStatusCode.NotFound => new RealmsAuthException("Realms no encuentra ese Realm o esa ranura."),
+                HttpStatusCode.NotFound => new RealmsAuthException("Realms no encuentra ese Realm o esa ranura (puede que esa ranura no tenga ningún mundo)."),
                 _ => new RealmsAuthException($"Realms respondió {(int)response.StatusCode} {response.ReasonPhrase}."),
             };
         }
