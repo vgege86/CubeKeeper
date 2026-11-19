@@ -1,0 +1,264 @@
+@page "/"
+@rendermode InteractiveServer
+@implements IDisposable
+@using CubeKeeper.Core.Properties
+@using CubeKeeper.Core.Versions
+@using CubeKeeper.Infrastructure.Configuration
+@using CubeKeeper.Infrastructure.Settings
+@using Microsoft.Extensions.Options
+@inject IServerController Server
+@inject IVersionSource Versions
+@inject IOptions<CubeKeeperOptions> Options
+@inject DataPaths Paths
+@inject ConfigurationAdvisor Advisor
+@inject NavigationManager Navigation
+@inject ILogger<Home> Logger
+
+<PageTitle>Panel · CubeKeeper</PageTitle>
+
+<h1>Servidor</h1>
+
+@if (_message is not null)
+{
+    <p class="alert @(_messageIsError ? "alert-error" : "alert-ok")" role="status">@_message</p>
+}
+
+<div class="grid">
+    <section class="card">
+        <h2>Estado</h2>
+        <div class="status-row">
+            <span class="badge badge-@BadgeClass(_snap.Status)">@_snap.Status.ToSpanish()</span>
+            @if (_snap.StartedAt is DateTimeOffset since && _snap.Status == ServerStatus.Running)
+            {
+                <span class="muted">desde @since.ToLocalTime().ToString("dd/MM HH:mm")</span>
+            }
+        </div>
+        <dl class="facts">
+            <dt>Versión instalada</dt>
+            <dd>@(_snap.InstalledVersion ?? "—")</dd>
+            <dt>Versión en marcha</dt>
+            <dd>@(_snap.RunningVersion ?? "—")</dd>
+            <dt>PID</dt>
+            <dd>@(_snap.ProcessId?.ToString() ?? "—")</dd>
+        </dl>
+        @if (!string.IsNullOrEmpty(_snap.LastError) && _snap.Status is ServerStatus.Crashed or ServerStatus.Failed)
+        {
+            <p class="alert alert-error">@_snap.LastError</p>
+        }
+        <div class="actions">
+            <button class="btn btn-primary" disabled="@(_busy || !CanStart)" @onclick="StartAsync">Arrancar</button>
+            <button class="btn" disabled="@(_busy || !IsAlive)" @onclick="StopAsync">Parar</button>
+            <button class="btn" disabled="@(_busy || !IsAlive)" @onclick="RestartAsync">Reiniciar</button>
+        </div>
+    </section>
+
+    <section class="card">
+        <h2>Versión de BDS</h2>
+        @if (IsPinned)
+        {
+            <p class="muted">Versión fijada: <strong>@Options.Value.Bds.PinnedVersion</strong> (sin actualizaciones automáticas)</p>
+        }
+        else
+        {
+            <p class="muted">Canal: @(Options.Value.Bds.Channel == ReleaseChannel.Preview ? "preview" : "estable")</p>
+        }
+        @if (!Options.Value.Bds.AcceptEula)
+        {
+            <p class="alert alert-warn">
+                Para descargar el servidor hay que aceptar la
+                <a href="https://www.minecraft.net/eula" target="_blank" rel="noopener">EULA</a> y la
+                <a href="https://go.microsoft.com/fwlink/?LinkId=521839" target="_blank" rel="noopener">política de privacidad</a>:
+                pon <code>CUBEKEEPER_ACCEPT_EULA=true</code> en la app.
+            </p>
+        }
+        @if (_latest is not null)
+        {
+            <p>@(IsPinned ? "A instalar" : "Última publicada"): <strong>@_latest.Version</strong> <span class="muted">(@_latest.Source)</span></p>
+            @if (_snap.InstalledVersion is null)
+            {
+                <p>No hay ningún servidor instalado.</p>
+            }
+            else if (IsNewer)
+            {
+                <p>@(IsPinned ? "La versión instalada no es la fijada." : "Hay una versión nueva.")
+                   Si el servidor está en marcha se parará, se instalará y se volverá a arrancar.</p>
+            }
+            else
+            {
+                <p class="ok">Está al día.</p>
+            }
+        }
+        <div class="actions">
+            <button class="btn" disabled="@_busy" @onclick="CheckAsync">Comprobar</button>
+            @if (_latest is not null && (_snap.InstalledVersion is null || IsNewer))
+            {
+                <button class="btn btn-primary" disabled="@(_busy || !Options.Value.Bds.AcceptEula)" @onclick="InstallAsync">
+                    @(_snap.InstalledVersion is null || IsPinned ? $"Instalar {_latest.Version}" : $"Actualizar a {_latest.Version}")
+                </button>
+            }
+        </div>
+        @if (_progress is not null)
+        {
+            <p class="muted small">@_progress</p>
+        }
+    </section>
+
+    <section class="card">
+        <h2>Cómo conectarse</h2>
+        <p class="connect">Dirección <code>@Host</code> · puerto <code>@_gamePort</code></p>
+        <p class="muted small">
+            En PC (ROG Ally): Servidores → Añadir servidor, con esa dirección y ese puerto. Es la forma que funciona hoy.
+        </p>
+        <p>
+            En la Xbox, unirse desde «Partidas LAN» falla con NetherNet (error «Boat») y no se pueden añadir servidores por IP.
+            Prueba a abrir este enlace con <strong>Microsoft Edge en la Xbox</strong>: debería añadir el servidor a la pestaña «Servidores».
+        </p>
+        <p><code class="wrap">@XboxLink</code></p>
+    </section>
+
+    @if (_deviations.Count > 0)
+    {
+        <section class="card wide">
+            <h2>Configuración recomendada</h2>
+            <p>Estos ajustes de <code>server.properties</code> no coinciden con la configuración probada en el NAS:</p>
+            <table class="table">
+                <thead><tr><th>Ajuste</th><th>Ahora</th><th>Recomendado</th><th>Por qué</th></tr></thead>
+                <tbody>
+                    @foreach (var d in _deviations)
+                    {
+                        <tr>
+                            <td><code>@d.Setting.Key</code></td>
+                            <td><code>@(d.CurrentValue is null ? "(falta)" : d.CurrentValue.Length == 0 ? "(vacío)" : d.CurrentValue)</code></td>
+                            <td><code>@(d.Setting.Value.Length == 0 ? "(vacío)" : d.Setting.Value)</code></td>
+                            <td class="small">@d.Setting.Reason</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+            <div class="actions">
+                <button class="btn btn-primary" disabled="@_busy" @onclick="ApplyRecommendedAsync">Aplicar recomendados</button>
+                <span class="muted small">Se guarda una copia del archivo actual. Hay que reiniciar el servidor para que surta efecto.</span>
+            </div>
+        </section>
+    }
+</div>
+
+@code {
+    private ServerSnapshot _snap = default!;
+    private BdsRelease? _latest;
+    private bool _busy;
+    private string? _message;
+    private bool _messageIsError;
+    private string? _progress;
+    private int _gamePort = 19132;
+    private IReadOnlyList<CubeKeeper.Core.Properties.SettingDeviation> _deviations = [];
+
+    private bool IsPinned => !string.IsNullOrWhiteSpace(Options.Value.Bds.PinnedVersion);
+
+    private bool IsAlive => _snap.Status.IsProcessAlive();
+    private bool CanStart => !IsAlive && _snap.Status is not ServerStatus.NotInstalled and not ServerStatus.Installing;
+
+    private bool IsNewer =>
+        _latest is not null &&
+        (!BdsVersion.TryParse(_snap.InstalledVersion, out var installed) || installed is null ||
+         (IsPinned ? !_latest.Version.Equals(installed) : _latest.Version > installed));
+
+    private string Host => string.IsNullOrWhiteSpace(Options.Value.PublicHost)
+        ? new Uri(Navigation.BaseUri).Host
+        : Options.Value.PublicHost!;
+
+    private string XboxLink => $"minecraft://?addExternalServer=CubeKeeper|{Host}:{_gamePort}";
+
+    protected override async Task OnInitializedAsync()
+    {
+        _snap = Server.Snapshot;
+        Server.StateChanged += OnStateChanged;
+        await LoadPropertiesAsync();
+    }
+
+    private async Task LoadPropertiesAsync()
+    {
+        var props = await ServerPropertiesDocument.LoadAsync(Paths.ServerProperties);
+        _gamePort = props.GetInt("server-port") ?? 19132;
+        _deviations = await Advisor.CheckAsync();
+    }
+
+    private Task ApplyRecommendedAsync() => RunAsync(async () =>
+    {
+        var changed = await Advisor.ApplyAsync();
+        await LoadPropertiesAsync();
+        _message = changed.Count == 0
+            ? "No había nada que cambiar."
+            : $"Cambiado: {string.Join(", ", changed)}. Reinicia el servidor para aplicarlo.";
+    }, null);
+
+    private void OnStateChanged(ServerSnapshot snap)
+    {
+        _snap = snap;
+        _ = InvokeAsync(StateHasChanged);
+    }
+
+    private Task StartAsync() => RunAsync(() => Server.StartAsync(), "Servidor arrancado.");
+
+    private Task StopAsync() => RunAsync(() => Server.StopAsync(), "Servidor parado.");
+
+    private Task RestartAsync() => RunAsync(() => Server.RestartAsync(), "Servidor reiniciado.");
+
+    private Task CheckAsync() => RunAsync(async () =>
+    {
+        _latest = await Versions.GetLatestAsync(Options.Value.Bds.Channel);
+        if (_latest is null)
+        {
+            throw new InvalidOperationException("No se pudo obtener la última versión. Revisa la consola del contenedor.");
+        }
+    }, null);
+
+    private Task InstallAsync() => RunAsync(async () =>
+    {
+        var progress = new Progress<string>(m =>
+        {
+            _progress = m;
+            _ = InvokeAsync(StateHasChanged);
+        });
+        var result = await Server.InstallAsync(_latest!, progress);
+        _progress = null;
+        _message = result.WasUpdate ? $"Actualizado a {result.Version}." : $"Instalado {result.Version}.";
+        await LoadPropertiesAsync();
+    }, null);
+
+    private async Task RunAsync(Func<Task> action, string? okMessage)
+    {
+        _busy = true;
+        _message = null;
+        try
+        {
+            await action();
+            if (okMessage is not null)
+            {
+                _message = okMessage;
+            }
+            _messageIsError = false;
+        }
+        catch (Exception ex)
+        {
+            Logger.LogWarning(ex, "Acción del panel fallida");
+            _message = ex.Message;
+            _messageIsError = true;
+        }
+        finally
+        {
+            _busy = false;
+            _snap = Server.Snapshot;
+        }
+    }
+
+    private static string BadgeClass(ServerStatus s) => s switch
+    {
+        ServerStatus.Running => "ok",
+        ServerStatus.Starting or ServerStatus.Stopping or ServerStatus.Installing => "busy",
+        ServerStatus.Crashed or ServerStatus.Failed => "error",
+        _ => "idle",
+    };
+
+    public void Dispose() => Server.StateChanged -= OnStateChanged;
+}

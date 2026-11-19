@@ -1,0 +1,31 @@
+@inherits LayoutComponentBase
+
+<header class="topbar">
+    <a class="brand" href="/">
+        <span class="brand-cube" aria-hidden="true"></span>
+        CubeKeeper
+    </a>
+    <nav>
+        <NavLink href="/" Match="NavLinkMatch.All">Panel</NavLink>
+        <NavLink href="/consola">Consola</NavLink>
+    </nav>
+    <AuthorizeView>
+        <Authorized>
+            <form method="post" action="/logout" class="logout">
+                <AntiforgeryToken />
+                <span class="user">@context.User.Identity?.Name</span>
+                <button type="submit" class="btn btn-ghost">Salir</button>
+            </form>
+        </Authorized>
+    </AuthorizeView>
+</header>
+
+<main class="content">
+    @Body
+</main>
+
+<div id="blazor-error-ui" data-nosnippet>
+    Se ha producido un error inesperado.
+    <a href="." class="reload">Recargar</a>
+    <span class="dismiss">🗙</span>
+</div>

@@ -1,0 +1,12 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/CubeKeeper.Core/CubeKeeper.Core.csproj" />
+    <Project Path="src/CubeKeeper.Infrastructure/CubeKeeper.Infrastructure.csproj" />
+    <Project Path="src/CubeKeeper.Web/CubeKeeper.Web.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/CubeKeeper.Core.Tests/CubeKeeper.Core.Tests.csproj" />
+    <Project Path="tests/CubeKeeper.Infrastructure.Tests/CubeKeeper.Infrastructure.Tests.csproj" />
+    <Project Path="tests/FakeBedrockServer/FakeBedrockServer.csproj" />
+  </Folder>
+</Solution>
