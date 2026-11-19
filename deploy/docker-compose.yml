@@ -1,0 +1,68 @@
+# CubeKeeper: compose de referencia para TrueNAS SCALE 25.10 (Apps → Discover Apps → ⋮ → Install via YAML).
+# Antes de instalar: parar la app de itzg (comparten puertos al usar Host Network).
+services:
+  cubekeeper:
+    image: ghcr.io/vgege86/cubekeeper:latest
+    pull_policy: always
+    restart: unless-stopped
+
+    # Host Network: necesaria para el descubrimiento LAN (UDP 7551) y NetherNet (TCP 19132 + UDP 19140).
+    network_mode: host
+
+    # Seguridad: sin privilegios, sin capacidades, sistema de archivos de solo lectura salvo /data y /tmp.
+    user: "568:568"
+    read_only: true
+    tmpfs:
+      - /tmp
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    init: true
+
+    # Tiempo para que BDS guarde el mundo con "stop" antes de que Docker mate el proceso.
+    stop_grace_period: 90s
+
+    environment:
+      TZ: Europe/Madrid
+      CUBEKEEPER_PORT: "8765"
+      CUBEKEEPER_DATA: /data
+      CUBEKEEPER_CHANNEL: Stable            # Stable o Preview
+      # Versión de BDS fijada: se instala exactamente esta y no se actualiza sola.
+      # Para pasar a otra, cámbiala aquí y pulsa «Instalar» en el panel.
+      CUBEKEEPER_BDS_VERSION: 1.26.65.1
+      CUBEKEEPER_ACCEPT_EULA: "true"        # https://www.minecraft.net/eula
+      CUBEKEEPER_AUTOSTART: "true"
+      CUBEKEEPER_PUBLIC_HOST: 192.168.1.21  # para el enlace de la Xbox
+      CUBEKEEPER_ADMIN_USER: admin
+      # Solo hace falta en el primer arranque (crea el usuario). Después, bórrala.
+      CUBEKEEPER_ADMIN_PASSWORD: "cambia-esta-contraseña"
+      # Panel accesible solo desde casa y la VPN (además de la Access List de NPM).
+      CUBEKEEPER_ALLOWED_NETWORKS: 192.168.1.0/24,10.6.0.0/24
+      # De quién aceptar X-Forwarded-For: redes de Docker (NPM en bridge) y el propio NAS (NPM en host).
+      CUBEKEEPER_TRUSTED_PROXIES: 172.16.0.0/12,192.168.1.21
+
+    volumes:
+      # Dataset propio (no el de itzg, /mnt/vms/minecraft): así el antiguo queda intacto para volver atrás.
+      - /mnt/vms/cubekeeper:/data
+      # Fase 1C: segundo destino de las copias del mundo en el pool DATOS.
+      # - /mnt/DATOS/backups/cubekeeper:/backups
+
+    deploy:
+      resources:
+        limits:
+          cpus: "4"
+          memory: 4G
+
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://127.0.0.1:$$CUBEKEEPER_PORT/health || exit 1"]
+      interval: 30s
+      timeout: 5s
+      start_period: 2m
+      retries: 3

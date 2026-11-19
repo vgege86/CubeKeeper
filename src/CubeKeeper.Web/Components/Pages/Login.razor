@@ -1,0 +1,95 @@
+@page "/login"
+@layout EmptyLayout
+@attribute [AllowAnonymous]
+@using System.ComponentModel.DataAnnotations
+@using CubeKeeper.Infrastructure.Persistence
+@using Microsoft.AspNetCore.Identity
+@inject SignInManager<PanelUser> SignInManager
+@inject UserManager<PanelUser> UserManager
+@inject NavigationManager Navigation
+
+<PageTitle>Entrar · CubeKeeper</PageTitle>
+
+<div class="card login-card">
+    <div class="login-title">
+        <span class="brand-cube big" aria-hidden="true"></span>
+        <h1>CubeKeeper</h1>
+    </div>
+
+    @if (_noUsers)
+    {
+        <p class="alert alert-warn">
+            Todavía no hay ningún usuario. Define <code>CUBEKEEPER_ADMIN_PASSWORD</code> en la app de TrueNAS
+            y reiníciala para crear el administrador.
+        </p>
+    }
+
+    @if (_error is not null)
+    {
+        <p class="alert alert-error" role="alert">@_error</p>
+    }
+
+    <EditForm Model="Input" method="post" OnValidSubmit="LoginAsync" FormName="login">
+        <DataAnnotationsValidator />
+        <label>
+            Usuario
+            <InputText @bind-Value="Input!.UserName" autocomplete="username" autofocus />
+        </label>
+        <ValidationMessage For="() => Input!.UserName" />
+        <label>
+            Contraseña
+            <InputText type="password" @bind-Value="Input!.Password" autocomplete="current-password" />
+        </label>
+        <ValidationMessage For="() => Input!.Password" />
+        <label class="check">
+            <InputCheckbox @bind-Value="Input!.RememberMe" /> Recordarme en este equipo
+        </label>
+        <button type="submit" class="btn btn-primary wide">Entrar</button>
+    </EditForm>
+</div>
+
+@code {
+    private string? _error;
+    private bool _noUsers;
+
+    [SupplyParameterFromForm]
+    private LoginInput? Input { get; set; }
+
+    [SupplyParameterFromQuery]
+    private string? ReturnUrl { get; set; }
+
+    protected override async Task OnInitializedAsync()
+    {
+        Input ??= new LoginInput();
+        _noUsers = !UserManager.Users.Any();
+        await Task.CompletedTask;
+    }
+
+    private async Task LoginAsync()
+    {
+        var result = await SignInManager.PasswordSignInAsync(Input!.UserName, Input.Password, Input.RememberMe, lockoutOnFailure: true);
+        if (result.Succeeded)
+        {
+            var target = !string.IsNullOrEmpty(ReturnUrl) && Uri.IsWellFormedUriString(ReturnUrl, UriKind.Relative) && ReturnUrl.StartsWith('/') && !ReturnUrl.StartsWith("//")
+                ? ReturnUrl
+                : "/";
+            Navigation.NavigateTo(target, forceLoad: true);
+            return;
+        }
+
+        _error = result.IsLockedOut
+            ? "Demasiados intentos fallidos. Espera 15 minutos."
+            : "Usuario o contraseña incorrectos.";
+    }
+
+    private sealed class LoginInput
+    {
+        [Required(ErrorMessage = "Indica el usuario.")]
+        public string UserName { get; set; } = string.Empty;
+
+        [Required(ErrorMessage = "Indica la contraseña.")]
+        public string Password { get; set; } = string.Empty;
+
+        public bool RememberMe { get; set; } = true;
+    }
+}
