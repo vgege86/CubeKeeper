@@ -1,0 +1,265 @@
+@page "/acceso"
+@rendermode InteractiveServer
+@implements IDisposable
+@using CubeKeeper.Core.Access
+@using CubeKeeper.Infrastructure.Access
+@using CubeKeeper.Web.Formatting
+@inject AccessService Access
+@inject IPlayerPresence Presence
+@inject TimeProvider Time
+@inject ILogger<AccessPage> Logger
+
+<PageTitle>Acceso · CubeKeeper</PageTitle>
+
+<h1>Acceso</h1>
+
+@if (_message is not null)
+{
+    <p class="alert @(_messageIsError ? "alert-error" : "alert-ok")" role="status">@_message</p>
+}
+
+@if (_data is null)
+{
+    <p class="muted">Cargando…</p>
+}
+else
+{
+    <div class="grid">
+        <section class="card">
+            <h2>Quién puede entrar</h2>
+            <div class="choice-list" role="radiogroup" aria-label="Modo de acceso">
+                <label class="choice @(_data.Mode == AccessMode.Open ? "selected" : null)">
+                    <input type="radio" name="mode" checked="@(_data.Mode == AccessMode.Open)" disabled="@_busy" @onchange="() => SetModeAsync(AccessMode.Open)" />
+                    <span><strong>Abierto</strong><br /><span class="muted small">Cualquiera con cuenta Microsoft que llegue al servidor.</span></span>
+                </label>
+                <label class="choice @(_data.Mode == AccessMode.ApprovedOnly ? "selected" : null)">
+                    <input type="radio" name="mode" checked="@(_data.Mode == AccessMode.ApprovedOnly)" disabled="@_busy" @onchange="() => SetModeAsync(AccessMode.ApprovedOnly)" />
+                    <span><strong>Solo aprobados</strong><br /><span class="muted small">Solo los de la lista. Al activarlo se expulsa a quien esté dentro sin estar aprobado.</span></span>
+                </label>
+            </div>
+            <p class="muted small">Los bloqueados no pueden entrar en ningún modo: se les expulsa nada más conectarse.</p>
+        </section>
+
+        <section class="card">
+            <h2>Modo inscripción</h2>
+            @if (_data.Mode != AccessMode.ApprovedOnly)
+            {
+                <p class="muted">Solo hace falta con «Solo aprobados». En modo abierto, quien entra aparece abajo en «Otros jugadores» y puedes aprobarlo directamente.</p>
+            }
+            else if (_data.EnrollmentUntil is { } until)
+            {
+                <p><span class="badge badge-busy">Activo</span> hasta las @TimeZoneInfo.ConvertTime(until, Time.LocalTimeZone).ToString("HH:mm") (quedan @Format.Duration(until - Time.GetUtcNow())).</p>
+                <p class="muted small">Quien entre sin estar aprobado será expulsado con el mensaje «@AccessService.RequestMessage» y aparecerá en «Solicitudes».</p>
+                <div class="actions"><button class="btn" disabled="@_busy" @onclick="StopEnrollmentAsync">Terminar ya</button></div>
+            }
+            else
+            {
+                <p>Para que un jugador nuevo pida acceso: activa la inscripción, que intente entrar y apruébalo aquí. Así se conoce su XUID sin escribirlo a mano.</p>
+                <div class="actions">
+                    <select @bind="_enrollMinutes" aria-label="Duración" class="inline-select">
+                        <option value="5">5 minutos</option>
+                        <option value="10">10 minutos</option>
+                        <option value="15">15 minutos</option>
+                        <option value="30">30 minutos</option>
+                    </select>
+                    <button class="btn btn-primary" disabled="@_busy" @onclick="StartEnrollmentAsync">Activar inscripción</button>
+                </div>
+            }
+        </section>
+    </div>
+
+    <section class="card">
+        <h2>Solicitudes <span class="count">@_data.Pending.Count</span></h2>
+        @if (_data.Pending.Count == 0)
+        {
+            <p class="muted">No hay solicitudes pendientes.</p>
+        }
+        else
+        {
+            <table class="table">
+                <thead><tr><th>Jugador</th><th>XUID</th><th>Cuándo</th><th>Permiso</th><th></th></tr></thead>
+                <tbody>
+                    @foreach (var r in _data.Pending)
+                    {
+                        <tr>
+                            <td><strong>@r.Name</strong>@if (r.Attempts > 1) {<span class="muted small"> · @r.Attempts intentos</span>}</td>
+                            <td><code>@r.Xuid</code></td>
+                            <td>@Format.When(r.RequestedAt, Time)</td>
+                            <td><PermissionSelect Value="@PendingPermission(r.Xuid)" ValueChanged="p => _pendingPermission[r.Xuid] = p" /></td>
+                            <td class="row-actions">
+                                <button class="btn btn-primary" disabled="@_busy" @onclick="() => ApproveAsync(r.Xuid, r.Name, PendingPermission(r.Xuid))">Aprobar</button>
+                                <button class="btn btn-ghost" disabled="@_busy" @onclick="() => RejectAsync(r.Id, r.Name)">Rechazar</button>
+                                <button class="btn btn-ghost" disabled="@_busy" @onclick="() => BlockAsync(r.Xuid, r.Name)">Bloquear</button>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        }
+    </section>
+
+    <section class="card">
+        <h2>Aprobados <span class="count">@_data.Approved.Count</span></h2>
+        @if (_data.Approved.Count == 0)
+        {
+            <p class="muted">Nadie en la lista de permitidos todavía.</p>
+        }
+        else
+        {
+            <table class="table">
+                <thead><tr><th>Jugador</th><th>XUID</th><th>Permiso</th><th></th></tr></thead>
+                <tbody>
+                    @foreach (var a in _data.Approved)
+                    {
+                        <tr>
+                            <td><strong>@a.Name</strong>@if (a.Online) {<span class="badge badge-ok small-badge">dentro</span>}</td>
+                            <td><code>@a.Xuid</code></td>
+                            <td><PermissionSelect Value="@(a.Permission ?? PermissionLevel.Member)" Disabled="_busy" ValueChanged="p => SetPermissionAsync(a.Xuid, a.Name, p)" /></td>
+                            <td class="row-actions">
+                                <button class="btn btn-ghost" disabled="@_busy" @onclick="() => RevokeAsync(a.Xuid, a.Name)">Quitar</button>
+                                <button class="btn btn-ghost" disabled="@_busy" @onclick="() => BlockAsync(a.Xuid, a.Name)">Bloquear</button>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        }
+        @if (_data.NameOnlyEntries.Count > 0)
+        {
+            <p class="hint-warn small">
+                allowlist.json tiene @_data.NameOnlyEntries.Count entrada(s) solo con nombre (@string.Join(", ", _data.NameOnlyEntries.Select(e => e.Name))).
+                Con gamertags con sufijo no funcionan: apruébalos por XUID cuando entren.
+            </p>
+        }
+    </section>
+
+    <section class="card">
+        <h2>Otros jugadores <span class="count">@_data.NotApproved.Count</span></h2>
+        <p class="muted small">Han entrado alguna vez (con el modo abierto) pero no están en la lista.</p>
+        @if (_data.NotApproved.Count > 0)
+        {
+            <table class="table">
+                <thead><tr><th>Jugador</th><th>XUID</th><th>Última vez</th><th></th></tr></thead>
+                <tbody>
+                    @foreach (var p in _data.NotApproved)
+                    {
+                        <tr>
+                            <td>@p.Name@if (p.Online) {<span class="badge badge-ok small-badge">dentro</span>}</td>
+                            <td><code>@p.Xuid</code></td>
+                            <td>@Format.When(p.LastSeen, Time)</td>
+                            <td class="row-actions">
+                                <button class="btn btn-ghost" disabled="@_busy" @onclick="() => ApproveAsync(p.Xuid, p.Name, PermissionLevel.Member)">Aprobar</button>
+                                <button class="btn btn-ghost" disabled="@_busy" @onclick="() => BlockAsync(p.Xuid, p.Name)">Bloquear</button>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        }
+    </section>
+
+    <section class="card">
+        <h2>Bloqueados <span class="count">@_data.Blocked.Count</span></h2>
+        @if (_data.Blocked.Count == 0)
+        {
+            <p class="muted">Nadie bloqueado.</p>
+        }
+        else
+        {
+            <table class="table">
+                <thead><tr><th>Jugador</th><th>XUID</th><th>Desde</th><th></th></tr></thead>
+                <tbody>
+                    @foreach (var p in _data.Blocked)
+                    {
+                        <tr>
+                            <td>@p.Name</td>
+                            <td><code>@p.Xuid</code></td>
+                            <td>@Format.When(p.LastSeen, Time)</td>
+                            <td class="row-actions"><button class="btn btn-ghost" disabled="@_busy" @onclick="() => UnblockAsync(p.Xuid, p.Name)">Desbloquear</button></td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        }
+    </section>
+}
+
+@code {
+    private AccessOverview? _data;
+    private readonly Dictionary<string, PermissionLevel> _pendingPermission = [];
+    private int _enrollMinutes = 10;
+    private string? _message;
+    private bool _messageIsError;
+    private bool _busy;
+    private Timer? _tick;
+
+    protected override async Task OnInitializedAsync()
+    {
+        Access.Changed += OnChanged;
+        Presence.Changed += OnChanged;
+        await LoadAsync();
+        _tick = new Timer(_ => InvokeAsync(StateHasChanged), null, TimeSpan.FromSeconds(15), TimeSpan.FromSeconds(15));
+    }
+
+    private PermissionLevel PendingPermission(string xuid) => _pendingPermission.GetValueOrDefault(xuid, PermissionLevel.Visitor);
+
+    private async Task LoadAsync() => _data = await Access.GetOverviewAsync();
+
+    private void OnChanged() => _ = InvokeAsync(async () =>
+    {
+        await LoadAsync();
+        StateHasChanged();
+    });
+
+    private Task SetModeAsync(AccessMode mode) =>
+        RunAsync(() => Access.SetModeAsync(mode), mode == AccessMode.Open ? "Modo abierto." : "Solo aprobados.");
+
+    private Task StartEnrollmentAsync() =>
+        RunAsync(() => Access.StartEnrollmentAsync(_enrollMinutes), $"Inscripción activa durante {_enrollMinutes} minutos.");
+
+    private Task StopEnrollmentAsync() => RunAsync(() => Access.StopEnrollmentAsync(), "Inscripción terminada.");
+
+    private Task ApproveAsync(string xuid, string name, PermissionLevel permission) =>
+        RunAsync(() => Access.ApproveAsync(xuid, name, permission), $"{name} aprobado como {permission.ToSpanish().ToLowerInvariant()}. Ya puede entrar.");
+
+    private Task BlockAsync(string xuid, string name) => RunAsync(() => Access.BlockAsync(xuid, name), $"{name} bloqueado.");
+
+    private Task UnblockAsync(string xuid, string name) => RunAsync(() => Access.UnblockAsync(xuid), $"{name} desbloqueado.");
+
+    private Task RevokeAsync(string xuid, string name) => RunAsync(() => Access.RevokeAsync(xuid), $"{name} quitado de la lista.");
+
+    private Task RejectAsync(long id, string name) => RunAsync(() => Access.RejectAsync(id), $"Solicitud de {name} rechazada.");
+
+    private Task SetPermissionAsync(string xuid, string name, PermissionLevel p) =>
+        RunAsync(() => Access.SetPermissionAsync(xuid, name, p), $"{name}: {p.ToSpanish().ToLowerInvariant()}.");
+
+    private async Task RunAsync(Func<Task> action, string? ok)
+    {
+        _busy = true;
+        _message = null;
+        try
+        {
+            await action();
+            _message = ok;
+            _messageIsError = false;
+        }
+        catch (Exception ex) when (ex is InvalidOperationException or ArgumentException or IOException or System.Text.Json.JsonException)
+        {
+            Logger.LogWarning(ex, "Acción de acceso fallida");
+            _message = ex.Message;
+            _messageIsError = true;
+        }
+        finally
+        {
+            _busy = false;
+            await LoadAsync();
+        }
+    }
+
+    public void Dispose()
+    {
+        Access.Changed -= OnChanged;
+        Presence.Changed -= OnChanged;
+        _tick?.Dispose();
+    }
+}

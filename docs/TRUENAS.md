@@ -168,6 +168,21 @@ Al actualizar, la base de datos se migra sola (se añaden las tablas de jugadore
 | 8 | (Opcional) Cambiar `CUBEKEEPER_BDS_VERSION` a otra versión, reiniciar la app y pulsar **Instalar** | Copia «Antes de actualizar», instala y arranca; aparece «Volver a la versión anterior» |
 | 9 | (Opcional) **Volver a la versión anterior…** | Copia previa e instala la anterior sin volver a descargarla |
 
+## 7d. Fase 2A: acceso y juego
+
+| # | Prueba | Resultado esperado |
+|---|---|---|
+| 1 | Entrar desde el Ally con el modo **Abierto** y abrir **Acceso** | Apareces en «Otros jugadores» con tu XUID |
+| 2 | **Aprobar** tu usuario y cambiar el permiso a **Operador** | En `allowlist.json` y `permissions.json` aparece tu XUID; en el juego puedes usar comandos |
+| 3 | Cambiar a **Solo aprobados** | En la consola, `allowlist on`; en server.properties, `allow-list=true`. Tú sigues dentro |
+| 4 | Que alguien no aprobado intente entrar (otra cuenta o un amigo) | El juego le dice que no está invitado. **Mira la consola**: ¿aparece alguna línea con su nombre? Cuéntamelo |
+| 5 | **Activar inscripción** 10 min y que vuelva a intentarlo | Entra un instante, le expulsa con «Solicitud enviada…» y aparece en «Solicitudes» |
+| 6 | **Aprobar** la solicitud como visitante y que vuelva a entrar | Entra y puede mirar pero no romper bloques |
+| 7 | **Bloquear** a ese jugador | Le expulsa al momento y cada vez que intenta volver |
+| 8 | **Juego** → Hora «Noche», Clima «Lluvia», Mensaje «hola» | Se ve en el juego |
+| 9 | **Juego** → «Leer del servidor» | Los interruptores muestran los valores reales. Si sale un aviso de formato, cuéntamelo |
+| 10 | Activar «Conservar el inventario» y morir | No pierdes los objetos |
+
 ## 8. Si no puedes entrar
 
 - La pantalla de login dice por qué no hay usuario, por ejemplo si la contraseña es demasiado corta. Corrígelo en

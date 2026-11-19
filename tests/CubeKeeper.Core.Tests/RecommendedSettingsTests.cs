@@ -47,7 +47,8 @@ public class RecommendedSettingsTests
         Assert.Contains("server-ip", changed);
         Assert.Contains("server-udp-ports", changed);
         var text = doc.ToString();
-        Assert.StartsWith("transport=nethernet\n# Transporte de red\nserver-ip=\nallow-list=false\n", text);
+        // allow-list ya no lo toca la configuración recomendada: lo gestiona la página Acceso.
+        Assert.StartsWith("transport=nethernet\n# Transporte de red\nserver-ip=\nallow-list=true\n", text);
         Assert.Empty(RecommendedSettings.Check(doc));
     }
 

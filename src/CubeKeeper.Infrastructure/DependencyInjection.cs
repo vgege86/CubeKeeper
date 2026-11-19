@@ -50,6 +50,9 @@ public static class DependencyInjection
         services.AddSingleton<ConsoleCommandRunner>();
         services.AddSingleton<Backups.BackupService>();
         services.AddSingleton<Updates.UpdateService>();
+        services.AddSingleton<Access.AccessService>();
+        services.AddHostedService(sp => sp.GetRequiredService<Access.AccessService>());
+        services.AddSingleton<Game.GameControlService>();
         services.AddSingleton<Scheduling.MaintenanceScheduler>();
         services.AddHostedService(sp => sp.GetRequiredService<Scheduling.MaintenanceScheduler>());
 

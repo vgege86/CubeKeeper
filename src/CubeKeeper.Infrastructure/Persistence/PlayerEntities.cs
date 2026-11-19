@@ -14,6 +14,11 @@ public sealed class Player
 
     public DateTimeOffset LastSeen { get; set; }
 
+    /// <summary>Bloqueado: se le expulsa al entrar (Bedrock no tiene comando de baneo).</summary>
+    public bool Blocked { get; set; }
+
+    public DateTimeOffset? BlockedAt { get; set; }
+
     public List<PlayerSession> Sessions { get; set; } = [];
 }
 

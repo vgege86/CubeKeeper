@@ -1,0 +1,195 @@
+@page "/juego"
+@rendermode InteractiveServer
+@implements IDisposable
+@using CubeKeeper.Core.GameRules
+@using CubeKeeper.Core.Players
+@using CubeKeeper.Infrastructure.Access
+@using CubeKeeper.Infrastructure.Game
+@inject GameControlService Game
+@inject AccessService Access
+@inject IServerController Server
+@inject IPlayerPresence Presence
+@inject ILogger<GamePage> Logger
+
+<PageTitle>Juego · CubeKeeper</PageTitle>
+
+<h1>Juego</h1>
+
+@if (!IsRunning)
+{
+    <p class="alert alert-warn">El servidor no está en marcha: arráncalo desde el Panel para usar estos controles.</p>
+}
+@if (_message is not null)
+{
+    <p class="alert @(_messageIsError ? "alert-error" : "alert-ok")" role="status">@_message</p>
+}
+
+<div class="grid">
+    <section class="card">
+        <h2>Hora</h2>
+        <div class="actions">
+            @foreach (var (key, label) in GameControlService.TimePresets)
+            {
+                <button class="btn" disabled="@(!IsRunning || _busy)" @onclick="() => SetTimeAsync(key, label)">@label</button>
+            }
+        </div>
+        <h2 class="mt">Clima</h2>
+        <div class="actions">
+            @foreach (var (key, label) in GameControlService.WeatherPresets)
+            {
+                <button class="btn" disabled="@(!IsRunning || _busy)" @onclick="() => SetWeatherAsync(key, label)">@label</button>
+            }
+        </div>
+    </section>
+
+    <section class="card">
+        <h2>Mensaje a todos</h2>
+        <form class="command-bar" @onsubmit="SayAsync" @onsubmit:preventDefault>
+            <input @bind="_say" @bind:event="oninput" maxlength="200" placeholder="Por ejemplo: ¡a cenar en 5 minutos!" disabled="@(!IsRunning)" aria-label="Mensaje" />
+            <button type="submit" class="btn btn-primary" disabled="@(!IsRunning || string.IsNullOrWhiteSpace(_say))">Enviar</button>
+        </form>
+
+        <h2 class="mt">Expulsar</h2>
+        @if (Presence.Online.Count == 0)
+        {
+            <p class="muted">No hay nadie conectado.</p>
+        }
+        else
+        {
+            <input @bind="_kickReason" maxlength="100" placeholder="Motivo (opcional)" aria-label="Motivo de la expulsión" />
+            <ul class="plain-list">
+                @foreach (var p in Presence.Online)
+                {
+                    <li>
+                        <span>@p.Name</span>
+                        <button class="btn btn-ghost" disabled="@(!IsRunning || _busy)" @onclick="() => KickAsync(p)">Expulsar</button>
+                    </li>
+                }
+            </ul>
+            <p class="muted small">Expulsar no impide volver a entrar. Para eso, «Bloquear» en Acceso.</p>
+        }
+    </section>
+</div>
+
+<section class="card">
+    <div class="card-head">
+        <h2>Reglas del juego</h2>
+        <button class="btn btn-ghost" disabled="@(!IsRunning || _busy)" @onclick="LoadRulesAsync">Leer del servidor</button>
+    </div>
+    @if (_rules.Count == 0)
+    {
+        <p class="muted small">@(IsRunning ? "Pulsa «Leer del servidor» para ver los valores actuales." : "Con el servidor parado no se pueden leer.") Los cambios se aplican al momento y se guardan en el mundo.</p>
+    }
+    <div class="rules">
+        @foreach (var r in GameRuleCatalog.All)
+        {
+            var current = _rules.GetValueOrDefault(r.Name);
+            <div class="rule">
+                <div>
+                    <div class="field-label">@r.Label</div>
+                    <div class="muted small">@r.Help</div>
+                    <code class="field-key">@r.Name</code>
+                </div>
+                <div class="rule-control">
+                    @if (r.IsNumber)
+                    {
+                        <input type="number" min="@r.Min" max="@r.Max" value="@current" disabled="@(!IsRunning || _busy)" aria-label="@r.Label"
+                               @onchange="e => SetRuleAsync(r, e.Value?.ToString() ?? string.Empty)" />
+                    }
+                    else
+                    {
+                        <div class="segmented" role="group" aria-label="@r.Label">
+                            <button class="@(current == "true" ? "on" : null)" disabled="@(!IsRunning || _busy)" @onclick='() => SetRuleAsync(r, "true")'>Sí</button>
+                            <button class="@(current == "false" ? "on" : null)" disabled="@(!IsRunning || _busy)" @onclick='() => SetRuleAsync(r, "false")'>No</button>
+                        </div>
+                    }
+                </div>
+            </div>
+        }
+    </div>
+</section>
+
+@code {
+    private Dictionary<string, string> _rules = new(StringComparer.OrdinalIgnoreCase);
+    private string _say = string.Empty;
+    private string _kickReason = string.Empty;
+    private string? _message;
+    private bool _messageIsError;
+    private bool _busy;
+
+    private bool IsRunning => Server.Snapshot.Status == ServerStatus.Running;
+
+    protected override async Task OnInitializedAsync()
+    {
+        Server.StateChanged += OnServer;
+        Presence.Changed += OnPresence;
+        if (IsRunning)
+        {
+            await LoadRulesAsync();
+        }
+    }
+
+    private void OnServer(ServerSnapshot snapshot) => _ = InvokeAsync(StateHasChanged);
+
+    private void OnPresence() => _ = InvokeAsync(StateHasChanged);
+
+    private Task LoadRulesAsync() => RunAsync(async () =>
+    {
+        var values = await Game.GetRulesAsync();
+        _rules = new Dictionary<string, string>(values, StringComparer.OrdinalIgnoreCase);
+        if (_rules.Count == 0)
+        {
+            throw new InvalidOperationException("El servidor no devolvió las reglas en el formato esperado. Puedes cambiarlas igualmente.");
+        }
+    }, null);
+
+    private Task SetRuleAsync(GameRuleDefinition rule, string value) => RunAsync(async () =>
+    {
+        await Game.SetRuleAsync(rule.Name, value);
+        _rules[rule.Name] = value;
+    }, $"{rule.Label}: {(value == "true" ? "sí" : value == "false" ? "no" : value)}.");
+
+    private async Task SayAsync()
+    {
+        await RunAsync(() => Game.SayAsync(_say), "Mensaje enviado.");
+        if (!_messageIsError)
+        {
+            _say = string.Empty;
+        }
+    }
+
+    private Task SetTimeAsync(string key, string label) => RunAsync(() => Game.SetTimeAsync(key), $"Hora: {label.ToLowerInvariant()}.");
+
+    private Task SetWeatherAsync(string key, string label) => RunAsync(() => Game.SetWeatherAsync(key), $"Clima: {label.ToLowerInvariant()}.");
+
+    private Task KickAsync(OnlinePlayer p) =>
+        RunAsync(() => Access.KickAsync(p.Name, string.IsNullOrWhiteSpace(_kickReason) ? "Expulsado por el administrador." : _kickReason), $"{p.Name} expulsado.");
+
+    private async Task RunAsync(Func<Task> action, string? ok)
+    {
+        _busy = true;
+        _message = null;
+        try
+        {
+            await action();
+            _message = ok;
+            _messageIsError = false;
+        }
+        catch (Exception ex) when (ex is InvalidOperationException or ArgumentException or IOException)
+        {
+            Logger.LogInformation(ex, "Acción de juego fallida");
+            _message = ex.Message;
+            _messageIsError = true;
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+
+    public void Dispose()
+    {
+        Server.StateChanged -= OnServer;
+        Presence.Changed -= OnPresence;
+    }
+}

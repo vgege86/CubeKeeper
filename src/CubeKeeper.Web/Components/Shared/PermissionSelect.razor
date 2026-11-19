@@ -1,0 +1,17 @@
+@using CubeKeeper.Core.Access
+
+<select class="inline-select" value="@Value" disabled="@Disabled" aria-label="Permiso"
+        @onchange="e => ValueChanged.InvokeAsync(Enum.Parse<PermissionLevel>(e.Value!.ToString()!))">
+    @foreach (var p in Enum.GetValues<PermissionLevel>())
+    {
+        <option value="@p">@p.ToSpanish()</option>
+    }
+</select>
+
+@code {
+    [Parameter] public PermissionLevel Value { get; set; }
+
+    [Parameter] public EventCallback<PermissionLevel> ValueChanged { get; set; }
+
+    [Parameter] public bool Disabled { get; set; }
+}

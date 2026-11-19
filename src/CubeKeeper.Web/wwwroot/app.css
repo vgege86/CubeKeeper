@@ -113,7 +113,7 @@ code.wrap { word-break: break-all; }
 
 label { display: block; margin-top: 0.75rem; font-size: 0.95rem; }
 label.check { display: flex; align-items: center; gap: 0.4rem; }
-input:not([type=checkbox]) {
+input:not([type=checkbox]):not([type=radio]) {
     display: block;
     width: 100%;
     margin-top: 0.25rem;
@@ -225,3 +225,22 @@ select {
 .row-actions .btn { padding: 0.25rem 0.6rem; font-size: 0.9rem; text-decoration: none; }
 a.btn { display: inline-block; }
 .facts.small { font-size: 0.85rem; margin-top: 0.75rem; }
+
+.mt { margin-top: 1.25rem; }
+.inline-select { display: inline-block; width: auto; min-width: 9rem; }
+.small-badge { font-size: 0.7rem; margin-left: 0.4rem; padding: 0 0.45rem; }
+.choice-list { display: grid; gap: 0.5rem; }
+.choice { display: flex; gap: 0.6rem; align-items: flex-start; margin: 0; padding: 0.6rem 0.75rem; border: 1px solid var(--border); border-radius: 8px; cursor: pointer; }
+.choice.selected { border-color: var(--accent); background: var(--accent-soft); }
+.choice input { margin-top: 0.3rem; }
+.plain-list { list-style: none; padding: 0; margin: 0.5rem 0; }
+.plain-list li { display: flex; justify-content: space-between; align-items: center; padding: 0.3rem 0; border-bottom: 1px solid var(--border); }
+.rules { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 0 1.5rem; }
+.rule { display: flex; justify-content: space-between; gap: 1rem; align-items: center; padding: 0.6rem 0; border-bottom: 1px solid var(--border); }
+.rule-control { flex: none; }
+.rule-control input { width: 6rem; margin: 0; }
+.segmented { display: inline-flex; border: 1px solid var(--border); border-radius: 7px; overflow: hidden; }
+.segmented button { font: inherit; padding: 0.3rem 0.8rem; border: none; background: var(--surface-2); color: var(--muted); cursor: pointer; }
+.segmented button + button { border-left: 1px solid var(--border); }
+.segmented button.on { background: var(--accent); color: #fff; }
+.segmented button:disabled { cursor: not-allowed; opacity: 0.6; }
