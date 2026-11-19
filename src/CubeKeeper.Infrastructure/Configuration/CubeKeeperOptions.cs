@@ -66,8 +66,14 @@ public sealed class AdminOptions
 {
     public string UserName { get; set; } = "admin";
 
-    /// <summary>Contraseña inicial. Solo se usa si todavía no existe ningún usuario.</summary>
+    /// <summary>Contraseña inicial. Solo se usa si todavía no existe ningún usuario (o con <see cref="ResetPassword"/>).</summary>
     public string? Password { get; set; }
+
+    /// <summary>
+    /// Si es true, al arrancar se pone <see cref="Password"/> al usuario <see cref="UserName"/> (creándolo si no existe)
+    /// y se desbloquea. Para recuperar el acceso; después hay que quitarlo.
+    /// </summary>
+    public bool ResetPassword { get; set; }
 }
 
 public sealed class NetworkOptions

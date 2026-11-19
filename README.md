@@ -27,6 +27,7 @@ Todo se configura con variables de entorno. Para los secretos se admite el sufij
 | `TZ` | `Europe/Madrid` | Zona horaria |
 | `CUBEKEEPER_ADMIN_USER` | `admin` | Usuario inicial |
 | `CUBEKEEPER_ADMIN_PASSWORD` | — | Contraseña inicial (mínimo 10 caracteres); solo se usa si no hay usuarios |
+| `CUBEKEEPER_ADMIN_RESET` | `false` | Con `true`, pone `CUBEKEEPER_ADMIN_PASSWORD` al administrador y lo desbloquea (para recuperar el acceso) |
 | `CUBEKEEPER_ACCEPT_EULA` | `false` | Aceptación de la EULA; sin ella no se descarga BDS |
 | `CUBEKEEPER_CHANNEL` | `Stable` | `Stable` o `Preview` |
 | `CUBEKEEPER_BDS_VERSION` | — | Versión fijada (p. ej. `1.26.65.1`); vacía = la última |

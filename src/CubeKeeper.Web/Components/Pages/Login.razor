@@ -7,6 +7,7 @@
 @inject SignInManager<PanelUser> SignInManager
 @inject UserManager<PanelUser> UserManager
 @inject NavigationManager Navigation
+@inject CubeKeeper.Web.Hosting.AdminSeedStatus SeedStatus
 
 <PageTitle>Entrar · CubeKeeper</PageTitle>
 
@@ -16,11 +17,28 @@
         <h1>CubeKeeper</h1>
     </div>
 
-    @if (_noUsers)
+    @if (SeedStatus.Problem is not null)
     {
         <p class="alert alert-warn">
-            Todavía no hay ningún usuario. Define <code>CUBEKEEPER_ADMIN_PASSWORD</code> en la app de TrueNAS
-            y reiníciala para crear el administrador.
+            @SeedStatus.Problem
+            @if (_noUsers)
+            {
+                <br /><span>Corrígelo en la configuración de la app en TrueNAS y reiníciala.</span>
+            }
+        </p>
+    }
+    else if (_noUsers)
+    {
+        <p class="alert alert-warn">
+            Todavía no hay ningún usuario. Define <code>CUBEKEEPER_ADMIN_PASSWORD</code> (10 caracteres o más)
+            en la app de TrueNAS y reiníciala para crear el administrador.
+        </p>
+    }
+    else if (SeedStatus.WasReset)
+    {
+        <p class="alert alert-ok">
+            Contraseña restablecida. Cuando entres, quita <code>CUBEKEEPER_ADMIN_RESET</code> y
+            <code>CUBEKEEPER_ADMIN_PASSWORD</code> de la app.
         </p>
     }
 
