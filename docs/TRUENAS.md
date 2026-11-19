@@ -183,6 +183,23 @@ Al actualizar, la base de datos se migra sola (se añaden las tablas de jugadore
 | 9 | **Juego** → «Leer del servidor» | Los interruptores muestran los valores reales. Si sale un aviso de formato, cuéntamelo |
 | 10 | Activar «Conservar el inventario» y morir | No pierdes los objetos |
 
+## 7e. Fase 2B: mundos y complementos
+
+| # | Prueba | Resultado esperado |
+|---|---|---|
+| 1 | **Mundos**: está tu mundo como «activo» con su tamaño | — |
+| 2 | **Descargar** el mundo activo con alguien jugando | Baja un `.mcworld` sin cortar la partida; aparece también como copia «Manual» |
+| 3 | **Crear un mundo nuevo** (nombre, semilla vacía, Creativo, Pacífico) | Copia del mundo anterior, reinicio y entras en un mundo nuevo en creativo |
+| 4 | **Usar este** con el mundo anterior | Vuelves al mundo de antes, tal cual |
+| 5 | **Importar** un `.mcworld` (por ejemplo, el descargado en el paso 2, con otro nombre) | Aparece en la lista; con «Usarlo ahora», el servidor arranca con él |
+| 6 | **Borrar…** un mundo que no esté activo | Desaparece y queda una copia «Antes de un cambio de mundo» en Copias |
+| 7 | **Complementos**: instalar un `.mcpack` de comportamiento (por ejemplo, uno de mcpedl) y **Reiniciar ahora** | Aparece activado y funciona en el juego |
+| 8 | Instalar un `.mcaddon` (comportamiento + recursos) | Salen los dos paquetes; para ver texturas, activa «Exigir paquetes de recursos» en Ajustes |
+| 9 | **Desactivar** y reiniciar | El complemento deja de funcionar |
+
+Los complementos con scripts pueden necesitar activar funciones experimentales («API beta») en el mundo, y eso se hace
+desde Minecraft al crear o editar el mundo, no desde CubeKeeper.
+
 ## 8. Si no puedes entrar
 
 - La pantalla de login dice por qué no hay usuario, por ejemplo si la contraseña es demasiado corta. Corrígelo en

@@ -132,6 +132,20 @@ app.MapGet("/copias/descargar/{file}", (string file, CubeKeeper.Infrastructure.B
         ? Results.File(path, "application/octet-stream", file, enableRangeProcessing: true)
         : Results.NotFound());
 
+// Descarga de un mundo como .mcworld (el activo se copia en caliente).
+app.MapGet("/mundos/descargar/{name}", async (string name, CubeKeeper.Infrastructure.Worlds.WorldService worlds, CancellationToken ct) =>
+{
+    try
+    {
+        var (stream, fileName) = await worlds.ExportAsync(name, ct);
+        return Results.File(stream, "application/octet-stream", fileName);
+    }
+    catch (Exception ex) when (ex is ArgumentException or FileNotFoundException)
+    {
+        return Results.NotFound();
+    }
+});
+
 app.MapStaticAssets().AllowAnonymous();
 app.MapRazorComponents<App>().AddInteractiveServerRenderMode();
 

@@ -1,0 +1,183 @@
+@page "/complementos"
+@rendermode InteractiveServer
+@implements IDisposable
+@using CubeKeeper.Core.Addons
+@using CubeKeeper.Infrastructure.Addons
+@using CubeKeeper.Infrastructure.Backups
+@inject AddonService Addons
+@inject BackupService Backups
+@inject IServerController Server
+@inject ILogger<AddonsPage> Logger
+
+<PageTitle>Complementos · CubeKeeper</PageTitle>
+
+<h1>Complementos</h1>
+<p class="muted">Paquetes de comportamiento y de recursos del mundo activo (<code>@_world</code>). Los cambios se aplican al <strong>reiniciar el servidor</strong>.</p>
+
+@if (_message is not null)
+{
+    <div class="alert @(_messageIsError ? "alert-error" : "alert-ok")" role="status">
+        @_message
+        @if (_needsRestart && Server.Snapshot.Status.IsProcessAlive())
+        {
+            <div class="actions"><button class="btn btn-primary" disabled="@_busy" @onclick="RestartAsync">Reiniciar ahora</button></div>
+        }
+    </div>
+}
+
+<section class="card">
+    <h2>Añadir</h2>
+    <p class="muted small">Archivos <code>.mcpack</code> o <code>.mcaddon</code> (como mucho @(AddonService.MaxUploadBytes / 1024 / 1024) MB). Se instalan en el mundo activo y quedan activados.</p>
+    <InputFile @key="_fileInputKey" OnChange="OnFile" accept=".mcpack,.mcaddon,.zip" disabled="@_busy" />
+    <div class="actions">
+        <button class="btn btn-primary" disabled="@(_busy || _file is null)" @onclick="InstallAsync">Instalar</button>
+    </div>
+</section>
+
+@foreach (var type in Enum.GetValues<PackType>())
+{
+    var list = _packs.Where(p => p.Manifest.Type == type).ToList();
+    <section class="card">
+        <h2>@(type == PackType.Behavior ? "Paquetes de comportamiento" : "Paquetes de recursos") <span class="count">@list.Count</span></h2>
+        @if (type == PackType.Resource && list.Any(p => p.Enabled))
+        {
+            <p class="muted small">Para que todos los jugadores los vean, activa «Exigir paquetes de recursos» en Ajustes.</p>
+        }
+        @if (list.Count == 0)
+        {
+            <p class="muted">Ninguno.</p>
+        }
+        else
+        {
+            <table class="table">
+                <thead><tr><th>Nombre</th><th>Versión</th><th>Estado</th><th></th></tr></thead>
+                <tbody>
+                    @foreach (var p in list)
+                    {
+                        <tr>
+                            <td>
+                                <strong>@p.Manifest.Name</strong>
+                                @if (p.Manifest.Description is not null) {<div class="muted small">@p.Manifest.Description</div>}
+                                @if (p.Manifest.UsesScripts) {<div class="hint-warn small">Usa scripts: puede necesitar activar funciones experimentales en el mundo (se hace desde Minecraft, no desde aquí).</div>}
+                            </td>
+                            <td><code>@p.Manifest.VersionText</code></td>
+                            <td>@(p.Enabled ? "Activado" : "Desactivado")</td>
+                            <td class="row-actions">
+                                <button class="btn btn-ghost" disabled="@_busy" @onclick="() => ToggleAsync(p)">@(p.Enabled ? "Desactivar" : "Activar")</button>
+                                @if (_confirmRemove == p.Manifest.Uuid)
+                                {
+                                    <button class="btn btn-primary" disabled="@_busy" @onclick="() => RemoveAsync(p)">Quitar</button>
+                                    <button class="btn btn-ghost" @onclick="() => _confirmRemove = null">Cancelar</button>
+                                }
+                                else
+                                {
+                                    <button class="btn btn-ghost" disabled="@_busy" @onclick="() => _confirmRemove = p.Manifest.Uuid">Quitar…</button>
+                                }
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        }
+    </section>
+}
+
+@code {
+    private int _fileInputKey;
+    private IReadOnlyList<InstalledPack> _packs = [];
+    private string _world = BackupService.DefaultLevelName;
+    private IBrowserFile? _file;
+    private Guid? _confirmRemove;
+    private string? _message;
+    private bool _messageIsError;
+    private bool _needsRestart;
+    private bool _busy;
+
+    protected override async Task OnInitializedAsync()
+    {
+        Addons.Changed += OnChanged;
+        await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        _world = await Backups.GetWorldNameAsync();
+        _packs = await Addons.ListAsync();
+    }
+
+    private void OnChanged() => _ = InvokeAsync(async () =>
+    {
+        await LoadAsync();
+        StateHasChanged();
+    });
+
+    private void OnFile(InputFileChangeEventArgs e) => _file = e.File;
+
+    private Task InstallAsync() => RunAsync(async () =>
+    {
+        await using var stream = _file!.OpenReadStream(AddonService.MaxUploadBytes);
+        var installed = await Addons.InstallAsync(stream, _file.Name);
+        _file = null;
+        _fileInputKey++;
+        _message = $"Instalado: {string.Join(", ", installed.Select(m => $"{m.Name} {m.VersionText}"))}. Reinicia el servidor para cargarlo.";
+    });
+
+    private Task ToggleAsync(InstalledPack p) => RunAsync(async () =>
+    {
+        await Addons.SetEnabledAsync(p.Manifest.Uuid, p.Manifest.Type, !p.Enabled);
+        _message = $"{p.Manifest.Name} {(p.Enabled ? "desactivado" : "activado")}. Reinicia el servidor para aplicarlo.";
+    });
+
+    private Task RemoveAsync(InstalledPack p) => RunAsync(async () =>
+    {
+        await Addons.RemoveAsync(p.Manifest.Uuid, p.Manifest.Type);
+        _confirmRemove = null;
+        _message = $"{p.Manifest.Name} quitado. Reinicia el servidor para aplicarlo.";
+    });
+
+    private async Task RestartAsync()
+    {
+        _busy = true;
+        try
+        {
+            await Server.RestartAsync();
+            _message = "Servidor reiniciado.";
+            _needsRestart = false;
+        }
+        catch (InvalidOperationException ex)
+        {
+            _message = ex.Message;
+            _messageIsError = true;
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+
+    private async Task RunAsync(Func<Task> action)
+    {
+        _busy = true;
+        _message = null;
+        try
+        {
+            await action();
+            _messageIsError = false;
+            _needsRestart = true;
+        }
+        catch (Exception ex) when (ex is InvalidOperationException or ArgumentException or IOException or InvalidDataException or UnauthorizedAccessException)
+        {
+            Logger.LogWarning(ex, "Acción sobre complementos fallida");
+            _message = ex.Message;
+            _messageIsError = true;
+            _needsRestart = false;
+        }
+        finally
+        {
+            _busy = false;
+            await LoadAsync();
+        }
+    }
+
+    public void Dispose() => Addons.Changed -= OnChanged;
+}

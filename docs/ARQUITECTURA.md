@@ -84,6 +84,13 @@ socket de Docker, otro contenedor no puede llegar a esa consola.
   inscripción envía `allowlist off` durante N minutos (y de nuevo si el servidor se reinicia mientras dura) y al acabar
   `allowlist on`. Los permisos van a `permissions.json`; a un jugador conectado se le aplican al momento con `op`/`deop`.
   `allow-list` sale de la configuración recomendada: lo controla el modo de acceso.
+- **Mundos y complementos (2B).** `WorldService`: cambiar de mundo y crear uno nuevo editan `level-name` (y semilla,
+  modo y dificultad) tras una copia `prechange` del mundo activo, y reinician si estaba en marcha; importar valida el
+  `.mcworld` en una carpeta temporal (`level.dat` en la raíz o en una subcarpeta, límite de tamaño, sin rutas fuera del
+  destino) y exportar reutiliza la copia en caliente para el mundo activo. `AddonService`: descomprime `.mcpack` y
+  `.mcaddon` (también anidados), lee cada `manifest.json` (`PackManifest`, con comentarios y nombres traducidos de
+  `texts/*.lang`), copia cada paquete a `behavior_packs/` o `resource_packs/` del mundo y lo activa en
+  `world_*_packs.json` (`WorldPacksDocument`). Un paquete con el mismo UUID se sustituye.
 - **Salud por TCP**, no por RakNet. Con NetherNet, BDS escucha en TCP en `server-port`. Se usa `server-ip` si está
   definida. Con el servidor parado a propósito, `/health` responde sano: el contenedor funciona.
 - **Imagen** `mcr.microsoft.com/dotnet/aspnet:10.0` (Ubuntu 24.04, la base de BDS) con `curl` y `tzdata`. Sin la
@@ -117,7 +124,7 @@ socket de Docker, otro contenedor no puede llegar a esa consola.
 | **1B** ✅ | Jugadores conectados (eventos del log + resincronización con `list`), historial en SQLite, editor de `server.properties` con validación |
 | **1C** ✅ | Copias consistentes (`save hold` → `save query` → copiar truncando a la longitud indicada → `save resume`), programadas y con retención, restauración, actualización con rollback automático, tarea programada con avisos |
 | **2A** ✅ | Lista de permitidos por XUID (`allowlist reload`), modo inscripción con solicitudes, permisos, bloquear, reglas del juego, controles rápidos |
-| **2B** | Mundos (crear, cambiar, importar y exportar `.mcworld`, incluidos los de Realms), complementos (`.mcpack`, `.mcaddon`) |
+| **2B** ✅ | Mundos (crear, cambiar, importar y exportar `.mcworld`, incluidos los de Realms), complementos (`.mcpack`, `.mcaddon`) |
 | ~~2~~ | Lista de permitidos por XUID (`allowlist reload`), solicitudes o modo inscripción, permisos, bloquear, gamerules, controles rápidos, mundos (crear, cambiar, importar y exportar `.mcworld`, incluidos los de Realms), complementos |
 | **3** | Horarios y límites por jugador, estadísticas, usuarios con roles, auditoría, notificaciones, MCP para Home365 (`ModelContextProtocol.AspNetCore`, como Home365), mapa con uNmINeD |
 

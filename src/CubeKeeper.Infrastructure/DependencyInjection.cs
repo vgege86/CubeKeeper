@@ -53,6 +53,8 @@ public static class DependencyInjection
         services.AddSingleton<Access.AccessService>();
         services.AddHostedService(sp => sp.GetRequiredService<Access.AccessService>());
         services.AddSingleton<Game.GameControlService>();
+        services.AddSingleton<Worlds.WorldService>();
+        services.AddSingleton<Addons.AddonService>();
         services.AddSingleton<Scheduling.MaintenanceScheduler>();
         services.AddHostedService(sp => sp.GetRequiredService<Scheduling.MaintenanceScheduler>());
 

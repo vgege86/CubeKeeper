@@ -13,6 +13,8 @@ public enum BackupKind
     PreUpdate,
     /// <summary>Automática antes de restaurar otra copia.</summary>
     PreRestore,
+    /// <summary>Automática antes de cambiar de mundo o borrarlo.</summary>
+    PreChange,
 }
 
 /// <summary>Una copia del mundo en disco (.mcworld).</summary>
