@@ -1,5 +1,6 @@
 @page "/acceso"
 @rendermode InteractiveServer
+@inherits AuditedPage
 @implements IDisposable
 @using CubeKeeper.Core.Access
 @using CubeKeeper.Infrastructure.Access
@@ -212,28 +213,28 @@ else
     });
 
     private Task SetModeAsync(AccessMode mode) =>
-        RunAsync(() => Access.SetModeAsync(mode), mode == AccessMode.Open ? "Modo abierto." : "Solo aprobados.");
+        RunAsync(() => Access.SetModeAsync(mode), mode == AccessMode.Open ? "Modo abierto." : "Solo aprobados.", "access.mode", mode.ToString());
 
     private Task StartEnrollmentAsync() =>
-        RunAsync(() => Access.StartEnrollmentAsync(_enrollMinutes), $"Inscripción activa durante {_enrollMinutes} minutos.");
+        RunAsync(() => Access.StartEnrollmentAsync(_enrollMinutes), $"Inscripción activa durante {_enrollMinutes} minutos.", "access.enrollment.start", $"{_enrollMinutes} min");
 
-    private Task StopEnrollmentAsync() => RunAsync(() => Access.StopEnrollmentAsync(), "Inscripción terminada.");
+    private Task StopEnrollmentAsync() => RunAsync(() => Access.StopEnrollmentAsync(), "Inscripción terminada.", "access.enrollment.stop");
 
     private Task ApproveAsync(string xuid, string name, PermissionLevel permission) =>
-        RunAsync(() => Access.ApproveAsync(xuid, name, permission), $"{name} aprobado como {permission.ToSpanish().ToLowerInvariant()}. Ya puede entrar.");
+        RunAsync(() => Access.ApproveAsync(xuid, name, permission), $"{name} aprobado como {permission.ToSpanish().ToLowerInvariant()}. Ya puede entrar.", "access.approve", name, permission.ToString());
 
-    private Task BlockAsync(string xuid, string name) => RunAsync(() => Access.BlockAsync(xuid, name), $"{name} bloqueado.");
+    private Task BlockAsync(string xuid, string name) => RunAsync(() => Access.BlockAsync(xuid, name), $"{name} bloqueado.", "access.block", name);
 
-    private Task UnblockAsync(string xuid, string name) => RunAsync(() => Access.UnblockAsync(xuid), $"{name} desbloqueado.");
+    private Task UnblockAsync(string xuid, string name) => RunAsync(() => Access.UnblockAsync(xuid), $"{name} desbloqueado.", "access.unblock", name);
 
-    private Task RevokeAsync(string xuid, string name) => RunAsync(() => Access.RevokeAsync(xuid), $"{name} quitado de la lista.");
+    private Task RevokeAsync(string xuid, string name) => RunAsync(() => Access.RevokeAsync(xuid), $"{name} quitado de la lista.", "access.revoke", name);
 
-    private Task RejectAsync(long id, string name) => RunAsync(() => Access.RejectAsync(id), $"Solicitud de {name} rechazada.");
+    private Task RejectAsync(long id, string name) => RunAsync(() => Access.RejectAsync(id), $"Solicitud de {name} rechazada.", "access.reject", name);
 
     private Task SetPermissionAsync(string xuid, string name, PermissionLevel p) =>
-        RunAsync(() => Access.SetPermissionAsync(xuid, name, p), $"{name}: {p.ToSpanish().ToLowerInvariant()}.");
+        RunAsync(() => Access.SetPermissionAsync(xuid, name, p), $"{name}: {p.ToSpanish().ToLowerInvariant()}.", "access.permission", name, p.ToString());
 
-    private async Task RunAsync(Func<Task> action, string? ok)
+    private async Task RunAsync(Func<Task> action, string? ok, string? auditAction = null, string? auditTarget = null, string? auditDetails = null)
     {
         _busy = true;
         _message = null;
@@ -242,6 +243,10 @@ else
             await action();
             _message = ok;
             _messageIsError = false;
+            if (auditAction is not null)
+            {
+                await AuditAsync(auditAction, auditTarget, auditDetails);
+            }
         }
         catch (Exception ex) when (ex is InvalidOperationException or ArgumentException or IOException or System.Text.Json.JsonException)
         {

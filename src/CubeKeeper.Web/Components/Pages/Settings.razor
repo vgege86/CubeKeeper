@@ -1,5 +1,6 @@
 @page "/ajustes"
 @rendermode InteractiveServer
+@inherits AuditedPage
 @using CubeKeeper.Core.Properties
 @using CubeKeeper.Infrastructure.Settings
 @inject PropertiesEditor Editor
@@ -210,6 +211,7 @@ else
             }
 
             await LoadAsync();
+            await AuditAsync("settings.save", null, string.Join(", ", changes.Where(c => result.Changed.Contains(c.Key)).Select(c => $"{c.Key}={c.Value}")));
             _message = $"Guardado: {string.Join(", ", result.Changed)}. Reinicia el servidor para aplicarlo.";
             _messageIsError = false;
             _needsRestart = true;
@@ -232,6 +234,7 @@ else
         try
         {
             await Server.RestartAsync();
+            await AuditAsync("server.restart");
             _message = "Servidor reiniciado con los ajustes nuevos.";
             _messageIsError = false;
             _needsRestart = false;

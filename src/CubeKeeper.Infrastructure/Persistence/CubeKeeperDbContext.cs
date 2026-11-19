@@ -24,6 +24,10 @@ public sealed class CubeKeeperDbContext(DbContextOptions<CubeKeeperDbContext> op
 
     public DbSet<AccessRequest> AccessRequests => Set<AccessRequest>();
 
+    public DbSet<PlayerRulesEntity> PlayerRules => Set<PlayerRulesEntity>();
+
+    public DbSet<AuditEntry> AuditEntries => Set<AuditEntry>();
+
     protected override void OnModelCreating(ModelBuilder builder)
     {
         base.OnModelCreating(builder);
@@ -61,6 +65,24 @@ public sealed class CubeKeeperDbContext(DbContextOptions<CubeKeeperDbContext> op
             e.Property(r => r.RequestedAt).HasConversion<DateTimeOffsetToBinaryConverter>();
             e.Property(r => r.DecidedAt).HasConversion<DateTimeOffsetToBinaryConverter>();
             e.HasIndex(r => new { r.Xuid, r.Status });
+        });
+
+        builder.Entity<PlayerRulesEntity>(e =>
+        {
+            e.ToTable("PlayerRules");
+            e.HasKey(r => r.Xuid);
+            e.Property(r => r.Xuid).HasMaxLength(32);
+            e.Property(r => r.ScheduleJson).HasMaxLength(4000);
+        });
+
+        builder.Entity<AuditEntry>(e =>
+        {
+            e.Property(a => a.At).HasConversion<DateTimeOffsetToBinaryConverter>();
+            e.Property(a => a.Actor).HasMaxLength(64);
+            e.Property(a => a.Action).HasMaxLength(64);
+            e.Property(a => a.Target).HasMaxLength(200);
+            e.Property(a => a.Details).HasMaxLength(2000);
+            e.HasIndex(a => a.At);
         });
     }
 }

@@ -1,5 +1,6 @@
 @page "/consola"
 @rendermode InteractiveServer
+@inherits AuditedPage
 @implements IAsyncDisposable
 @inject IServerController Server
 @inject IConsoleLog Log
@@ -125,6 +126,7 @@
         try
         {
             await Server.SendCommandAsync(cmd);
+            await AuditAsync("console.command", null, cmd);
         }
         catch (Exception ex) when (ex is InvalidOperationException or ArgumentException or IOException)
         {

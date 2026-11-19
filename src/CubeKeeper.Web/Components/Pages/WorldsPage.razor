@@ -1,5 +1,6 @@
 @page "/mundos"
 @rendermode InteractiveServer
+@inherits AuditedPage
 @implements IDisposable
 @using CubeKeeper.Core.Worlds
 @using CubeKeeper.Infrastructure.Worlds
@@ -141,11 +142,16 @@
     private void OnWorldFile(InputFileChangeEventArgs e) => _importFile = e.File;
 
     private Task SwitchAsync(string name) =>
-        RunAsync(() => Worlds.SwitchAsync(name), $"Ahora se usa «{name}».", "Guardando copia y cambiando de mundo…");
+        RunAsync(async () =>
+        {
+            await Worlds.SwitchAsync(name);
+            await AuditAsync("world.switch", name);
+        }, $"Ahora se usa «{name}».", "Guardando copia y cambiando de mundo…");
 
     private Task CreateAsync() => RunAsync(async () =>
     {
         await Worlds.CreateAsync(new NewWorldOptions(_newName.Trim(), _newSeed, _newMode, _newDifficulty));
+        await AuditAsync("world.create", _newName.Trim(), $"{_newMode}, {_newDifficulty}, semilla «{_newSeed}»");
         _newName = string.Empty;
         _newSeed = null;
     }, $"Mundo «{_newName.Trim()}» preparado{(Server.Snapshot.Status.IsProcessAlive() ? ": el servidor se ha reiniciado con él" : ": se generará al arrancar")}.", "Creando el mundo…");
@@ -154,6 +160,7 @@
     {
         await using var stream = _importFile!.OpenReadStream(WorldService.MaxImportBytes);
         var name = await Worlds.ImportAsync(stream, _importFile.Name, _importName, _importActivate);
+        await AuditAsync("world.import", name, _importFile.Name);
         _message = _importActivate ? $"Mundo «{name}» importado y en uso." : $"Mundo «{name}» importado.";
         _importFile = null;
         _fileInputKey++;
@@ -164,6 +171,7 @@
     {
         await Worlds.DeleteAsync(name);
         _confirmDelete = null;
+        await AuditAsync("world.delete", name);
     }, $"Mundo «{name}» borrado (queda una copia en Copias).", "Guardando copia y borrando…");
 
     private async Task RunAsync(Func<Task> action, string? ok, string busyText)

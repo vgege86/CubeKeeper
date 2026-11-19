@@ -227,6 +227,9 @@ while ((input = Console.ReadLine()) is not null)
                 default: Log("Unknown allowlist command", "ERROR"); break;
             }
             break;
+        case "tell" when parts.Length > 1:
+            Log($"[Server -> {Unquote(input.Trim()[5..].Split('"', StringSplitOptions.RemoveEmptyEntries)[0])}] (privado)");
+            break;
         case "permission" when parts.Length > 1 && parts[1] == "reload":
             Log("Permissions reloaded from file.");
             break;

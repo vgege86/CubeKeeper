@@ -91,6 +91,13 @@ socket de Docker, otro contenedor no puede llegar a esa consola.
   `.mcaddon` (también anidados), lee cada `manifest.json` (`PackManifest`, con comentarios y nombres traducidos de
   `texts/*.lang`), copia cada paquete a `behavior_packs/` o `resource_packs/` del mundo y lo activa en
   `world_*_packs.json` (`WorldPacksDocument`). Un paquete con el mismo UUID se sustituye.
+- **Familia (3A).** `FamilyPolicy` (Core) decide, para la hora local y el tiempo jugado hoy, si un jugador puede
+  seguir y cuánto le queda (lo primero entre fin de la franja y fin del tiempo diario, con el extra de hoy).
+  `FamilyService` lo aplica cada 20 s y al entrar alguien: `tell` privado a los 5 y a 1 minuto y, al llegar, `kick`
+  con la explicación y cuándo puede volver. El tiempo de hoy sale de las sesiones de `PlayerStatsService` (la abierta
+  cuenta hasta ahora), así que reiniciar el servidor no lo pone a cero.
+- **Auditoría (3A).** `AuditLog` guarda quién (usuario del panel o «CubeKeeper»), qué acción, sobre qué y detalles.
+  Las páginas heredan de `AuditedPage`, que toma el usuario de la sesión; el login guarda también la IP.
 - **Salud por TCP**, no por RakNet. Con NetherNet, BDS escucha en TCP en `server-port`. Se usa `server-ip` si está
   definida. Con el servidor parado a propósito, `/health` responde sano: el contenedor funciona.
 - **Imagen** `mcr.microsoft.com/dotnet/aspnet:10.0` (Ubuntu 24.04, la base de BDS) con `curl` y `tzdata`. Sin la
@@ -126,7 +133,10 @@ socket de Docker, otro contenedor no puede llegar a esa consola.
 | **2A** ✅ | Lista de permitidos por XUID (`allowlist reload`), modo inscripción con solicitudes, permisos, bloquear, reglas del juego, controles rápidos |
 | **2B** ✅ | Mundos (crear, cambiar, importar y exportar `.mcworld`, incluidos los de Realms), complementos (`.mcpack`, `.mcaddon`) |
 | ~~2~~ | Lista de permitidos por XUID (`allowlist reload`), solicitudes o modo inscripción, permisos, bloquear, gamerules, controles rápidos, mundos (crear, cambiar, importar y exportar `.mcworld`, incluidos los de Realms), complementos |
-| **3** | Horarios y límites por jugador, estadísticas, usuarios con roles, auditoría, notificaciones, MCP para Home365 (`ModelContextProtocol.AspNetCore`, como Home365), mapa con uNmINeD |
+| **3A** ✅ | Horarios y límite diario por jugador (avisos y expulsión), tiempo extra, historial de juego; auditoría |
+| **3B** | Usuarios del panel con roles; verificación en dos pasos (TOTP) |
+| **3C** | Notificaciones, MCP para Home365, mapa con uNmINeD |
+| ~~3~~ | Horarios y límites por jugador, estadísticas, usuarios con roles, auditoría, notificaciones, MCP para Home365 (`ModelContextProtocol.AspNetCore`, como Home365), mapa con uNmINeD |
 
 ### Pendiente de comprobar en el NAS
 

@@ -1,5 +1,6 @@
 @page "/juego"
 @rendermode InteractiveServer
+@inherits AuditedPage
 @implements IDisposable
 @using CubeKeeper.Core.GameRules
 @using CubeKeeper.Core.Players
@@ -147,23 +148,42 @@
     {
         await Game.SetRuleAsync(rule.Name, value);
         _rules[rule.Name] = value;
+        await AuditAsync("game.rule", rule.Name, value);
     }, $"{rule.Label}: {(value == "true" ? "sí" : value == "false" ? "no" : value)}.");
 
     private async Task SayAsync()
     {
-        await RunAsync(() => Game.SayAsync(_say), "Mensaje enviado.");
+        var text = _say;
+        await RunAsync(async () =>
+        {
+            await Game.SayAsync(text);
+            await AuditAsync("game.say", null, text);
+        }, "Mensaje enviado.");
         if (!_messageIsError)
         {
             _say = string.Empty;
         }
     }
 
-    private Task SetTimeAsync(string key, string label) => RunAsync(() => Game.SetTimeAsync(key), $"Hora: {label.ToLowerInvariant()}.");
+    private Task SetTimeAsync(string key, string label) => RunAsync(async () =>
+    {
+        await Game.SetTimeAsync(key);
+        await AuditAsync("game.time", key);
+    }, $"Hora: {label.ToLowerInvariant()}.");
 
-    private Task SetWeatherAsync(string key, string label) => RunAsync(() => Game.SetWeatherAsync(key), $"Clima: {label.ToLowerInvariant()}.");
+    private Task SetWeatherAsync(string key, string label) => RunAsync(async () =>
+    {
+        await Game.SetWeatherAsync(key);
+        await AuditAsync("game.weather", key);
+    }, $"Clima: {label.ToLowerInvariant()}.");
 
     private Task KickAsync(OnlinePlayer p) =>
-        RunAsync(() => Access.KickAsync(p.Name, string.IsNullOrWhiteSpace(_kickReason) ? "Expulsado por el administrador." : _kickReason), $"{p.Name} expulsado.");
+        RunAsync(async () =>
+        {
+            var reason = string.IsNullOrWhiteSpace(_kickReason) ? "Expulsado por el administrador." : _kickReason;
+            await Access.KickAsync(p.Name, reason);
+            await AuditAsync("game.kick", p.Name, reason);
+        }, $"{p.Name} expulsado.");
 
     private async Task RunAsync(Func<Task> action, string? ok)
     {

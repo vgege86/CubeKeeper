@@ -54,6 +54,40 @@ namespace CubeKeeper.Infrastructure.Persistence.Migrations
                     b.ToTable("AccessRequests");
                 });
 
+            modelBuilder.Entity("CubeKeeper.Infrastructure.Persistence.AuditEntry", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Action")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Actor")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("TEXT");
+
+                    b.Property<long>("At")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Details")
+                        .HasMaxLength(2000)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Target")
+                        .HasMaxLength(200)
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("At");
+
+                    b.ToTable("AuditEntries");
+                });
+
             modelBuilder.Entity("CubeKeeper.Infrastructure.Persistence.PanelUser", b =>
                 {
                     b.Property<string>("Id")
@@ -146,6 +180,34 @@ namespace CubeKeeper.Infrastructure.Persistence.Migrations
                     b.HasIndex("Name");
 
                     b.ToTable("Players");
+                });
+
+            modelBuilder.Entity("CubeKeeper.Infrastructure.Persistence.PlayerRulesEntity", b =>
+                {
+                    b.Property<string>("Xuid")
+                        .HasMaxLength(32)
+                        .HasColumnType("TEXT");
+
+                    b.Property<int?>("DailyMinutes")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<bool>("Enabled")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateOnly?>("ExtraDate")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("ExtraMinutes")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("ScheduleJson")
+                        .IsRequired()
+                        .HasMaxLength(4000)
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Xuid");
+
+                    b.ToTable("PlayerRules", (string)null);
                 });
 
             modelBuilder.Entity("CubeKeeper.Infrastructure.Persistence.PlayerSession", b =>
