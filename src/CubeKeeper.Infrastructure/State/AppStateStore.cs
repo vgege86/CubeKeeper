@@ -24,6 +24,9 @@ public sealed record AppState
     /// <summary>Ajustes de ntfy guardados desde el panel (si no, se usan las variables de entorno).</summary>
     public NtfySettings? Ntfy { get; init; }
 
+    /// <summary>Ajustes y último resultado del mapa del mundo.</summary>
+    public MapSettings Map { get; init; } = new();
+
     /// <summary>Última versión de BDS de la que se avisó, para no repetir el aviso.</summary>
     public string? LastNotifiedVersion { get; init; }
 
@@ -33,6 +36,22 @@ public sealed record AppState
 
 /// <summary>Ajustes de ntfy desde el formulario. El token va cifrado con Data Protection.</summary>
 public sealed record NtfySettings(string Url, string? Topic, string? ProtectedToken, string? PanelUrl);
+
+public sealed record MapSettings
+{
+    public string EngineId { get; init; } = CubeKeeper.Core.Maps.MapEngines.Unmined.Id;
+
+    /// <summary>Comando personalizado por motor (si no hay, el de por defecto).</summary>
+    public Dictionary<string, string> Commands { get; init; } = [];
+
+    public bool Nightly { get; init; } = true;
+
+    public string Time { get; init; } = "04:15";
+
+    public MapRenderRecord? LastRender { get; init; }
+}
+
+public sealed record MapRenderRecord(DateTimeOffset At, string EngineId, bool Succeeded, string Message, TimeSpan Duration);
 
 public sealed record UpdateRecord(DateTimeOffset At, string? From, string To, bool Succeeded, string Message);
 

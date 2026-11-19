@@ -277,3 +277,8 @@ a.user:hover { text-decoration: underline; }
 
 .input-with-button { display: flex; gap: 0.5rem; margin-top: 0.25rem; }
 .input-with-button input { margin: 0 !important; }
+
+.map-frame { border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; background: var(--surface); }
+.map-frame iframe { display: block; width: 100%; height: min(75vh, 800px); border: 0; }
+.mono { font-family: ui-monospace, SFMono-Regular, Consolas, monospace; }
+.small-console { height: auto; max-height: 260px; }

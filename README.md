@@ -27,7 +27,8 @@ lo descarga, lo arranca y lo para, lee su consola y le envía comandos. No neces
   pasos con TOTP y códigos de recuperación) y login en dos pasos.
 - **Fase 3C ✅** Avisos al móvil con ntfy: solicitudes de acceso, caídas, copias fallidas, actualizaciones y versiones nuevas
   de BDS (y, si se activan, entradas y salidas).
-- **Pendiente** Mapa del mundo. El MCP queda aparcado por ahora.
+- **Fase 3D ✅** Mapa del mundo con uNmINeD o bedrock-viz (se instalan desde el panel), cada noche y bajo demanda.
+- El MCP queda aparcado por ahora.
 
 Plan completo y decisiones: [docs/ARQUITECTURA.md](docs/ARQUITECTURA.md) ·
 Instalación en el NAS y pruebas: [docs/TRUENAS.md](docs/TRUENAS.md).
@@ -78,7 +79,9 @@ Otros ajustes avanzados se pueden dar con la notación de .NET, por ejemplo
 ├── server/            directorio de trabajo de bedrock_server (worlds/, server.properties…)
 ├── versions/<v>/      versiones de BDS descargadas (se guardan 2)
 ├── downloads/         temporales
-└── backups/           copias del mundo (.mcworld; el nombre lleva mundo, fecha UTC y tipo)
+├── backups/           copias del mundo (.mcworld; el nombre lleva mundo, fecha UTC y tipo)
+├── tools/<motor>/     motor de mapas instalado desde el panel
+└── map/<motor>/       último mapa generado
 ```
 
 ## Desarrollo

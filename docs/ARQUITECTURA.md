@@ -112,6 +112,13 @@ socket de Docker, otro contenedor no puede llegar a esa consola.
   aviso (tipo + clave) en 10 minutos. Origen de cada aviso: `NotificationWatcher` (caídas y, si se activan, entradas y
   salidas), `AccessService` (solicitudes), `MaintenanceScheduler` (copias fallidas y, cada 6 h, versión nueva de BDS,
   una vez por versión y aunque esté fijada) y `UpdateService` (fallos siempre; éxitos de las programadas).
+- **Mapa (3D).** Ningún motor va dentro de la imagen: la licencia de uNmINeD no permite redistribuirlo y bedrock-viz no
+  se pudo verificar. El administrador lo instala desde la página Mapa (subiendo un .zip/.tar.gz o el ejecutable, o con un
+  enlace https) en `/data/tools/<motor>`. `MapService` descomprime la copia más reciente del mundo (hace una si tiene más
+  de 2 h) en una carpeta de trabajo, ejecuta el motor sin shell (`CommandTemplate` sustituye `{world}`, `{output}` y
+  `{threads}` sin partir las rutas), con prioridad baja y límite de 2 h, y solo sustituye el mapa anterior si sale bien
+  (hay al menos un .html). El comando de cada motor es editable por si una versión usa otros argumentos. Los archivos se
+  sirven en `/mapa/ver/…` a cualquier usuario con sesión, sin salir de la carpeta. `MapScheduler` lo lanza cada noche.
 - **Salud por TCP**, no por RakNet. Con NetherNet, BDS escucha en TCP en `server-port`. Se usa `server-ip` si está
   definida. Con el servidor parado a propósito, `/health` responde sano: el contenedor funciona.
 - **Imagen** `mcr.microsoft.com/dotnet/aspnet:10.0` (Ubuntu 24.04, la base de BDS) con `curl` y `tzdata`. Sin la
@@ -150,7 +157,7 @@ socket de Docker, otro contenedor no puede llegar a esa consola.
 | **3A** ✅ | Horarios y límite diario por jugador (avisos y expulsión), tiempo extra, historial de juego; auditoría |
 | **3B** ✅ | Usuarios del panel con roles; verificación en dos pasos (TOTP) |
 | **3C** ✅ | Avisos al móvil con ntfy |
-| **3D** | Mapa del mundo con uNmINeD (MCP aparcado) |
+| **3D** ✅ | Mapa del mundo con uNmINeD o bedrock-viz (MCP aparcado) |
 | ~~3~~ | Horarios y límites por jugador, estadísticas, usuarios con roles, auditoría, notificaciones, MCP para Home365 (`ModelContextProtocol.AspNetCore`, como Home365), mapa con uNmINeD |
 
 ### Pendiente de comprobar en el NAS

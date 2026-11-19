@@ -1,0 +1,255 @@
+@page "/mapa"
+@rendermode InteractiveServer
+@inherits AuditedPage
+@implements IDisposable
+@using CubeKeeper.Core.Maps
+@using CubeKeeper.Infrastructure.Maps
+@using CubeKeeper.Web.Formatting
+@inject MapService Maps
+@inject MapScheduler Scheduler
+@inject TimeProvider Time
+@inject ILogger<MapPage> Logger
+
+<PageTitle>Mapa · CubeKeeper</PageTitle>
+
+<div class="page-head">
+    <h1>Mapa del mundo</h1>
+    @if (_isAdmin)
+    {
+        <div class="actions">
+            <button class="btn btn-primary" disabled="@(_busy || Maps.IsRendering || _active.Executable is null)" @onclick="RenderAsync">
+                @(Maps.IsRendering ? "Generando…" : "Generar ahora")
+            </button>
+        </div>
+    }
+</div>
+
+@if (_message is not null)
+{
+    <p class="alert @(_messageIsError ? "alert-error" : "alert-ok")" role="status">@_message</p>
+}
+
+@if (Maps.Settings.LastRender is { } last)
+{
+    <p class="muted small">
+        Última generación: @Format.When(last.At, Time) con @(MapEngines.Find(last.EngineId)?.Name ?? last.EngineId) ·
+        <span class="@(last.Succeeded ? "ok" : "hint-warn")">@last.Message</span>
+        @if (last.Succeeded) {<span> (@Format.Duration(last.Duration))</span>}
+        @if (Scheduler.NextRunAt is { } next) {<span> · próxima: @Format.When(next, Time)</span>}
+    </p>
+}
+
+@if (_entry is not null)
+{
+    <div class="map-frame">
+        <iframe src="@($"/mapa/ver/{_entry}?v={_version}")" title="Mapa del mundo" loading="lazy"></iframe>
+    </div>
+    <p class="muted small"><a href="@($"/mapa/ver/{_entry}")" target="_blank" rel="noopener">Abrir el mapa a pantalla completa</a></p>
+}
+else
+{
+    <section class="card">
+        <p>Todavía no hay mapa.@(_isAdmin ? " Instala un motor abajo y pulsa «Generar ahora»." : " Un administrador tiene que configurarlo.")</p>
+    </section>
+}
+
+@if (_isAdmin)
+{
+    <div class="grid mt">
+        <section class="card">
+            <h2>Motor</h2>
+            @foreach (var engine in MapEngines.All)
+            {
+                var st = Maps.GetStatus(engine);
+                <label class="choice @(_engineId == engine.Id ? "selected" : null)">
+                    <input type="radio" name="engine" checked="@(_engineId == engine.Id)" @onchange="() => SelectEngine(engine.Id)" />
+                    <span>
+                        <strong>@engine.Name</strong> ·
+                        @if (st.Executable is not null)
+                        {
+                            <span class="ok small">instalado</span>
+                        }
+                        else
+                        {
+                            <span class="muted small">sin instalar</span>
+                        }
+                        <br /><span class="muted small">@engine.Help</span>
+                    </span>
+                </label>
+            }
+
+            <h3 class="sub">Instalar @SelectedEngine.Name</h3>
+            <InputFile @key="_fileKey" OnChange="e => _file = e.File" accept=".zip,.gz,.tgz,.tar" disabled="@_busy" />
+            <div class="actions">
+                <button class="btn" disabled="@(_busy || _file is null)" @onclick="UploadAsync">Subir e instalar</button>
+            </div>
+            <label>O el enlace de descarga (https)
+                <span class="input-with-button">
+                    <input @bind="_url" @bind:event="oninput" placeholder="https://…" autocomplete="off" />
+                    <button class="btn" disabled="@(_busy || string.IsNullOrWhiteSpace(_url))" @onclick="DownloadAsync">Descargar</button>
+                </span>
+            </label>
+            @if (Maps.GetStatus(SelectedEngine).Executable is { } exe)
+            {
+                <p class="muted small">Instalado en <code class="wrap">@exe</code>.
+                    <button class="link" disabled="@_busy" @onclick="UninstallAsync">Desinstalar</button></p>
+            }
+        </section>
+
+        <section class="card">
+            <h2>Ajustes</h2>
+            <label>Comando de @SelectedEngine.Name
+                <input @bind="_command" @bind:event="oninput" spellcheck="false" autocomplete="off" class="mono" />
+            </label>
+            <p class="muted small">
+                Marcadores: <code>{world}</code> carpeta del mundo, <code>{output}</code> carpeta del mapa, <code>{threads}</code> hilos.
+                Por defecto: <code class="wrap">@SelectedEngine.DefaultCommand</code>
+                <button class="link" @onclick="() => _command = SelectedEngine.DefaultCommand">restablecer</button>
+            </p>
+            <label class="check"><input type="checkbox" @bind="_nightly" /> Generarlo cada noche</label>
+            <label>Hora<input type="time" @bind="_time" @bind:format="HH:mm" disabled="@(!_nightly)" /></label>
+            <div class="actions"><button class="btn btn-primary" disabled="@_busy" @onclick="SaveAsync">Guardar</button></div>
+            <p class="muted small">El mapa se dibuja a partir de la copia más reciente del mundo (si tiene más de 2 h, se hace una antes), con prioridad baja para no quitarle CPU al juego.</p>
+        </section>
+    </div>
+
+    @if (Maps.RecentLog.Count > 0)
+    {
+        <section class="card mt">
+            <h2>Registro de la última generación</h2>
+            <div class="console small-console">@foreach (var line in Maps.RecentLog) {<div class="line">@line</div>}</div>
+        </section>
+    }
+}
+
+@code {
+    private bool _isAdmin;
+    private string? _entry;
+    private long _version;
+    private MapEngineStatus _active = default!;
+    private string _engineId = MapEngines.Unmined.Id;
+    private string _command = string.Empty;
+    private bool _nightly = true;
+    private TimeOnly _time = new(4, 15);
+    private IBrowserFile? _file;
+    private int _fileKey;
+    private string _url = string.Empty;
+    private string? _message;
+    private bool _messageIsError;
+    private bool _busy;
+
+    private MapEngine SelectedEngine => MapEngines.Find(_engineId) ?? MapEngines.Unmined;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _isAdmin = await IsAdminAsync();
+        Maps.Changed += OnChanged;
+        var s = Maps.Settings;
+        _engineId = s.EngineId;
+        _nightly = s.Nightly;
+        _time = Core.Scheduling.DailySchedule.ParseTime(s.Time) ?? new TimeOnly(4, 15);
+        _command = Maps.GetStatus(SelectedEngine).Command;
+        Load();
+    }
+
+    private void Load()
+    {
+        _active = Maps.GetStatus(Maps.ActiveEngine);
+        _entry = Maps.EntryPage(Maps.ActiveEngine);
+        _version = Maps.Settings.LastRender?.At.ToUnixTimeSeconds() ?? 0;
+    }
+
+    private void OnChanged() => _ = InvokeAsync(() =>
+    {
+        Load();
+        StateHasChanged();
+    });
+
+    private void SelectEngine(string id)
+    {
+        _engineId = id;
+        _command = Maps.GetStatus(SelectedEngine).Command;
+    }
+
+    private Task SaveAsync() => RunAsync(async () =>
+    {
+        Maps.SaveSettings(_engineId, _command, _nightly, _time.ToString("HH:mm"));
+        Scheduler.Reschedule();
+        await AuditAsync("map.settings", SelectedEngine.Name, $"{(_nightly ? $"cada noche a las {_time:HH:mm}" : "sin programar")}; {_command}");
+        _message = "Ajustes del mapa guardados.";
+    });
+
+    private Task UploadAsync() => RunAsync(async () =>
+    {
+        await using var stream = _file!.OpenReadStream(MapService.MaxToolBytes);
+        await Maps.InstallAsync(SelectedEngine, stream, _file.Name);
+        await AuditAsync("map.install", SelectedEngine.Name, _file.Name);
+        _message = $"{SelectedEngine.Name} instalado. Guarda los ajustes si has cambiado de motor y pulsa «Generar ahora».";
+        _file = null;
+        _fileKey++;
+    });
+
+    private Task DownloadAsync() => RunAsync(async () =>
+    {
+        await Maps.InstallFromUrlAsync(SelectedEngine, _url);
+        await AuditAsync("map.install", SelectedEngine.Name, _url);
+        _message = $"{SelectedEngine.Name} descargado e instalado.";
+        _url = string.Empty;
+    });
+
+    private Task UninstallAsync() => RunAsync(async () =>
+    {
+        Maps.Uninstall(SelectedEngine);
+        await AuditAsync("map.uninstall", SelectedEngine.Name);
+        _message = $"{SelectedEngine.Name} desinstalado.";
+    });
+
+    private async Task RenderAsync()
+    {
+        _busy = true;
+        _message = "Generando el mapa… puede tardar varios minutos. Puedes salir de la página: seguirá en segundo plano.";
+        _messageIsError = false;
+        StateHasChanged();
+        try
+        {
+            await AuditAsync("map.render", Maps.ActiveEngine.Name);
+            var result = await Maps.RenderAsync();
+            _message = result.Message;
+            _messageIsError = !result.Succeeded;
+        }
+        catch (InvalidOperationException ex)
+        {
+            _message = ex.Message;
+            _messageIsError = true;
+        }
+        finally
+        {
+            _busy = false;
+            Load();
+        }
+    }
+
+    private async Task RunAsync(Func<Task> action)
+    {
+        _busy = true;
+        _message = null;
+        try
+        {
+            await action();
+            _messageIsError = false;
+        }
+        catch (Exception ex) when (ex is ArgumentException or InvalidOperationException or InvalidDataException or IOException or HttpRequestException or UnauthorizedAccessException)
+        {
+            Logger.LogWarning(ex, "Acción sobre el mapa fallida");
+            _message = ex.Message;
+            _messageIsError = true;
+        }
+        finally
+        {
+            _busy = false;
+            Load();
+        }
+    }
+
+    public void Dispose() => Maps.Changed -= OnChanged;
+}
