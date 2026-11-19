@@ -20,8 +20,15 @@ public sealed class MaintenanceScheduler(
     IPlayerPresence presence,
     IOptions<CubeKeeperOptions> options,
     TimeProvider time,
-    ILogger<MaintenanceScheduler> logger) : BackgroundService
+    ILogger<MaintenanceScheduler> logger,
+    IVersionSource? versions = null,
+    State.AppStateStore? state = null,
+    Notifications.Notifier? notifier = null) : BackgroundService
 {
+    /// <summary>Cada cuánto se mira si Mojang ha publicado una versión nueva (para avisar).</summary>
+    public static readonly TimeSpan VersionCheckInterval = TimeSpan.FromHours(6);
+
+    private DateTimeOffset _nextVersionCheck = DateTimeOffset.MinValue;
     private static readonly TimeSpan Tick = TimeSpan.FromSeconds(30);
     private readonly CubeKeeperOptions _options = options.Value;
 
@@ -47,9 +54,11 @@ public sealed class MaintenanceScheduler(
         using var timer = new PeriodicTimer(Tick, time);
         try
         {
+            _nextVersionCheck = time.GetUtcNow().AddMinutes(1);
             do
             {
                 await RunBackupIfDueAsync(stoppingToken).ConfigureAwait(false);
+                await CheckNewVersionIfDueAsync(stoppingToken).ConfigureAwait(false);
                 if (NextUpdateCheckAt is { } due && time.GetUtcNow() >= due)
                 {
                     NextUpdateCheckAt = DailySchedule.Next(time.GetUtcNow(), updateTime!.Value, time.LocalTimeZone);
@@ -123,6 +132,57 @@ public sealed class MaintenanceScheduler(
         {
             _activitySinceBackup = true;
             logger.LogError(ex, "Fallo en la copia programada");
+            if (notifier is not null)
+            {
+                await notifier.NotifyAsync(new Core.Notifications.Notification(
+                    Core.Notifications.NotificationKind.BackupFailed,
+                    "Falló la copia del mundo",
+                    $"No se pudo hacer la copia programada: {ex.Message}",
+                    "backup",
+                    Core.Notifications.NotificationPriority.High,
+                    "/copias"), ct).ConfigureAwait(false);
+            }
+        }
+    }
+
+    /// <summary>Avisa (una vez por versión) si Mojang ha publicado una más nueva que la instalada.</summary>
+    private async Task CheckNewVersionIfDueAsync(CancellationToken ct)
+    {
+        if (versions is null || state is null || notifier is null || time.GetUtcNow() < _nextVersionCheck)
+        {
+            return;
+        }
+        _nextVersionCheck = time.GetUtcNow() + VersionCheckInterval;
+        if (!notifier.Configured || !notifier.Enabled.HasFlag(Core.Notifications.NotificationKind.NewVersion) ||
+            !Core.Versions.BdsVersion.TryParse(installer.InstalledVersion, out var installed) || installed is null)
+        {
+            return;
+        }
+        try
+        {
+            var newest = await versions.GetNewestPublishedAsync(_options.Bds.Channel, ct).ConfigureAwait(false);
+            if (newest is null || newest.Version <= installed || newest.Version.Text == state.Current.LastNotifiedVersion)
+            {
+                return;
+            }
+            var how = updates.AutoUpdateActive
+                ? $"Se instalará sola a las {_options.Updates.Time}."
+                : "Tienes la versión fijada: para pasar a ella, cambia CUBEKEEPER_BDS_VERSION y pulsa Instalar.";
+            var result = await notifier.NotifyAsync(new Core.Notifications.Notification(
+                Core.Notifications.NotificationKind.NewVersion,
+                $"BDS {newest.Version} disponible",
+                $"Mojang ha publicado la versión {newest.Version} (tienes la {installed}). {how}",
+                newest.Version.Text,
+                Core.Notifications.NotificationPriority.Low,
+                "/"), ct).ConfigureAwait(false);
+            if (result.Sent)
+            {
+                state.Update(s => s with { LastNotifiedVersion = newest.Version.Text });
+            }
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            logger.LogWarning(ex, "No se pudo comprobar si hay versión nueva");
         }
     }
 }

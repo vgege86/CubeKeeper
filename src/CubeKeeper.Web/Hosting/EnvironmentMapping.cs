@@ -30,6 +30,10 @@ public static class EnvironmentMapping
         ("CUBEKEEPER_UPDATE_TIME", "CubeKeeper:Updates:Time"),
         ("CUBEKEEPER_UPDATE_WARN_MINUTES", "CubeKeeper:Updates:WarningMinutes"),
         ("CUBEKEEPER_UPDATE_SKIP_IF_PLAYERS", "CubeKeeper:Updates:SkipIfPlayersOnline"),
+        ("CUBEKEEPER_NTFY_URL", "CubeKeeper:Notifications:NtfyUrl"),
+        ("CUBEKEEPER_NTFY_TOPIC", "CubeKeeper:Notifications:NtfyTopic"),
+        ("CUBEKEEPER_NTFY_TOKEN", "CubeKeeper:Notifications:NtfyToken"),
+        ("CUBEKEEPER_PANEL_URL", "CubeKeeper:Notifications:PanelUrl"),
         ("CUBEKEEPER_ALLOWED_NETWORKS", "CubeKeeper:Network:AllowedNetworks"),
         ("CUBEKEEPER_TRUSTED_PROXIES", "CubeKeeper:Network:TrustedProxies"),
     ];

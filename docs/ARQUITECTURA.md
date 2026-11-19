@@ -105,6 +105,11 @@ socket de Docker, otro contenedor no puede llegar a esa consola.
   circuitos de Blazor también (`RevalidatingAuthStateProvider`). Verificación en dos pasos con el autenticador TOTP de
   Identity (QR con Net.Codecrete.QrCodeGenerator, el de Home365) y 10 códigos de recuperación; Mi cuenta usa formularios
   estáticos para poder renovar la cookie (`RefreshSignInAsync`) sin expulsar al usuario.
+- **Avisos (3C).** `Notifier` publica en ntfy con la API JSON (título con tildes, prioridad, enlace `click` al panel y
+  token opcional) y nunca lanza. Respeta los tipos activados (`NotificationKind`, en `state.json`) y no repite el mismo
+  aviso (tipo + clave) en 10 minutos. Origen de cada aviso: `NotificationWatcher` (caídas y, si se activan, entradas y
+  salidas), `AccessService` (solicitudes), `MaintenanceScheduler` (copias fallidas y, cada 6 h, versión nueva de BDS,
+  una vez por versión y aunque esté fijada) y `UpdateService` (fallos siempre; éxitos de las programadas).
 - **Salud por TCP**, no por RakNet. Con NetherNet, BDS escucha en TCP en `server-port`. Se usa `server-ip` si está
   definida. Con el servidor parado a propósito, `/health` responde sano: el contenedor funciona.
 - **Imagen** `mcr.microsoft.com/dotnet/aspnet:10.0` (Ubuntu 24.04, la base de BDS) con `curl` y `tzdata`. Sin la
@@ -142,7 +147,8 @@ socket de Docker, otro contenedor no puede llegar a esa consola.
 | ~~2~~ | Lista de permitidos por XUID (`allowlist reload`), solicitudes o modo inscripción, permisos, bloquear, gamerules, controles rápidos, mundos (crear, cambiar, importar y exportar `.mcworld`, incluidos los de Realms), complementos |
 | **3A** ✅ | Horarios y límite diario por jugador (avisos y expulsión), tiempo extra, historial de juego; auditoría |
 | **3B** ✅ | Usuarios del panel con roles; verificación en dos pasos (TOTP) |
-| **3C** | Notificaciones, MCP para Home365, mapa con uNmINeD |
+| **3C** ✅ | Avisos al móvil con ntfy |
+| **3D** | Mapa del mundo con uNmINeD (MCP aparcado) |
 | ~~3~~ | Horarios y límites por jugador, estadísticas, usuarios con roles, auditoría, notificaciones, MCP para Home365 (`ModelContextProtocol.AspNetCore`, como Home365), mapa con uNmINeD |
 
 ### Pendiente de comprobar en el NAS

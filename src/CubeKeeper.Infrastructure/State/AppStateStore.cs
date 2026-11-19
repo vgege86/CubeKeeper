@@ -18,6 +18,12 @@ public sealed record AppState
     /// <summary>Hasta cuándo dura el modo inscripción, o null si no está activo.</summary>
     public DateTimeOffset? EnrollmentUntil { get; init; }
 
+    /// <summary>Avisos activados.</summary>
+    public CubeKeeper.Core.Notifications.NotificationKind Notifications { get; init; } = CubeKeeper.Core.Notifications.NotificationKind.Defaults;
+
+    /// <summary>Última versión de BDS de la que se avisó, para no repetir el aviso.</summary>
+    public string? LastNotifiedVersion { get; init; }
+
     /// <summary>Resultado de la última actualización (manual o programada).</summary>
     public UpdateRecord? LastUpdate { get; init; }
 }

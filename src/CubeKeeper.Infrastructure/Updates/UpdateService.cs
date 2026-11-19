@@ -25,8 +25,10 @@ public sealed class UpdateService(
     AppStateStore state,
     IOptions<CubeKeeperOptions> options,
     TimeProvider time,
-    ILogger<UpdateService> logger)
+    ILogger<UpdateService> logger,
+    Notifications.Notifier? notifier = null)
 {
+    private bool _scheduledRun;
     private readonly CubeKeeperOptions _options = options.Value;
     private readonly SemaphoreSlim _gate = new(1, 1);
 
@@ -97,7 +99,15 @@ public sealed class UpdateService(
             console.Append(ConsoleLineKind.System, $"Hay una versión nueva ({latest.Version}), pero hay gente jugando: se deja para mañana.");
             return;
         }
-        await UpdateAsync(latest, Core.Scheduling.DailySchedule.ParseWarnings(_options.Updates.WarningMinutes), ct).ConfigureAwait(false);
+        _scheduledRun = true;
+        try
+        {
+            await UpdateAsync(latest, Core.Scheduling.DailySchedule.ParseWarnings(_options.Updates.WarningMinutes), ct).ConfigureAwait(false);
+        }
+        finally
+        {
+            _scheduledRun = false;
+        }
     }
 
     private async Task<UpdateRecord> UpdateCoreAsync(BdsRelease release, IReadOnlyList<int> warningMinutes, CancellationToken ct)
@@ -230,6 +240,16 @@ public sealed class UpdateService(
         var record = new UpdateRecord(time.GetUtcNow(), from, to, ok, message);
         state.Update(s => s with { LastUpdate = record });
         console.Append(ConsoleLineKind.System, message);
+        if (notifier is not null && (!ok || _scheduledRun))
+        {
+            _ = notifier.NotifyAsync(new Core.Notifications.Notification(
+                Core.Notifications.NotificationKind.Update,
+                ok ? $"Servidor actualizado a {to}" : $"Falló la actualización a {to}",
+                message,
+                $"{to}:{ok}",
+                ok ? Core.Notifications.NotificationPriority.Default : Core.Notifications.NotificationPriority.High,
+                "/"));
+        }
         return record;
     }
 }

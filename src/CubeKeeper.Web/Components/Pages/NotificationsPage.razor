@@ -1,0 +1,90 @@
+@page "/avisos"
+@attribute [Authorize(Roles = PanelRoles.Admin)]
+@rendermode InteractiveServer
+@inherits AuditedPage
+@using CubeKeeper.Core.Notifications
+@using CubeKeeper.Infrastructure.Notifications
+@inject Notifier Notifier
+
+<PageTitle>Avisos · CubeKeeper</PageTitle>
+
+<h1>Avisos al móvil</h1>
+<p class="muted">CubeKeeper te avisa con notificaciones push de <a href="https://ntfy.sh" target="_blank" rel="noopener">ntfy</a>.</p>
+
+@if (_message is not null)
+{
+    <p class="alert @(_messageIsError ? "alert-error" : "alert-ok")" role="status">@_message</p>
+}
+
+<div class="grid">
+    <section class="card">
+        <h2>Conexión</h2>
+        @if (Notifier.Configured)
+        {
+            <p><span class="badge badge-ok">Configurado</span></p>
+            <p class="small">Suscríbete en la app de ntfy a este tema:</p>
+            <p><code class="wrap">@Notifier.TopicUrl</code></p>
+            <div class="actions">
+                <button class="btn btn-primary" disabled="@_busy" @onclick="TestAsync">Enviar aviso de prueba</button>
+            </div>
+        }
+        else
+        {
+            <p><span class="badge badge-idle">Sin configurar</span></p>
+            <ol class="steps">
+                <li>Instala la app <strong>ntfy</strong> en el móvil (Android o iPhone).</li>
+                <li>Inventa un tema difícil de adivinar, por ejemplo <code>cubekeeper-@_example</code>. En ntfy.sh cualquiera que lo sepa puede leer los avisos.</li>
+                <li>En la app, suscríbete a ese tema.</li>
+                <li>En la app de TrueNAS, añade <code>CUBEKEEPER_NTFY_TOPIC</code> con ese tema y reinicia.
+                    Opcional: <code>CUBEKEEPER_PANEL_URL</code> (para abrir el panel al tocar el aviso), <code>CUBEKEEPER_NTFY_URL</code> si usas tu propio ntfy
+                    y <code>CUBEKEEPER_NTFY_TOKEN</code> si el tema está protegido.</li>
+            </ol>
+        }
+    </section>
+
+    <section class="card">
+        <h2>Qué avisar</h2>
+        @foreach (var (kind, label, help) in NotificationKindText.All)
+        {
+            <label class="check notif-option">
+                <input type="checkbox" checked="@_enabled.HasFlag(kind)" disabled="@_busy" @onchange="e => ToggleAsync(kind, e.Value is true)" />
+                <span><strong>@label</strong><br /><span class="muted small">@help</span></span>
+            </label>
+        }
+        <p class="muted small">El mismo aviso no se repite antes de 10 minutos, para que una racha de caídas no llene el móvil.</p>
+    </section>
+</div>
+
+@code {
+    private NotificationKind _enabled;
+    private string? _message;
+    private bool _messageIsError;
+    private bool _busy;
+    private readonly string _example = Convert.ToHexString(System.Security.Cryptography.RandomNumberGenerator.GetBytes(6)).ToLowerInvariant();
+
+    protected override void OnInitialized() => _enabled = Notifier.Enabled;
+
+    private async Task ToggleAsync(NotificationKind kind, bool on)
+    {
+        _enabled = on ? _enabled | kind : _enabled & ~kind;
+        Notifier.SetEnabled(_enabled);
+        await AuditAsync("notifications.change", kind.ToString(), on ? "activado" : "desactivado");
+        _message = "Guardado.";
+        _messageIsError = false;
+    }
+
+    private async Task TestAsync()
+    {
+        _busy = true;
+        try
+        {
+            var result = await Notifier.SendTestAsync();
+            _message = result.Sent ? "Aviso de prueba enviado: debería llegarte al móvil." : result.Detail;
+            _messageIsError = !result.Sent;
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+}

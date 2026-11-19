@@ -20,6 +20,8 @@ public sealed class CubeKeeperOptions
 
     public UpdateOptions Updates { get; set; } = new();
 
+    public NotificationOptions Notifications { get; set; } = new();
+
     public NetworkOptions Network { get; set; } = new();
 }
 
@@ -134,4 +136,19 @@ public sealed class UpdateOptions
 
     /// <summary>Tiempo máximo para que la versión nueva llegue a "En marcha"; si no, se vuelve a la anterior.</summary>
     public int HealthTimeoutSeconds { get; set; } = 180;
+}
+
+public sealed class NotificationOptions
+{
+    /// <summary>Servidor ntfy (https://ntfy.sh o uno propio).</summary>
+    public string NtfyUrl { get; set; } = "https://ntfy.sh";
+
+    /// <summary>Tema de ntfy. Vacío = sin avisos. En ntfy.sh cualquiera que lo sepa puede leerlo: que sea difícil de adivinar.</summary>
+    public string? NtfyTopic { get; set; }
+
+    /// <summary>Token de acceso para temas protegidos (opcional).</summary>
+    public string? NtfyToken { get; set; }
+
+    /// <summary>Dirección del panel, para que al tocar el aviso se abra (por ejemplo https://cubekeeper.alucard86.fyi).</summary>
+    public string? PanelUrl { get; set; }
 }
