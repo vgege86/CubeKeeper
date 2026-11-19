@@ -33,7 +33,7 @@ public sealed record RetentionPolicy(int KeepHourly = 24, int KeepDaily = 14, in
             delete.AddRange(scheduled.Where(b => !keep.Contains(b)));
 
             delete.AddRange(newestFirst.Where(b => b.Kind == BackupKind.Manual).Skip(Math.Max(0, KeepManual)));
-            delete.AddRange(newestFirst.Where(b => b.Kind is BackupKind.PreUpdate or BackupKind.PreRestore).Skip(Math.Max(0, KeepSafety)));
+            delete.AddRange(newestFirst.Where(b => b.Kind is BackupKind.PreUpdate or BackupKind.PreRestore or BackupKind.PreChange).Skip(Math.Max(0, KeepSafety)));
         }
         return delete;
     }

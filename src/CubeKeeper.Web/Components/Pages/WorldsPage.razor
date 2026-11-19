@@ -1,0 +1,199 @@
+@page "/mundos"
+@rendermode InteractiveServer
+@implements IDisposable
+@using CubeKeeper.Core.Worlds
+@using CubeKeeper.Infrastructure.Worlds
+@using CubeKeeper.Web.Formatting
+@inject WorldService Worlds
+@inject IServerController Server
+@inject TimeProvider Time
+@inject ILogger<WorldsPage> Logger
+
+<PageTitle>Mundos · CubeKeeper</PageTitle>
+
+<h1>Mundos</h1>
+
+@if (_message is not null)
+{
+    <p class="alert @(_messageIsError ? "alert-error" : "alert-ok")" role="status">@_message</p>
+}
+@if (_busyText is not null)
+{
+    <p class="alert alert-warn" role="status">@_busyText</p>
+}
+
+<section class="card">
+    <h2>Mundos del servidor</h2>
+    <p class="muted small">Cambiar de mundo o crear uno nuevo hace antes una copia del mundo activo y reinicia el servidor si está en marcha.</p>
+    <table class="table">
+        <thead><tr><th>Mundo</th><th>Tamaño</th><th>Última modificación</th><th></th></tr></thead>
+        <tbody>
+            @foreach (var w in _worlds)
+            {
+                <tr>
+                    <td>
+                        <strong>@w.Name</strong>
+                        @if (w.IsActive) {<span class="badge badge-ok small-badge">activo</span>}
+                        @if (w.DisplayName is not null) {<div class="muted small">@w.DisplayName</div>}
+                    </td>
+                    <td>@(w.Size > 0 ? Format.Size(w.Size) : "—")</td>
+                    <td>@(w.Size > 0 ? Format.When(w.LastModified, Time) : "—")</td>
+                    <td class="row-actions">
+                        @if (_confirmDelete == w.Name)
+                        {
+                            <span class="hint-warn small">Se guardará una copia antes. </span>
+                            <button class="btn btn-primary" disabled="@_busy" @onclick="() => DeleteAsync(w.Name)">Borrar</button>
+                            <button class="btn btn-ghost" @onclick="() => _confirmDelete = null">Cancelar</button>
+                        }
+                        else
+                        {
+                            @if (w.Size > 0)
+                            {
+                                <a class="btn btn-ghost" href="@($"/mundos/descargar/{Uri.EscapeDataString(w.Name)}")" download>Descargar</a>
+                            }
+                            @if (!w.IsActive)
+                            {
+                                <button class="btn btn-ghost" disabled="@_busy" @onclick="() => SwitchAsync(w.Name)">Usar este</button>
+                                <button class="btn btn-ghost" disabled="@_busy" @onclick="() => _confirmDelete = w.Name">Borrar…</button>
+                            }
+                        }
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+</section>
+
+<div class="grid">
+    <section class="card">
+        <h2>Crear un mundo nuevo</h2>
+        <label>Nombre<input @bind="_newName" @bind:event="oninput" maxlength="@WorldNames.MaxLength" placeholder="Por ejemplo: Mundo de Lucía" /></label>
+        @if (_newName.Length > 0 && WorldNames.Validate(_newName) is { } nameError)
+        {
+            <span class="validation-message">@nameError</span>
+        }
+        <label>Semilla <span class="muted small">(opcional; vacía = aleatoria)</span><input @bind="_newSeed" maxlength="100" /></label>
+        <label>Modo de juego
+            <select @bind="_newMode">
+                <option value="survival">Supervivencia</option>
+                <option value="creative">Creativo</option>
+                <option value="adventure">Aventura</option>
+            </select>
+        </label>
+        <label>Dificultad
+            <select @bind="_newDifficulty">
+                <option value="peaceful">Pacífico</option>
+                <option value="easy">Fácil</option>
+                <option value="normal">Normal</option>
+                <option value="hard">Difícil</option>
+            </select>
+        </label>
+        <div class="actions">
+            <button class="btn btn-primary" disabled="@(_busy || WorldNames.Validate(_newName) is not null)" @onclick="CreateAsync">Crear y usar</button>
+        </div>
+        <p class="muted small">El servidor genera el mundo al arrancar con él.</p>
+    </section>
+
+    <section class="card">
+        <h2>Importar un mundo (.mcworld)</h2>
+        <p class="muted small">
+            Por ejemplo, un mundo exportado desde Minecraft o descargado de un Realm. Como mucho @(WorldService.MaxImportBytes / 1024 / 1024 / 1024) GB.
+        </p>
+        <InputFile @key="_fileInputKey" OnChange="OnWorldFile" accept=".mcworld,.zip" disabled="@_busy" />
+        <label>Nombre <span class="muted small">(opcional; si no, el del propio mundo)</span><input @bind="_importName" maxlength="@WorldNames.MaxLength" /></label>
+        <label class="check"><input type="checkbox" @bind="_importActivate" /> Usarlo ahora (reinicia el servidor)</label>
+        <div class="actions">
+            <button class="btn btn-primary" disabled="@(_busy || _importFile is null)" @onclick="ImportAsync">Importar</button>
+        </div>
+    </section>
+</div>
+
+@code {
+    private int _fileInputKey;
+    private IReadOnlyList<WorldInfo> _worlds = [];
+    private string _newName = string.Empty;
+    private string? _newSeed;
+    private string _newMode = "survival";
+    private string _newDifficulty = "normal";
+    private IBrowserFile? _importFile;
+    private string? _importName;
+    private bool _importActivate;
+    private string? _confirmDelete;
+    private string? _message;
+    private bool _messageIsError;
+    private bool _busy;
+    private string? _busyText;
+
+    protected override async Task OnInitializedAsync()
+    {
+        Worlds.Changed += OnChanged;
+        await LoadAsync();
+    }
+
+    private async Task LoadAsync() => _worlds = await Worlds.ListAsync();
+
+    private void OnChanged() => _ = InvokeAsync(async () =>
+    {
+        await LoadAsync();
+        StateHasChanged();
+    });
+
+    private void OnWorldFile(InputFileChangeEventArgs e) => _importFile = e.File;
+
+    private Task SwitchAsync(string name) =>
+        RunAsync(() => Worlds.SwitchAsync(name), $"Ahora se usa «{name}».", "Guardando copia y cambiando de mundo…");
+
+    private Task CreateAsync() => RunAsync(async () =>
+    {
+        await Worlds.CreateAsync(new NewWorldOptions(_newName.Trim(), _newSeed, _newMode, _newDifficulty));
+        _newName = string.Empty;
+        _newSeed = null;
+    }, $"Mundo «{_newName.Trim()}» preparado{(Server.Snapshot.Status.IsProcessAlive() ? ": el servidor se ha reiniciado con él" : ": se generará al arrancar")}.", "Creando el mundo…");
+
+    private Task ImportAsync() => RunAsync(async () =>
+    {
+        await using var stream = _importFile!.OpenReadStream(WorldService.MaxImportBytes);
+        var name = await Worlds.ImportAsync(stream, _importFile.Name, _importName, _importActivate);
+        _message = _importActivate ? $"Mundo «{name}» importado y en uso." : $"Mundo «{name}» importado.";
+        _importFile = null;
+        _fileInputKey++;
+        _importName = null;
+    }, null, "Subiendo e importando el mundo… (puede tardar)");
+
+    private Task DeleteAsync(string name) => RunAsync(async () =>
+    {
+        await Worlds.DeleteAsync(name);
+        _confirmDelete = null;
+    }, $"Mundo «{name}» borrado (queda una copia en Copias).", "Guardando copia y borrando…");
+
+    private async Task RunAsync(Func<Task> action, string? ok, string busyText)
+    {
+        _busy = true;
+        _busyText = busyText;
+        _message = null;
+        StateHasChanged();
+        try
+        {
+            await action();
+            if (ok is not null)
+            {
+                _message = ok;
+            }
+            _messageIsError = false;
+        }
+        catch (Exception ex) when (ex is InvalidOperationException or ArgumentException or IOException or InvalidDataException or TimeoutException or UnauthorizedAccessException)
+        {
+            Logger.LogWarning(ex, "Acción sobre mundos fallida");
+            _message = ex.Message;
+            _messageIsError = true;
+        }
+        finally
+        {
+            _busy = false;
+            _busyText = null;
+            await LoadAsync();
+        }
+    }
+
+    public void Dispose() => Worlds.Changed -= OnChanged;
+}

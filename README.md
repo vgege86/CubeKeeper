@@ -19,7 +19,8 @@ lo descarga, lo arranca y lo para, lee su consola y le envía comandos. No neces
 - **Fase 2A ✅** Acceso: modo abierto o «solo aprobados» con lista de permitidos por XUID, modo inscripción con
   solicitudes, permisos (visitante, miembro, operador), bloquear; controles rápidos (hora, clima, mensaje, expulsar) y
   reglas del juego.
-- **Fase 2B** Mundos (crear, cambiar, importar y exportar `.mcworld`) y complementos (`.mcpack`, `.mcaddon`).
+- **Fase 2B ✅** Mundos (crear, cambiar, importar y exportar `.mcworld`, borrar con copia previa) y complementos
+  (`.mcpack`, `.mcaddon`: instalar, activar, desactivar y quitar en el mundo activo).
 
 Plan completo y decisiones: [docs/ARQUITECTURA.md](docs/ARQUITECTURA.md) ·
 Instalación en el NAS y pruebas: [docs/TRUENAS.md](docs/TRUENAS.md).

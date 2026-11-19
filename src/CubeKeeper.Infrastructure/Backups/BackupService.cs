@@ -71,12 +71,13 @@ public sealed class BackupService(
             .ToList();
     }
 
-    public async Task<BackupFile> CreateAsync(BackupKind kind, CancellationToken ct = default)
+    /// <summary>Copia del mundo activo o, con <paramref name="world"/>, de otro mundo (siempre en frío: no está cargado).</summary>
+    public async Task<BackupFile> CreateAsync(BackupKind kind, CancellationToken ct = default, string? world = null)
     {
         await _gate.WaitAsync(ct).ConfigureAwait(false);
         try
         {
-            return await CreateCoreAsync(kind, ct).ConfigureAwait(false);
+            return await CreateCoreAsync(kind, ct, world).ConfigureAwait(false);
         }
         finally
         {
@@ -177,9 +178,11 @@ public sealed class BackupService(
         return Destinations().Select(d => Path.Combine(d, fileName)).FirstOrDefault(File.Exists);
     }
 
-    private async Task<BackupFile> CreateCoreAsync(BackupKind kind, CancellationToken ct)
+    private async Task<BackupFile> CreateCoreAsync(BackupKind kind, CancellationToken ct, string? worldOverride = null)
     {
-        var world = await GetWorldNameAsync(ct).ConfigureAwait(false);
+        var active = await GetWorldNameAsync(ct).ConfigureAwait(false);
+        var world = worldOverride ?? active;
+        var isActive = string.Equals(world, active, StringComparison.Ordinal);
         var worldDir = WorldDirectory(world);
         if (!Directory.Exists(worldDir))
         {
@@ -188,7 +191,7 @@ public sealed class BackupService(
         Directory.CreateDirectory(paths.Backups);
 
         var status = server.Snapshot.Status;
-        if (status is ServerStatus.Starting or ServerStatus.Stopping or ServerStatus.Installing)
+        if (isActive && status is ServerStatus.Starting or ServerStatus.Stopping or ServerStatus.Installing)
         {
             throw new InvalidOperationException("Espera a que el servidor termine de arrancar o de parar.");
         }
@@ -197,7 +200,7 @@ public sealed class BackupService(
         var tmp = Path.Combine(paths.Backups, $".tmp-{Guid.NewGuid():N}{BackupName.Extension}");
         try
         {
-            if (status == ServerStatus.Running)
+            if (isActive && status == ServerStatus.Running)
             {
                 await HotCopyAsync(world, worldDir, tmp, ct).ConfigureAwait(false);
             }
