@@ -4,15 +4,11 @@ using Microsoft.Extensions.Options;
 
 namespace CubeKeeper.Web.Hosting;
 
-/// <summary>Cómo conectarse al servidor: dirección, puerto y enlace para añadirlo en Minecraft (útil en la Xbox).</summary>
-public sealed record ServerConnection(string Name, string Host, int Port)
-{
-    /// <summary>
-    /// Enlace que abre Minecraft y añade el servidor a la pestaña «Servidores». En la Xbox se abre desde Microsoft Edge,
-    /// que es la forma de añadir un servidor por dirección en una consola.
-    /// </summary>
-    public string MinecraftLink => $"minecraft://?addExternalServer={Uri.EscapeDataString(Name)}|{Host}:{Port}";
-}
+/// <summary>
+/// Cómo conectarse al servidor: nombre, dirección y puerto. (El enlace minecraft://?addExternalServer no añade el
+/// servidor en la Xbox; allí se entra con BedrockConnect.)
+/// </summary>
+public sealed record ServerConnection(string Name, string Host, int Port);
 
 public sealed class ConnectionInfoService(IOptions<CubeKeeperOptions> options, DataPaths paths)
 {

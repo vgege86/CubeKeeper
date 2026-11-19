@@ -13,8 +13,8 @@ Hay dos tipos de usuario del panel:
 
 ## Panel
 
-Estado del servidor (arrancar, parar, reiniciar), quién está jugando, versión de BDS y cómo conectarse (dirección y
-botón para añadir el servidor en la Xbox).
+Estado del servidor (arrancar, parar, reiniciar), quién está jugando, versión de BDS y cómo conectarse (en PC con
+la dirección y el puerto; en la Xbox, con BedrockConnect: [TRUENAS.md](TRUENAS.md#7b-xbox-entrar-con-bedrockconnect)).
 
 ### Versión de BDS
 

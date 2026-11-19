@@ -172,15 +172,10 @@
             En PC (ROG Ally): Servidores → Añadir servidor, con esa dirección y ese puerto. Es la forma que funciona hoy.
         </p>
         <p>
-            En la Xbox, unirse desde «Partidas LAN» falla con NetherNet (error «Boat») y no se pueden añadir servidores por IP.
-            Abre la página de entrada de CubeKeeper con <strong>Microsoft Edge en la Xbox</strong> y pulsa
-            «Añadir el servidor en Xbox»: debería añadirlo a la pestaña «Servidores».
+            En la Xbox, unirse desde «Partidas LAN» falla (error «Boat») y no se pueden añadir servidores por IP. Con la
+            reescritura de AdGuard hacia BedrockConnect: Servidores → <strong>Lifeboat</strong> → Unirse → «Connect to a
+            Server» con esa dirección y ese puerto (la primera vez; luego ya sale en la lista).
         </p>
-        @if (_connection is not null)
-        {
-            <p><a class="btn btn-xbox" href="@_connection.MinecraftLink">Añadir el servidor en Xbox</a></p>
-            <p><code class="wrap small">@_connection.MinecraftLink</code></p>
-        }
     </section>
 
     @if (_deviations.Count > 0 && _isAdmin)

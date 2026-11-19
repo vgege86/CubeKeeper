@@ -177,10 +177,12 @@ socket de Docker, otro contenedor no puede llegar a esa consola.
 
 ### Pendiente de comprobar en el NAS
 
+- ~~El enlace `minecraft://?addExternalServer=…` desde Edge en la Xbox~~: comprobado que no añade el servidor. La Xbox
+  entra con BedrockConnect (reescritura DNS de un destacado en AdGuard); el panel lo explica en lugar del botón.
+
 - Realms con la cuenta real: la cadena de Xbox y la API de Realms solo se han probado contra servidores simulados.
 
 - Las dependencias exactas de `bedrock_server` 1.26.65.1 en la imagen (`ldd`). Si falta alguna `.so`, se añade al Dockerfile.
-- El enlace `minecraft://?addExternalServer=…` desde Edge en la Xbox.
 - Si BDS registra en el log los intentos rechazados por la lista de permitidos. La fase 2A no depende de ello (usa el
   modo inscripción), pero si lo registra se podrían crear solicitudes sin abrir la lista.
 - Que BDS 1.26 acepta `allowlist on`/`off` y `permission reload` en la consola. Si no, el modo de acceso se aplica igual

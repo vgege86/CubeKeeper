@@ -50,7 +50,8 @@ En GitHub → *Packages → cubekeeper → Package settings*, la visibilidad deb
 ## No puedo conectarme desde el juego
 
 - Dirección `192.168.1.21`, puerto `19132`, en **Servidores → Añadir servidor**.
-- En la Xbox, «Partidas LAN» puede mostrar el servidor pero dar el error «Boat» al unirse: usa **Servidores**.
+- **Xbox:** «Partidas LAN» muestra el servidor pero da el error «Boat» al unirse, y la Xbox no deja añadir servidores
+  por IP. Ver [Xbox: entrar con BedrockConnect](TRUENAS.md#7b-xbox-entrar-con-bedrockconnect).
 - Con el acceso en **Solo aprobados**, el juego dice que no estás invitado: apruébate en **Acceso** (con la inscripción).
 
 ## Copias

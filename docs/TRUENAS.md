@@ -122,7 +122,29 @@ a la VPN.
 5. Recomendado: activa la verificación en dos pasos en **Mi cuenta** (clic en tu nombre) y configura los avisos al
    móvil en **Avisos** ([USO.md](USO.md#avisos-al-móvil)).
 
-Para conectarte desde el juego: **Servidores → Añadir servidor**, dirección `192.168.1.21`, puerto `19132`.
+Para conectarte desde el juego en PC (ROG Ally): **Servidores → Añadir servidor**, dirección `192.168.1.21`, puerto
+`19132`. En la Xbox, ver el apartado siguiente.
+
+## 7b. Xbox: entrar con BedrockConnect
+
+La Xbox no deja añadir servidores por IP, y unirse desde «Partidas LAN» falla con el error «Boat» (con NetherNet, la
+consola no manda su identidad por LAN y el servidor, con `online-mode=true`, la rechaza). Lo que funciona es
+[BedrockConnect](https://github.com/Pugmatt/BedrockConnect): se desvía uno de los servidores destacados a su menú, y
+desde ahí se entra al tuyo.
+
+1. En **AdGuard → Filtros → Reescrituras DNS → Añadir**: dominio `mco.lbsg.net` (Lifeboat), respuesta
+   `104.238.130.180` (el BedrockConnect público).
+2. En la Xbox, DNS en **automático** (para que use AdGuard). Si cambiaste algo, desenchúfala 30 segundos.
+3. **Servidores → Lifeboat → Unirse.** Sale el menú de BedrockConnect: **Connect to a Server**, dirección
+   `192.168.1.21`, puerto `19132`, marca **Add to server list** y **Submit**.
+4. Las siguientes veces: Lifeboat → Unirse → elige tu servidor en la lista.
+
+Mientras la reescritura esté activa, Lifeboat no se puede jugar desde casa (lleva siempre al menú). El servidor de
+BedrockConnect es de terceros: solo hace de menú; la partida va directamente de la Xbox a tu NAS.
+
+Si al unirte entras en el Lifeboat de verdad, la Xbox no está preguntando a AdGuard: mira su registro de consultas.
+Suele ser por IPv6 (la Xbox usa el DNS de IPv6 del operador): desactívalo en el router o anuncia AdGuard también
+como DNS de IPv6.
 
 ## 8. Actualizar
 
