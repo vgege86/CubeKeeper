@@ -486,3 +486,4 @@ $RECYCLE.BIN/
 
 # La plantilla ignora "Logs/": aquí es código (analizador del log de BDS).
 !src/**/Logs/
+!src/**/Backups/
