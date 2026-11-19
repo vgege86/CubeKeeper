@@ -65,6 +65,7 @@ builder.Services.AddScoped<Microsoft.AspNetCore.Components.Authorization.Authent
 // Las cookies también se revalidan cada minuto (contraseña, rol o segundo factor cambiados).
 builder.Services.Configure<SecurityStampValidatorOptions>(o => o.ValidationInterval = TimeSpan.FromMinutes(1));
 builder.Services.AddScoped<CubeKeeper.Infrastructure.Users.PanelUserService>();
+builder.Services.AddSingleton<ConnectionInfoService>();
 
 // Detrás de Nginx Proxy Manager: aceptar X-Forwarded-* solo de los proxies de confianza.
 builder.Services.Configure<ForwardedHeadersOptions>(o =>

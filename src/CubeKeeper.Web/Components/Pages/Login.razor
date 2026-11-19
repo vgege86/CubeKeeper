@@ -9,6 +9,7 @@
 @inject NavigationManager Navigation
 @inject CubeKeeper.Web.Hosting.AdminSeedStatus SeedStatus
 @inject CubeKeeper.Infrastructure.Audit.AuditLog Audit
+@inject CubeKeeper.Web.Hosting.ConnectionInfoService Connection
 
 <PageTitle>Entrar · CubeKeeper</PageTitle>
 
@@ -65,6 +66,19 @@
         </label>
         <button type="submit" class="btn btn-primary wide">Entrar</button>
     </EditForm>
+
+    @if (_connection is not null)
+    {
+        <div class="join-box">
+            <h2>¿Quieres jugar?</h2>
+            <a class="btn btn-xbox wide" href="@_connection.MinecraftLink">Añadir el servidor en Xbox</a>
+            <p class="muted small">
+                Abre esta página con <strong>Microsoft Edge en la Xbox</strong> y pulsa el botón: Minecraft se abrirá y añadirá
+                «@_connection.Name» a la pestaña Servidores.
+            </p>
+            <p class="muted small">En PC: Servidores → Añadir servidor, dirección <code>@_connection.Host</code> y puerto <code>@_connection.Port</code>.</p>
+        </div>
+    }
 </div>
 
 @code {
@@ -80,9 +94,13 @@
     [CascadingParameter]
     private HttpContext? HttpContext { get; set; }
 
+    private CubeKeeper.Web.Hosting.ServerConnection? _connection;
+
     protected override async Task OnInitializedAsync()
     {
+        // El modelo del formulario va antes de cualquier await: Blazor pinta en el primer await.
         Input ??= new LoginInput();
+        _connection = await Connection.GetAsync(new Uri(Navigation.BaseUri).Host);
         _noUsers = !UserManager.Users.Any();
         await Task.CompletedTask;
     }

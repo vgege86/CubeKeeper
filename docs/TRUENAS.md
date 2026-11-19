@@ -108,7 +108,7 @@ La imagen `ghcr.io/vgege86/cubekeeper` la publica GitHub Actions al fusionar en 
 | 5 | Consola: `list` | `There are 0/10 players online:` |
 | 6 | ROG Ally: Servidores → Añadir `192.168.1.21` : `19132` y entrar | Entras al mundo. La consola muestra `Player connected: …, xuid: …` |
 | 7 | Consola: `say Hola` | El mensaje aparece en el chat del juego |
-| 8 | Xbox: abrir con Edge `minecraft://?addExternalServer=CubeKeeper\|192.168.1.21:19132` | **A comprobar.** Si funciona, el servidor aparece en «Servidores» |
+| 8 | Xbox: abrir con Edge la página de entrada de CubeKeeper (`https://cubekeeper.alucard86.fyi` o `http://192.168.1.21:8765`) y pulsar **Añadir el servidor en Xbox** | **A comprobar.** Si funciona, Minecraft se abre y el servidor aparece en «Servidores» |
 | 9 | Xbox: «Partidas LAN» | Aparece el servidor (unirse probablemente siga dando «Boat») |
 | 10 | Panel → Parar, con alguien dentro | La consola muestra `Quit correctly`; el mundo se guarda |
 | 11 | Simular una caída: `sudo pkill -9 bedrock_server` en la shell del NAS | «Se ha cerrado inesperadamente» y, a los 5 s, vuelve a arrancar solo |
