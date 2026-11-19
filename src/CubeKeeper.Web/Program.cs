@@ -153,6 +153,18 @@ app.MapGet("/mundos/descargar/{name}", async (string name, CubeKeeper.Infrastruc
     }
 }).RequireAuthorization("Admin");
 
+// Archivos del mapa generado (cualquier usuario con sesión).
+var mapContentTypes = new Microsoft.AspNetCore.StaticFiles.FileExtensionContentTypeProvider();
+app.MapGet("/mapa/ver/{**path}", (string? path, CubeKeeper.Infrastructure.Maps.MapService maps) =>
+{
+    if (string.IsNullOrEmpty(path) || maps.ResolveMapFile(path) is not { } file)
+    {
+        return Results.NotFound();
+    }
+    var type = mapContentTypes.TryGetContentType(file, out var t) ? t : "application/octet-stream";
+    return Results.File(file, type, enableRangeProcessing: true);
+});
+
 app.MapStaticAssets().AllowAnonymous();
 app.MapRazorComponents<App>().AddInteractiveServerRenderMode();
 

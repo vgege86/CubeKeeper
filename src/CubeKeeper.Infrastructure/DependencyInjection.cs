@@ -64,6 +64,15 @@ public static class DependencyInjection
         services.AddSingleton(sp => ActivatorUtilities.CreateInstance<Notifications.Notifier>(sp,
             sp.GetRequiredService<IHttpClientFactory>().CreateClient(Notifications.Notifier.HttpClientName)));
         services.AddHostedService<Notifications.NotificationWatcher>();
+        services.AddHttpClient(Maps.MapService.HttpClientName, c =>
+        {
+            c.Timeout = TimeSpan.FromMinutes(10);
+            c.DefaultRequestHeaders.UserAgent.ParseAdd(userAgent);
+        });
+        services.AddSingleton(sp => ActivatorUtilities.CreateInstance<Maps.MapService>(sp,
+            sp.GetRequiredService<IHttpClientFactory>().CreateClient(Maps.MapService.HttpClientName)));
+        services.AddSingleton<Maps.MapScheduler>();
+        services.AddHostedService(sp => sp.GetRequiredService<Maps.MapScheduler>());
         services.AddSingleton<Family.FamilyService>();
         services.AddHostedService(sp => sp.GetRequiredService<Family.FamilyService>());
         services.AddSingleton<Addons.AddonService>();

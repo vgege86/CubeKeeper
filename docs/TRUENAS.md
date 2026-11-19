@@ -244,6 +244,25 @@ la cuenta y quita la verificación en dos pasos. Después vuelve a activarla des
 | 4 | Esperar a que Mojang publique una versión más nueva que la fijada (o comprobarlo a las 6 h de arrancar) | Aviso «BDS x.y.z disponible», una sola vez |
 | 5 | Activar «Entradas y salidas» y entrar al juego | Aviso «… ha entrado» |
 
+## 7i. Fase 3D: mapa del mundo
+
+1. Descarga **uNmINeD CLI para Linux x64** desde su web oficial (unmined.net → Downloads), un `.tar.gz`. Es gratuito
+   para uso personal; por su licencia no puede ir dentro de la imagen.
+2. **Mapa** → uNmINeD → «Subir e instalar» con ese archivo (o pega el enlace de descarga y «Descargar»).
+3. **Generar ahora**. La primera vez puede tardar varios minutos; mientras, puedes jugar.
+
+Instala los motores solo desde su web oficial: es un programa que se ejecuta dentro del contenedor.
+
+| # | Prueba | Resultado esperado |
+|---|---|---|
+| 1 | Generar ahora | En el registro se ve la copia, el comando y la salida del programa; al terminar aparece el mapa |
+| 2 | Si falla con «Unknown command» o similar | Mira en `unmined-cli --help` (o en su web) el comando de tu versión y cámbialo en Ajustes del mapa |
+| 3 | Entrar como operador | Ve el mapa, pero no los botones de generar ni instalar |
+| 4 | Al día siguiente | «Última generación» es de esta madrugada (a la hora configurada) |
+| 5 | (Opcional) bedrock-viz: subir su ejecutable de Linux, elegirlo, Guardar y Generar | Mapa con bedrock-viz; puede no reconocer bloques muy nuevos de 1.26 |
+
+Si da «Permission denied» al ejecutarlo, comprueba que el dataset `vms/cubekeeper` no está montado con `exec=off`.
+
 ## 8. Si no puedes entrar
 
 - La pantalla de login dice por qué no hay usuario, por ejemplo si la contraseña es demasiado corta. Corrígelo en
