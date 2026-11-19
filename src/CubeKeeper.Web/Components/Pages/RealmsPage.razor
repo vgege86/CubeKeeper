@@ -100,12 +100,12 @@
                         <tr>
                             <td>
                                 <strong>@r.Name</strong>
-                                @if (r.IsOwner) {<span class="badge badge-ok small-badge">tuyo</span>}
-                                <div class="muted small">de @(r.Owner ?? "?")</div>
+                                @if (r.IsOwner == true) {<span class="badge badge-ok small-badge">tuyo</span>}
+                                @if (r.Owner is not null) {<div class="muted small">de @r.Owner</div>}
                             </td>
                             <td>@StateText(r)</td>
                             <td>
-                                @if (r.Slots.Count > 0)
+                                @if (r.Slots.Count > 1)
                                 {
                                     <select value="@SlotOf(r)" @onchange="e => _slots[r.Id] = int.Parse((string)e.Value!)" aria-label="Ranura de @r.Name">
                                         @foreach (var (slot, name) in r.Slots)
@@ -120,13 +120,13 @@
                                 }
                             </td>
                             <td class="row-actions">
-                                @if (r.IsOwner)
+                                @if (r.IsOwner == false)
                                 {
-                                    <button class="btn btn-ghost" disabled="@_busy" @onclick="() => Choose(r)">Importar…</button>
+                                    <span class="muted small">No eres el dueño</span>
                                 }
                                 else
                                 {
-                                    <span class="muted small">No eres el dueño</span>
+                                    <button class="btn btn-ghost" disabled="@_busy" @onclick="() => Choose(r)">Importar…</button>
                                 }
                             </td>
                         </tr>

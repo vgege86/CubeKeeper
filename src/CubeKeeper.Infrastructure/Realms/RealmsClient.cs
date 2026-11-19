@@ -4,7 +4,8 @@ using CubeKeeper.Infrastructure.Configuration;
 
 namespace CubeKeeper.Infrastructure.Realms;
 
-public sealed record RealmInfo(long Id, string Name, string? Owner, string? State, int ActiveSlot, bool Expired, bool IsOwner, IReadOnlyList<(int Slot, string Name)> Slots);
+/// <summary>Un Realm. <see cref="IsOwner"/> es null si no se puede saber (Realms decide al descargar).</summary>
+public sealed record RealmInfo(long Id, string Name, string? Owner, string? State, int ActiveSlot, bool Expired, bool? IsOwner, IReadOnlyList<(int Slot, string Name)> Slots);
 
 public sealed record RealmDownload(Uri Url, string? Token, long? Size);
 
@@ -47,18 +48,38 @@ public sealed class RealmsClient(HttpClient http, RealmsOptions options, Func<st
                     }
                 }
             }
+            var activeSlot = s["activeSlot"]?.GetValue<int>() ?? 1;
+            if (slots.Count == 0)
+            {
+                // Bedrock no siempre manda las ranuras; un Realm tiene tres.
+                slots.AddRange(Enumerable.Range(1, Math.Max(3, activeSlot)).Select(i => (i, $"Mundo {i}")));
+            }
             var ownerUuid = s["ownerUUID"]?.GetValue<string>();
+            var owner = s["owner"]?.GetValue<string>();
             list.Add(new RealmInfo(
                 s["id"]!.GetValue<long>(),
                 s["name"]?.GetValue<string>() ?? "(sin nombre)",
-                s["owner"]?.GetValue<string>(),
+                string.IsNullOrWhiteSpace(owner) ? null : owner,
                 s["state"]?.GetValue<string>(),
-                s["activeSlot"]?.GetValue<int>() ?? 1,
+                activeSlot,
                 s["expired"]?.GetValue<bool>() ?? false,
-                ownerUuid is not null && ownerUuid == xsts.Xuid,
+                IsOwner(ownerUuid, owner, xsts),
                 slots));
         }
         return list;
+    }
+
+    private static bool? IsOwner(string? ownerUuid, string? owner, XstsToken xsts)
+    {
+        if (!string.IsNullOrEmpty(ownerUuid) && xsts.Xuid is not null)
+        {
+            return string.Equals(ownerUuid, xsts.Xuid, StringComparison.OrdinalIgnoreCase);
+        }
+        if (!string.IsNullOrWhiteSpace(owner) && xsts.Gamertag is not null)
+        {
+            return string.Equals(owner, xsts.Gamertag, StringComparison.OrdinalIgnoreCase);
+        }
+        return null;
     }
 
     /// <summary>Enlace de descarga del mundo de una ranura tal como está ahora («latest»).</summary>

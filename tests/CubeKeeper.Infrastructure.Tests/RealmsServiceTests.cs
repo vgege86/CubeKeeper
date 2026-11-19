@@ -34,6 +34,8 @@ public class RealmsServiceTests
 
         public byte[] World { get; set; } = [];
 
+        public bool IdentityFails { get; set; }
+
         protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken ct)
         {
             var body = request.Content is null ? "" : await request.Content.ReadAsStringAsync(ct);
@@ -78,13 +80,19 @@ public class RealmsServiceTests
                 case "xsts.auth.xboxlive.com/xsts/authorize":
                     CheckSigned(request, body, "1");
                     var p = JsonNode.Parse(body)!;
-                    Expect(p["RelyingParty"]!.GetValue<string>() == "https://pocket.realms.minecraft.net/", "RelyingParty");
                     Expect(p["Properties"]!["TitleToken"]!.GetValue<string>() == "title-token", "TitleToken");
                     if (XErr is not null)
                     {
                         return Json($$"""{"XErr":{{XErr}},"Message":""}""", HttpStatusCode.Unauthorized);
                     }
-                    return Json("""{"Token":"xsts-token","NotAfter":"2099-01-01T00:00:00Z","DisplayClaims":{"xui":[{"uhs":"uhs-1","xid":"2535400000000001","gtg":"Papa86"}]}}""");
+                    // Como el de verdad: el token de Realms solo trae uhs; el de xboxlive.com, el perfil.
+                    return p["RelyingParty"]!.GetValue<string>() switch
+                    {
+                        "https://pocket.realms.minecraft.net/" => Json("""{"Token":"xsts-token","NotAfter":"2099-01-01T00:00:00Z","DisplayClaims":{"xui":[{"uhs":"uhs-1"}]}}"""),
+                        "http://xboxlive.com" when !IdentityFails => Json("""{"Token":"xbl-token","DisplayClaims":{"xui":[{"uhs":"uhs-1","xid":"2535400000000001","gtg":"Papa86"}]}}"""),
+                        "http://xboxlive.com" => Json("""{"XErr":2148916238}""", HttpStatusCode.Unauthorized),
+                        var other => Json($$"""{"error":"RelyingParty {{other}}"}""", HttpStatusCode.BadRequest),
+                    };
                 case "pocket.realms.minecraft.net/worlds":
                     CheckRealms(request);
                     if (RealmsFailures-- > 0)
@@ -94,7 +102,8 @@ public class RealmsServiceTests
                     return Json("""
                         {"servers":[{"id":42,"name":"Casa","owner":"Papa86","ownerUUID":"2535400000000001","state":"OPEN","activeSlot":2,"expired":false,
                           "slots":[{"slotId":1,"options":"{\"slotName\":\"Supervivencia\"}"},{"slotId":2,"options":"{}"}]},
-                         {"id":7,"name":"De un amigo","owner":"Otro","ownerUUID":"999","state":"CLOSED","activeSlot":1,"expired":true}]}
+                         {"id":7,"name":"De un amigo","owner":"Otro","ownerUUID":"999","state":"CLOSED","activeSlot":1,"expired":true},
+                         {"id":8,"name":"My Realm","owner":"","ownerUUID":"2535400000000001","state":"OPEN","activeSlot":3,"expired":false}]}
                         """);
                 case "pocket.realms.minecraft.net/archive/download/world/42/1/latest":
                     CheckRealms(request);
@@ -225,7 +234,7 @@ public class RealmsServiceTests
         Assert.Equal(
             ["login.live.com/oauth20_connect.srf", "login.live.com/oauth20_token.srf", "login.live.com/oauth20_token.srf",
              "user.auth.xboxlive.com/user/authenticate", "device.auth.xboxlive.com/device/authenticate",
-             "title.auth.xboxlive.com/title/authenticate", "xsts.auth.xboxlive.com/xsts/authorize"],
+             "title.auth.xboxlive.com/title/authenticate", "xsts.auth.xboxlive.com/xsts/authorize", "xsts.auth.xboxlive.com/xsts/authorize"],
             s.Fake.Log);
     }
 
@@ -239,7 +248,7 @@ public class RealmsServiceTests
         var list = await s.Realms.ListAsync();
 
         Assert.Empty(s.Fake.Problems);
-        Assert.Equal(2, list.Count);
+        Assert.Equal(3, list.Count);
         var casa = list[0];
         Assert.Equal(42, casa.Id);
         Assert.True(casa.IsOwner);
@@ -247,6 +256,12 @@ public class RealmsServiceTests
         Assert.Equal([(1, "Supervivencia"), (2, "Mundo 2")], casa.Slots);
         Assert.False(list[1].IsOwner);
         Assert.True(list[1].Expired);
+        // Sin nombre de dueño ni ranuras (como lo manda Bedrock): se reconoce por el XUID y se ofrecen las tres.
+        var mine = list[2];
+        Assert.True(mine.IsOwner);
+        Assert.Null(mine.Owner);
+        Assert.Equal(3, mine.ActiveSlot);
+        Assert.Equal([1, 2, 3], mine.Slots.Select(x => x.Slot));
         Assert.Equal(2, s.Fake.Log.Count(l => l.EndsWith("/worlds")));
     }
 
@@ -285,13 +300,29 @@ public class RealmsServiceTests
                 protection, NullLogger<RealmsService>.Instance);
 
             Assert.Equal(RealmsStatus.Connected, second.View.Status);
-            Assert.Equal(2, (await second.ListAsync()).Count);
+            Assert.Equal(3, (await second.ListAsync()).Count);
             Assert.Empty(fake.Problems);
             Assert.Equal(1, fake.Refreshes);
             // Se ha guardado el token de renovación nuevo, y la siguiente consulta reutiliza el XSTS en memoria.
             await second.ListAsync();
-            Assert.Equal(1, fake.Log.Count(l => l.Contains("xsts")));
+            Assert.Equal(1, fake.Log.Count(l => l.Contains("user.auth")));
         }
+    }
+
+    [Fact]
+    public async Task Without_a_profile_ownership_is_unknown_and_import_is_left_to_realms()
+    {
+        await using var s = Create();
+        s.Fake.IdentityFails = true;
+        await ConnectAsync(s.Realms);
+
+        Assert.Equal(RealmsStatus.Connected, s.Realms.View.Status);
+        Assert.Null(s.Realms.View.Gamertag);
+        var list = await s.Realms.ListAsync();
+        Assert.Null(list[2].IsOwner);
+        // Con nombre de dueño pero sin gamertag propio tampoco se puede saber.
+        Assert.Null(list[1].IsOwner);
+        Assert.Empty(s.Fake.Problems);
     }
 
     [Fact]
