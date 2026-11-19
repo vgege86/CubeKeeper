@@ -1,0 +1,296 @@
+@page "/realms"
+@attribute [Authorize(Roles = PanelRoles.Admin)]
+@rendermode InteractiveServer
+@inherits AuditedPage
+@implements IDisposable
+@using CubeKeeper.Core.Worlds
+@using CubeKeeper.Infrastructure.Realms
+@using CubeKeeper.Web.Formatting
+@inject RealmsService Realms
+@inject TimeProvider Time
+@inject ILogger<RealmsPage> Logger
+
+<PageTitle>Realms · CubeKeeper</PageTitle>
+
+<h1>Realms</h1>
+
+@if (_message is not null)
+{
+    <p class="alert @(_messageIsError ? "alert-error" : "alert-ok")" role="status">@_message</p>
+}
+@if (_busyText is not null)
+{
+    <p class="alert alert-warn" role="status">@_busyText</p>
+}
+
+<section class="card">
+    <h2>Cuenta de Microsoft</h2>
+    @switch (_view.Status)
+    {
+        case RealmsStatus.Disconnected:
+            <p>
+                Conecta la cuenta dueña del Realm para descargar sus mundos aquí. Se inicia sesión en la web de Microsoft con un
+                código: CubeKeeper nunca ve la contraseña.
+            </p>
+            @if (_view.LastError is not null)
+            {
+                <p class="alert alert-error">@_view.LastError</p>
+            }
+            <div class="actions">
+                <button class="btn btn-primary" disabled="@_busy" @onclick="StartAsync">Conectar cuenta</button>
+            </div>
+            break;
+        case RealmsStatus.WaitingForCode:
+            var pending = _view.Code!;
+            <p>Abre <a href="@LinkUrl(pending)" target="_blank" rel="noopener noreferrer">@pending.VerificationUri</a> en el móvil o el ordenador y escribe este código:</p>
+            <p class="device-code" aria-label="Código de inicio de sesión">@pending.UserCode</p>
+            <p class="muted small">
+                Inicia sesión con la cuenta del Realm y acepta el permiso. Esta página se actualiza sola.
+                El código caduca @Format.When(pending.ExpiresAt, Time).
+            </p>
+            <div class="actions">
+                <button class="btn btn-ghost" @onclick="Cancel">Cancelar</button>
+            </div>
+            break;
+        default:
+            <p>
+                Conectada como <strong>@(_view.Gamertag ?? "(sin gamertag)")</strong>
+                @if (_view.ConnectedAt is { } at) {<span class="muted small"> · desde @Format.When(at, Time)</span>}
+            </p>
+            <div class="actions">
+                <button class="btn btn-ghost" disabled="@_busy" @onclick="LoadRealmsAsync">Actualizar lista</button>
+                @if (_confirmDisconnect)
+                {
+                    <button class="btn btn-primary" @onclick="DisconnectAsync">Sí, desconectar</button>
+                    <button class="btn btn-ghost" @onclick="() => _confirmDisconnect = false">No</button>
+                }
+                else
+                {
+                    <button class="btn btn-ghost" disabled="@_busy" @onclick="() => _confirmDisconnect = true">Desconectar…</button>
+                }
+            </div>
+            break;
+    }
+    <p class="muted small">
+        Usa la API de Realms que usa el propio juego, que no es pública: si Mojang la cambia, esta página puede dejar de funcionar
+        hasta que se actualice CubeKeeper. Solo se guarda un token de renovación, cifrado en /data. Desconectar lo borra; para
+        quitar el permiso del todo, revócalo en account.live.com/consent/Manage.
+    </p>
+</section>
+
+@if (_view.Status == RealmsStatus.Connected && _realms is not null)
+{
+    <section class="card">
+        <h2>Tus Realms</h2>
+        @if (_realms.Count == 0)
+        {
+            <p class="muted">Esta cuenta no tiene ni está invitada a ningún Realm.</p>
+        }
+        else
+        {
+            <p class="muted small">
+                Se descarga el mundo tal y como está ahora en el Realm (no hace falta cerrarlo) y se importa como un mundo más.
+                Solo el dueño de un Realm puede descargar sus mundos.
+            </p>
+            <table class="table">
+                <thead><tr><th>Realm</th><th>Estado</th><th>Mundo</th><th></th></tr></thead>
+                <tbody>
+                    @foreach (var r in _realms)
+                    {
+                        <tr>
+                            <td>
+                                <strong>@r.Name</strong>
+                                @if (r.IsOwner) {<span class="badge badge-ok small-badge">tuyo</span>}
+                                <div class="muted small">de @(r.Owner ?? "?")</div>
+                            </td>
+                            <td>@StateText(r)</td>
+                            <td>
+                                @if (r.Slots.Count > 0)
+                                {
+                                    <select value="@SlotOf(r)" @onchange="e => _slots[r.Id] = int.Parse((string)e.Value!)" aria-label="Ranura de @r.Name">
+                                        @foreach (var (slot, name) in r.Slots)
+                                        {
+                                            <option value="@slot">@slot · @name@(slot == r.ActiveSlot ? " (activo)" : "")</option>
+                                        }
+                                    </select>
+                                }
+                                else
+                                {
+                                    <span>Ranura @r.ActiveSlot</span>
+                                }
+                            </td>
+                            <td class="row-actions">
+                                @if (r.IsOwner)
+                                {
+                                    <button class="btn btn-ghost" disabled="@_busy" @onclick="() => Choose(r)">Importar…</button>
+                                }
+                                else
+                                {
+                                    <span class="muted small">No eres el dueño</span>
+                                }
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        }
+    </section>
+
+    @if (_chosen is { } chosen)
+    {
+        <section class="card">
+            <h2>Importar «@chosen.Name», ranura @SlotOf(chosen)</h2>
+            <label>Nombre del mundo <span class="muted small">(opcional; si no, el del propio mundo)</span>
+                <input @bind="_importName" @bind:event="oninput" maxlength="@WorldNames.MaxLength" />
+            </label>
+            @if (!string.IsNullOrWhiteSpace(_importName) && WorldNames.Validate(_importName.Trim()) is { } nameError)
+            {
+                <span class="validation-message">@nameError</span>
+            }
+            <label class="check"><input type="checkbox" @bind="_activate" /> Usarlo ahora (copia el mundo activo y reinicia el servidor)</label>
+            <div class="actions">
+                <button class="btn btn-primary" disabled="@(_busy || (!string.IsNullOrWhiteSpace(_importName) && WorldNames.Validate(_importName.Trim()) is not null))" @onclick="ImportAsync">Descargar e importar</button>
+                <button class="btn btn-ghost" disabled="@_busy" @onclick="() => _chosen = null">Cancelar</button>
+            </div>
+            <p class="muted small">
+                Antes de importar, entra en los ajustes del mundo en el Realm y comprueba qué complementos tiene: los paquetes de
+                recursos y comportamiento del Marketplace no se pueden copiar al servidor.
+            </p>
+        </section>
+    }
+}
+
+@code {
+    private RealmsView _view = new(RealmsStatus.Disconnected, null, null, null, null);
+    private IReadOnlyList<RealmInfo>? _realms;
+    private readonly Dictionary<long, int> _slots = [];
+    private RealmInfo? _chosen;
+    private string? _importName;
+    private bool _activate;
+    private bool _confirmDisconnect;
+    private bool _busy;
+    private string? _busyText;
+    private string? _message;
+    private bool _messageIsError;
+    private RealmsStatus _lastStatus;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _view = Realms.View;
+        _lastStatus = _view.Status;
+        Realms.Changed += OnChanged;
+        if (_view.Status == RealmsStatus.Connected)
+        {
+            await LoadRealmsAsync();
+        }
+    }
+
+    private void OnChanged() => _ = InvokeAsync(async () =>
+    {
+        var previous = _lastStatus;
+        _view = Realms.View;
+        _lastStatus = _view.Status;
+        if (previous == RealmsStatus.WaitingForCode && _view.Status == RealmsStatus.Connected)
+        {
+            await AuditAsync("realms.connect", _view.Gamertag);
+            await LoadRealmsAsync();
+        }
+        StateHasChanged();
+    });
+
+    private static string LinkUrl(DeviceCode code) => $"https://www.microsoft.com/link?otc={Uri.EscapeDataString(code.UserCode)}";
+
+    private int SlotOf(RealmInfo r) => _slots.TryGetValue(r.Id, out var s) ? s : r.ActiveSlot;
+
+    private static string StateText(RealmInfo r) =>
+        r.Expired ? "Caducado" : r.State switch { "OPEN" => "Abierto", "CLOSED" => "Cerrado", null => "—", var s => s };
+
+    private void Choose(RealmInfo r)
+    {
+        _chosen = r;
+        _importName = null;
+        _activate = false;
+    }
+
+    private Task StartAsync() => RunAsync(async () => { await Realms.StartLoginAsync(); }, null, "Pidiendo un código a Microsoft…");
+
+    private void Cancel() => Realms.CancelLogin();
+
+    private async Task DisconnectAsync()
+    {
+        var gamertag = _view.Gamertag;
+        Realms.Disconnect();
+        _confirmDisconnect = false;
+        _realms = null;
+        _chosen = null;
+        await AuditAsync("realms.disconnect", gamertag);
+        _message = "Cuenta desconectada.";
+        _messageIsError = false;
+    }
+
+    private Task LoadRealmsAsync() => RunAsync(async () => { _realms = await Realms.ListAsync(); }, null, "Consultando tus Realms…");
+
+    private Task ImportAsync()
+    {
+        var realm = _chosen!;
+        var slot = SlotOf(realm);
+        var name = string.IsNullOrWhiteSpace(_importName) ? null : _importName.Trim();
+        var activate = _activate;
+        var lastShown = DateTime.MinValue;
+        var progress = new Progress<long>(bytes =>
+        {
+            // Como mucho dos refrescos por segundo.
+            if (DateTime.UtcNow - lastShown < TimeSpan.FromMilliseconds(500))
+            {
+                return;
+            }
+            lastShown = DateTime.UtcNow;
+            _ = InvokeAsync(() =>
+            {
+                if (_busy)
+                {
+                    _busyText = $"Descargando «{realm.Name}»… {Format.Size(bytes)}";
+                    StateHasChanged();
+                }
+            });
+        });
+        return RunAsync(async () =>
+        {
+            var world = await Realms.ImportAsync(realm, slot, name, activate, progress);
+            await AuditAsync("realms.import", world, $"{realm.Name}, ranura {slot}");
+            _message = activate ? $"Mundo «{world}» importado desde «{realm.Name}» y en uso." : $"Mundo «{world}» importado desde «{realm.Name}». Lo tienes en Mundos.";
+            _chosen = null;
+        }, null, $"Descargando «{realm.Name}»…");
+    }
+
+    private async Task RunAsync(Func<Task> action, string? ok, string busyText)
+    {
+        _busy = true;
+        _busyText = busyText;
+        _message = null;
+        StateHasChanged();
+        try
+        {
+            await action();
+            if (ok is not null)
+            {
+                _message = ok;
+            }
+            _messageIsError = false;
+        }
+        catch (Exception ex) when (ex is RealmsAuthException or InvalidOperationException or ArgumentException or IOException or InvalidDataException or HttpRequestException)
+        {
+            Logger.LogWarning(ex, "Acción de Realms fallida");
+            _message = ex.Message;
+            _messageIsError = true;
+        }
+        finally
+        {
+            _busy = false;
+            _busyText = null;
+            _view = Realms.View;
+        }
+    }
+
+    public void Dispose() => Realms.Changed -= OnChanged;
+}

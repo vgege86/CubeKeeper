@@ -282,3 +282,6 @@ a.user:hover { text-decoration: underline; }
 .map-frame iframe { display: block; width: 100%; height: min(75vh, 800px); border: 0; }
 .mono { font-family: ui-monospace, SFMono-Regular, Consolas, monospace; }
 .small-console { height: auto; max-height: 260px; }
+
+/* Realms: código para microsoft.com/link */
+.device-code { font-family: ui-monospace, monospace; font-size: 2rem; letter-spacing: 0.2em; font-weight: 700; margin: 0.5rem 0; user-select: all; }

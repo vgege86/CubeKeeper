@@ -263,6 +263,39 @@ Instala los motores solo desde su web oficial: es un programa que se ejecuta den
 
 Si da «Permission denied» al ejecutarlo, comprueba que el dataset `vms/cubekeeper` no está montado con `exec=off`.
 
+## 7j. Realms: traer un mundo
+
+No hay que tocar el YAML: la imagen nueva trae la página **Realms** (solo administradores).
+
+1. **Realms** → **Conectar cuenta**. Aparece un código de 8 letras.
+2. En el móvil o el ordenador, abre `microsoft.com/link`, escribe el código e inicia sesión con la **cuenta dueña del
+   Realm** (la de Xbox). Acepta el permiso. CubeKeeper nunca ve la contraseña.
+3. En unos segundos la página dice «Conectada como …» y lista tus Realms.
+4. Elige la ranura (mundo) del Realm → **Importar…** → nombre (opcional) → **Descargar e importar**. Marca «Usarlo
+   ahora» si quieres jugarlo ya: antes se hace una copia del mundo activo.
+
+| # | Prueba | Resultado esperado |
+|---|---|---|
+| 1 | Conectar cuenta y usar el código | «Conectada como» con tu gamertag y la lista de Realms |
+| 2 | Importar una ranura sin «Usarlo ahora» | Aparece en **Mundos**; el servidor sigue con el mundo que tenía |
+| 3 | En Mundos, «Usar este» con el importado y entrar desde la Xbox | Es el mundo del Realm |
+| 4 | Reiniciar la app y volver a Realms → Actualizar lista | Sigue conectada sin pedir código (renueva la sesión sola) |
+| 5 | Desconectar… | Vuelve a «Conectar cuenta»; en Auditoría quedan conectar, importar y desconectar |
+
+Si falla:
+
+- **«no tiene perfil de Xbox»**, **«condiciones»**, **«familia»**: el mensaje dice qué arreglar en la cuenta de
+  Microsoft; después, vuelve a conectar.
+- **«Realms ha denegado la descarga»**: solo el dueño del Realm puede descargar sus mundos.
+- **«Realms ha rechazado la petición (403/426)» al listar**: Realms puede exigir una versión reciente del
+  juego. CubeKeeper manda la versión de BDS instalada; se puede forzar otra con `CUBEKEEPER_REALMS_CLIENT_VERSION`
+  (por ejemplo, la de tu Xbox).
+- **No conecta con login.live.com o xboxlive.com**: el contenedor necesita salida a Internet por HTTPS (la tiene si
+  descarga BDS). Si AdGuard bloquea algún dominio de Xbox o `pocket.realms.minecraft.net`, añádelo a la lista blanca.
+
+Los complementos del Marketplace que tenga el mundo del Realm no se pueden copiar al servidor: el mundo se abre, pero
+sin ellos.
+
 ## 8. Si no puedes entrar
 
 - La pantalla de login dice por qué no hay usuario, por ejemplo si la contraseña es demasiado corta. Corrígelo en

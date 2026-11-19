@@ -32,6 +32,9 @@ public sealed record AppState
 
     /// <summary>Resultado de la última actualización (manual o programada).</summary>
     public UpdateRecord? LastUpdate { get; init; }
+
+    /// <summary>Cuenta de Microsoft conectada para descargar mundos de Realms (secretos cifrados).</summary>
+    public RealmsSession? Realms { get; init; }
 }
 
 /// <summary>Ajustes de ntfy desde el formulario. El token va cifrado con Data Protection.</summary>
@@ -52,6 +55,9 @@ public sealed record MapSettings
 }
 
 public sealed record MapRenderRecord(DateTimeOffset At, string EngineId, bool Succeeded, string Message, TimeSpan Duration);
+
+/// <summary>Sesión de Realms: token de renovación y clave de firma, ambos cifrados con Data Protection.</summary>
+public sealed record RealmsSession(string ProtectedRefreshToken, string ProtectedSigningKey, string? Gamertag, string? Xuid, DateTimeOffset ConnectedAt);
 
 public sealed record UpdateRecord(DateTimeOffset At, string? From, string To, bool Succeeded, string Message);
 

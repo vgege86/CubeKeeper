@@ -119,6 +119,14 @@ socket de Docker, otro contenedor no puede llegar a esa consola.
   `{threads}` sin partir las rutas), con prioridad baja y límite de 2 h, y solo sustituye el mapa anterior si sale bien
   (hay al menos un .html). El comando de cada motor es editable por si una versión usa otros argumentos. Los archivos se
   sirven en `/mapa/ver/…` a cualquier usuario con sesión, sin salir de la carpeta. `MapScheduler` lo lanza cada noche.
+- **Realms** (`Infrastructure/Realms`). API no oficial, igual que prismarine-auth y prismarine-realms: código por
+  dispositivo de `login.live.com` (cliente de Switch `00000000441cc96b`, sin contraseña en CubeKeeper) → token de
+  usuario de Xbox → tokens de dispositivo y de título → XSTS para `https://pocket.realms.minecraft.net/`. Las
+  peticiones a Xbox van firmadas con una clave P-256 propia (`Core/Realms/XboxRequestSigner`). Se guardan solo el
+  token de renovación y la clave, cifrados con Data Protection en `state.json`; los tokens de acceso viven en memoria.
+  La descarga (`/archive/download/world/{id}/{ranura}/latest`) se importa con `WorldService.ImportAsync`, así que
+  pasa por las mismas comprobaciones y copia previa que un `.mcworld` subido. Todas las direcciones y el cliente se
+  pueden cambiar con `CubeKeeper__Realms__*` si Microsoft o Mojang las mueven.
 - **Salud por TCP**, no por RakNet. Con NetherNet, BDS escucha en TCP en `server-port`. Se usa `server-ip` si está
   definida. Con el servidor parado a propósito, `/health` responde sano: el contenedor funciona.
 - **Imagen** `mcr.microsoft.com/dotnet/aspnet:10.0` (Ubuntu 24.04, la base de BDS) con `curl` y `tzdata`. Sin la
@@ -158,9 +166,12 @@ socket de Docker, otro contenedor no puede llegar a esa consola.
 | **3B** ✅ | Usuarios del panel con roles; verificación en dos pasos (TOTP) |
 | **3C** ✅ | Avisos al móvil con ntfy |
 | **3D** ✅ | Mapa del mundo con uNmINeD o bedrock-viz (MCP aparcado) |
+| **4A** ✅ | Realms: conectar la cuenta de Microsoft con un código y descargar mundos como `.mcworld` |
 | ~~3~~ | Horarios y límites por jugador, estadísticas, usuarios con roles, auditoría, notificaciones, MCP para Home365 (`ModelContextProtocol.AspNetCore`, como Home365), mapa con uNmINeD |
 
 ### Pendiente de comprobar en el NAS
+
+- Realms con la cuenta real: la cadena de Xbox y la API de Realms solo se han probado contra servidores simulados.
 
 - Las dependencias exactas de `bedrock_server` 1.26.65.1 en la imagen (`ldd`). Si falta alguna `.so`, se añade al Dockerfile.
 - El enlace `minecraft://?addExternalServer=…` desde Edge en la Xbox.
