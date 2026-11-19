@@ -41,7 +41,8 @@ public sealed class NotifierTests : IDisposable
         options.Notifications.PanelUrl = "https://cubekeeper.alucard86.fyi/";
         configure?.Invoke(options.Notifications);
         var state = new AppStateStore(new DataPaths(root));
-        return new Notifier(new HttpClient(handler), Options.Create(options), state, time ?? TimeProvider.System, NullLogger<Notifier>.Instance);
+        return new Notifier(new HttpClient(handler), Options.Create(options), state, time ?? TimeProvider.System, NullLogger<Notifier>.Instance,
+            new Microsoft.AspNetCore.DataProtection.EphemeralDataProtectionProvider());
     }
 
     private static Notification Sample(NotificationKind kind = NotificationKind.ServerDown, string key = "k") =>
@@ -97,6 +98,47 @@ public sealed class NotifierTests : IDisposable
         var result = await failing.SendTestAsync();
         Assert.False(result.Sent);
         Assert.Contains("403", result.Detail);
+    }
+
+    [Fact]
+    public async Task Settings_from_the_panel_override_env_and_token_is_encrypted()
+    {
+        var handler = new CaptureHandler();
+        var notifier = Create(_root, handler, o => o.NtfyTopic = null);
+        Assert.False(notifier.Configured);
+
+        notifier.SaveSettings("https://ntfy.casa.lan/", "cubekeeper-abc123", "tk_supersecreto", "https://cubekeeper.alucard86.fyi");
+
+        Assert.True(notifier.Config.FromPanel);
+        Assert.True(notifier.Config.HasToken);
+        Assert.Equal("https://ntfy.casa.lan/cubekeeper-abc123", notifier.TopicUrl);
+        Assert.DoesNotContain("tk_supersecreto", File.ReadAllText(Path.Combine(_root, "state.json")));
+
+        Assert.True((await notifier.SendTestAsync()).Sent);
+        var (request, body) = Assert.Single(handler.Requests);
+        Assert.Equal("https://ntfy.casa.lan/", request.RequestUri!.ToString());
+        Assert.Equal("Bearer tk_supersecreto", request.Headers.Authorization!.ToString());
+        Assert.Contains("cubekeeper-abc123", body);
+
+        // null = conservar el token; vacío = quitarlo.
+        notifier.SaveSettings("https://ntfy.casa.lan", "cubekeeper-abc123", null, null);
+        Assert.True(notifier.Config.HasToken);
+        notifier.SaveSettings("https://ntfy.casa.lan", "cubekeeper-abc123", "", null);
+        Assert.False(notifier.Config.HasToken);
+
+        notifier.ClearSettings();
+        Assert.False(notifier.Config.FromPanel);
+    }
+
+    [Theory]
+    [InlineData("ftp://ntfy", "tema", null)]
+    [InlineData("https://ntfy.sh", "tema con espacios", null)]
+    [InlineData("https://ntfy.sh", "acentuación", null)]
+    [InlineData("https://ntfy.sh", "tema", "no-es-una-url")]
+    public void Settings_are_validated(string url, string topic, string? panel)
+    {
+        var notifier = Create(_root, new CaptureHandler());
+        Assert.Throws<ArgumentException>(() => notifier.SaveSettings(url, topic, null, panel));
     }
 
     [Fact]

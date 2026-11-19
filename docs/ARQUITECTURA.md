@@ -105,7 +105,9 @@ socket de Docker, otro contenedor no puede llegar a esa consola.
   circuitos de Blazor también (`RevalidatingAuthStateProvider`). Verificación en dos pasos con el autenticador TOTP de
   Identity (QR con Net.Codecrete.QrCodeGenerator, el de Home365) y 10 códigos de recuperación; Mi cuenta usa formularios
   estáticos para poder renovar la cookie (`RefreshSignInAsync`) sin expulsar al usuario.
-- **Avisos (3C).** `Notifier` publica en ntfy con la API JSON (título con tildes, prioridad, enlace `click` al panel y
+- **Avisos (3C).** La configuración de ntfy se guarda desde la página Avisos en `state.json` (el token cifrado con Data
+  Protection, con las claves de `/data/keys`); las variables `CUBEKEEPER_NTFY_*` solo se usan si no hay nada guardado.
+  `Notifier` publica en ntfy con la API JSON (título con tildes, prioridad, enlace `click` al panel y
   token opcional) y nunca lanza. Respeta los tipos activados (`NotificationKind`, en `state.json`) y no repite el mismo
   aviso (tipo + clave) en 10 minutos. Origen de cada aviso: `NotificationWatcher` (caídas y, si se activan, entradas y
   salidas), `AccessService` (solicitudes), `MaintenanceScheduler` (copias fallidas y, cada 6 h, versión nueva de BDS,

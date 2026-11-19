@@ -19,27 +19,55 @@
 <div class="grid">
     <section class="card">
         <h2>Conexión</h2>
-        @if (Notifier.Configured)
+        <p>
+            @if (Notifier.Configured)
+            {
+                <span class="badge badge-ok">Configurado</span>
+            }
+            else
+            {
+                <span class="badge badge-idle">Sin configurar</span>
+            }
+            @if (!Notifier.Config.FromPanel && Notifier.Configured)
+            {
+                <span class="muted small"> · con las variables de entorno</span>
+            }
+        </p>
+        <ol class="steps">
+            <li>Instala la app <strong>ntfy</strong> en el móvil (Android o iPhone).</li>
+            <li>Elige un tema difícil de adivinar (en ntfy.sh cualquiera que lo sepa puede leer los avisos) y suscríbete a él en la app.</li>
+            <li>Escríbelo aquí, guarda y envía un aviso de prueba.</li>
+        </ol>
+
+        <label>Servidor ntfy<input @bind="_url" @bind:event="oninput" placeholder="https://ntfy.sh" autocomplete="off" /></label>
+        <label>
+            Tema
+            <span class="input-with-button">
+                <input @bind="_topic" @bind:event="oninput" placeholder="cubekeeper-..." autocomplete="off" spellcheck="false" />
+                <button type="button" class="btn btn-ghost" @onclick="GenerateTopic">Generar</button>
+            </span>
+        </label>
+        @if (!string.IsNullOrWhiteSpace(_topic))
         {
-            <p><span class="badge badge-ok">Configurado</span></p>
-            <p class="small">Suscríbete en la app de ntfy a este tema:</p>
-            <p><code class="wrap">@Notifier.TopicUrl</code></p>
-            <div class="actions">
-                <button class="btn btn-primary" disabled="@_busy" @onclick="TestAsync">Enviar aviso de prueba</button>
-            </div>
+            <p class="muted small">En la app, suscríbete a <code class="wrap">@(_url.TrimEnd('/'))/@_topic.Trim()</code></p>
         }
-        else
+        <label>
+            Token <span class="muted small">(solo si el tema está protegido)</span>
+            <input type="password" @bind="_token" @bind:event="oninput" autocomplete="new-password"
+                   placeholder="@(Notifier.Config.HasToken ? "(guardado; escribe otro para cambiarlo)" : "")" />
+        </label>
+        @if (Notifier.Config.HasToken && Notifier.Config.FromPanel)
         {
-            <p><span class="badge badge-idle">Sin configurar</span></p>
-            <ol class="steps">
-                <li>Instala la app <strong>ntfy</strong> en el móvil (Android o iPhone).</li>
-                <li>Inventa un tema difícil de adivinar, por ejemplo <code>cubekeeper-@_example</code>. En ntfy.sh cualquiera que lo sepa puede leer los avisos.</li>
-                <li>En la app, suscríbete a ese tema.</li>
-                <li>En la app de TrueNAS, añade <code>CUBEKEEPER_NTFY_TOPIC</code> con ese tema y reinicia.
-                    Opcional: <code>CUBEKEEPER_PANEL_URL</code> (para abrir el panel al tocar el aviso), <code>CUBEKEEPER_NTFY_URL</code> si usas tu propio ntfy
-                    y <code>CUBEKEEPER_NTFY_TOKEN</code> si el tema está protegido.</li>
-            </ol>
+            <label class="check"><input type="checkbox" @bind="_clearToken" /> Quitar el token guardado</label>
         }
+        <label>Dirección del panel <span class="muted small">(opcional: al tocar el aviso se abre)</span>
+            <input @bind="_panelUrl" @bind:event="oninput" placeholder="https://cubekeeper.alucard86.fyi" autocomplete="off" />
+        </label>
+        <div class="actions">
+            <button class="btn btn-primary" disabled="@_busy" @onclick="SaveAsync">Guardar</button>
+            <button class="btn" disabled="@(_busy || !Notifier.Configured)" @onclick="TestAsync">Enviar aviso de prueba</button>
+        </div>
+        <p class="muted small">El token se guarda cifrado. Si dejas el tema vacío, no se envía ningún aviso.</p>
     </section>
 
     <section class="card">
@@ -60,9 +88,42 @@
     private string? _message;
     private bool _messageIsError;
     private bool _busy;
-    private readonly string _example = Convert.ToHexString(System.Security.Cryptography.RandomNumberGenerator.GetBytes(6)).ToLowerInvariant();
+    private string _url = "https://ntfy.sh";
+    private string _topic = string.Empty;
+    private string _token = string.Empty;
+    private bool _clearToken;
+    private string _panelUrl = string.Empty;
 
-    protected override void OnInitialized() => _enabled = Notifier.Enabled;
+    protected override void OnInitialized()
+    {
+        _enabled = Notifier.Enabled;
+        var c = Notifier.Config;
+        _url = c.Url;
+        _topic = c.Topic ?? string.Empty;
+        _panelUrl = c.PanelUrl ?? string.Empty;
+    }
+
+    private void GenerateTopic() =>
+        _topic = "cubekeeper-" + Convert.ToHexString(System.Security.Cryptography.RandomNumberGenerator.GetBytes(8)).ToLowerInvariant();
+
+    private async Task SaveAsync()
+    {
+        try
+        {
+            string? newToken = _clearToken ? string.Empty : string.IsNullOrEmpty(_token) ? null : _token;
+            Notifier.SaveSettings(_url, _topic, newToken, _panelUrl);
+            await AuditAsync("notifications.settings", _topic, $"servidor {_url}{(newToken is null ? "" : newToken.Length == 0 ? ", token quitado" : ", token cambiado")}");
+            _token = string.Empty;
+            _clearToken = false;
+            _message = Notifier.Configured ? "Guardado. Envía un aviso de prueba para comprobarlo." : "Guardado. Sin tema, no se envían avisos.";
+            _messageIsError = false;
+        }
+        catch (Exception ex) when (ex is ArgumentException or InvalidOperationException)
+        {
+            _message = ex.Message;
+            _messageIsError = true;
+        }
+    }
 
     private async Task ToggleAsync(NotificationKind kind, bool on)
     {

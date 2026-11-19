@@ -43,9 +43,6 @@ services:
       CUBEKEEPER_UPDATE_TIME: "05:00"
       CUBEKEEPER_UPDATE_WARN_MINUTES: "5,1"
       CUBEKEEPER_UPDATE_SKIP_IF_PLAYERS: "false"
-      # Avisos al móvil con ntfy: el tema, difícil de adivinar (en ntfy.sh cualquiera que lo sepa puede leerlo).
-      CUBEKEEPER_NTFY_TOPIC: "cambia-esto-por-un-tema-tuyo"
-      CUBEKEEPER_PANEL_URL: https://cubekeeper.alucard86.fyi
       CUBEKEEPER_PUBLIC_HOST: 192.168.1.21  # para el enlace de la Xbox
       CUBEKEEPER_ADMIN_USER: admin
       # Solo hace falta en el primer arranque (crea el usuario). Después, bórrala.

@@ -232,13 +232,9 @@ la cuenta y quita la verificación en dos pasos. Después vuelve a activarla des
 ## 7h. Fase 3C: avisos al móvil (ntfy)
 
 1. Instala la app **ntfy** en el móvil.
-2. Inventa un tema difícil de adivinar (por ejemplo `cubekeeper-` seguido de letras y números al azar) y suscríbete a él en la app.
-3. En la app de TrueNAS añade:
-
-   ```yaml
-      CUBEKEEPER_NTFY_TOPIC: "tu-tema"
-      CUBEKEEPER_PANEL_URL: https://cubekeeper.alucard86.fyi
-   ```
+2. En CubeKeeper, **Avisos** → pulsa «Generar» para crear un tema difícil de adivinar, escribe la dirección del panel
+   (`https://cubekeeper.alucard86.fyi`) y **Guardar**. No hace falta tocar la app de TrueNAS.
+3. En la app ntfy, suscríbete al tema que aparece debajo.
 
 | # | Prueba | Resultado esperado |
 |---|---|---|

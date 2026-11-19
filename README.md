@@ -60,10 +60,8 @@ Todo se configura con variables de entorno. Para los secretos se admite el sufij
 | `CUBEKEEPER_UPDATE_TIME` | `05:00` | Hora local de la comprobación |
 | `CUBEKEEPER_UPDATE_WARN_MINUTES` | `5,1` | Avisos por el chat antes de reiniciar |
 | `CUBEKEEPER_UPDATE_SKIP_IF_PLAYERS` | `false` | Si hay alguien jugando, dejarlo para el día siguiente |
-| `CUBEKEEPER_NTFY_URL` | `https://ntfy.sh` | Servidor ntfy (o uno propio) |
-| `CUBEKEEPER_NTFY_TOPIC` | — | Tema de ntfy para los avisos; vacío = sin avisos |
-| `CUBEKEEPER_NTFY_TOKEN` | — | Token para temas protegidos (admite `_FILE`) |
-| `CUBEKEEPER_PANEL_URL` | — | Dirección del panel, para abrirlo al tocar un aviso |
+| `CUBEKEEPER_NTFY_URL` / `_TOPIC` / `_TOKEN` | — | Avisos con ntfy. **Mejor desde la página Avisos**; estas variables solo se usan si allí no hay nada guardado |
+| `CUBEKEEPER_PANEL_URL` | — | Dirección del panel para los avisos (también desde la página Avisos) |
 | `CUBEKEEPER_ALLOWED_NETWORKS` | redes privadas | CIDR desde los que se permite el panel |
 | `CUBEKEEPER_TRUSTED_PROXIES` | `172.16.0.0/12` | Proxies cuyo `X-Forwarded-For` se acepta |
 
