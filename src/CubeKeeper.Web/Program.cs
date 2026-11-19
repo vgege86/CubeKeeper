@@ -5,7 +5,9 @@ using CubeKeeper.Infrastructure.Persistence;
 using CubeKeeper.Web.Components;
 using CubeKeeper.Web.Hosting;
 using Microsoft.AspNetCore.Authorization;
+using CubeKeeper.Infrastructure.Security;
 using Microsoft.AspNetCore.DataProtection;
+using Microsoft.AspNetCore.DataProtection.KeyManagement;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.Identity;
@@ -24,9 +26,21 @@ builder.Services.AddCubeKeeperInfrastructure(builder.Configuration);
 builder.Services.AddSingleton<AdminSeedStatus>();
 
 var dataPath = builder.Configuration["CubeKeeper:DataPath"] ?? "/data";
+var keysDirectory = Path.Combine(dataPath, "keys");
+// Claves de cookies, token de ntfy y sesión de Realms: cifradas con CUBEKEEPER_KEY_SECRET si está puesto.
+var keySecret = new KeyEncryptionSecret(builder.Configuration["CubeKeeper:Security:KeySecret"]);
+KeyFileMigration.VerifyReadable(keysDirectory, keySecret);
+builder.Services.AddSingleton(keySecret);
 builder.Services.AddDataProtection()
     .SetApplicationName("CubeKeeper")
-    .PersistKeysToFileSystem(new DirectoryInfo(Path.Combine(dataPath, "keys")));
+    .PersistKeysToFileSystem(new DirectoryInfo(keysDirectory));
+var encryptedKeyFiles = 0;
+if (keySecret.IsSet)
+{
+    var encryptor = new SecretXmlEncryptor(keySecret);
+    builder.Services.Configure<KeyManagementOptions>(o => o.XmlEncryptor = encryptor);
+    encryptedKeyFiles = KeyFileMigration.EncryptExistingKeys(keysDirectory, encryptor);
+}
 
 // Autenticación: Identity con cookie. Se usa ya el modelo completo (roles, TOTP) para las fases siguientes.
 builder.Services.AddAuthentication(IdentityConstants.ApplicationScheme).AddIdentityCookies();
@@ -88,9 +102,18 @@ builder.Services.AddRazorComponents().AddInteractiveServerComponents();
 var app = builder.Build();
 
 await StartupTasks.InitializeAsync(app.Services);
+if (encryptedKeyFiles > 0)
+{
+    app.Logger.LogInformation("Cifradas {Count} claves de {Directory} que estaban sin cifrar", encryptedKeyFiles, keysDirectory);
+}
+else if (!keySecret.IsSet)
+{
+    app.Logger.LogWarning("Las claves de {Directory} no están cifradas: define CUBEKEEPER_KEY_SECRET", keysDirectory);
+}
 
 app.UseForwardedHeaders();
 app.UseMiddleware<NetworkAccessMiddleware>();
+app.UseMiddleware<SecurityHeadersMiddleware>();
 
 if (!app.Environment.IsDevelopment())
 {

@@ -37,6 +37,7 @@ public static class EnvironmentMapping
         ("CUBEKEEPER_ALLOWED_NETWORKS", "CubeKeeper:Network:AllowedNetworks"),
         ("CUBEKEEPER_TRUSTED_PROXIES", "CubeKeeper:Network:TrustedProxies"),
         ("CUBEKEEPER_REALMS_CLIENT_VERSION", "CubeKeeper:Realms:ClientVersion"),
+        ("CUBEKEEPER_KEY_SECRET", "CubeKeeper:Security:KeySecret"),
     ];
 
     public static void Apply(ConfigurationManager configuration, Func<string, string?>? getEnv = null)

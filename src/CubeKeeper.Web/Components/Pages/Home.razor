@@ -23,6 +23,7 @@
 @inject CubeKeeper.Web.Hosting.ConnectionInfoService Connection
 @inject NavigationManager Navigation
 @inject ILogger<Home> Logger
+@inject CubeKeeper.Infrastructure.Security.KeyEncryptionSecret KeySecret
 
 <PageTitle>Panel · CubeKeeper</PageTitle>
 
@@ -31,6 +32,16 @@
 @if (_message is not null)
 {
     <p class="alert @(_messageIsError ? "alert-error" : "alert-ok")" role="status">@_message</p>
+}
+
+@if (!KeySecret.IsSet)
+{
+    <AuthorizeView Roles="@PanelRoles.Admin">
+        <p class="alert alert-warn" role="status">
+            Las claves del panel (sesiones, token de ntfy y cuenta de Realms) se guardan sin cifrar en /data/keys. Añade la
+            variable <code>CUBEKEEPER_KEY_SECRET</code> con una frase larga al azar (guárdala aparte) y reinicia la app.
+        </p>
+    </AuthorizeView>
 }
 
 <div class="grid">

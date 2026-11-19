@@ -25,6 +25,14 @@ public sealed class CubeKeeperOptions
     public RealmsOptions Realms { get; set; } = new();
 
     public NetworkOptions Network { get; set; } = new();
+
+    public SecurityOptions Security { get; set; } = new();
+}
+
+public sealed class SecurityOptions
+{
+    /// <summary>Secreto para cifrar /data/keys (CUBEKEEPER_KEY_SECRET). Va fuera del dataset.</summary>
+    public string? KeySecret { get; set; }
 }
 
 public sealed class BdsOptions
