@@ -81,6 +81,67 @@ namespace CubeKeeper.Infrastructure.Persistence.Migrations
                     b.ToTable("AspNetUsers", (string)null);
                 });
 
+            modelBuilder.Entity("CubeKeeper.Infrastructure.Persistence.Player", b =>
+                {
+                    b.Property<string>("Xuid")
+                        .HasMaxLength(32)
+                        .HasColumnType("TEXT");
+
+                    b.Property<long>("FirstSeen")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<long>("LastSeen")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Xuid");
+
+                    b.HasIndex("Name");
+
+                    b.ToTable("Players");
+                });
+
+            modelBuilder.Entity("CubeKeeper.Infrastructure.Persistence.PlayerSession", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<long>("ConnectedAt")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<long?>("DisconnectedAt")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("EndReason")
+                        .HasMaxLength(20)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Xuid")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ConnectedAt");
+
+                    b.HasIndex("DisconnectedAt");
+
+                    b.HasIndex("Xuid");
+
+                    b.ToTable("PlayerSessions");
+                });
+
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRole", b =>
                 {
                     b.Property<string>("Id")
@@ -209,6 +270,17 @@ namespace CubeKeeper.Infrastructure.Persistence.Migrations
                     b.ToTable("AspNetUserTokens", (string)null);
                 });
 
+            modelBuilder.Entity("CubeKeeper.Infrastructure.Persistence.PlayerSession", b =>
+                {
+                    b.HasOne("CubeKeeper.Infrastructure.Persistence.Player", "Player")
+                        .WithMany("Sessions")
+                        .HasForeignKey("Xuid")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Player");
+                });
+
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRoleClaim<string>", b =>
                 {
                     b.HasOne("Microsoft.AspNetCore.Identity.IdentityRole", null)
@@ -258,6 +330,11 @@ namespace CubeKeeper.Infrastructure.Persistence.Migrations
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+                });
+
+            modelBuilder.Entity("CubeKeeper.Infrastructure.Persistence.Player", b =>
+                {
+                    b.Navigation("Sessions");
                 });
 #pragma warning restore 612, 618
         }

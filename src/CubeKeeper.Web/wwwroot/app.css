@@ -181,3 +181,42 @@ input:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
     .table tr { display: block; padding: 0.4rem 0; border-bottom: 1px solid var(--border); }
     .table td { display: block; border: none; padding: 0.1rem 0; }
 }
+
+.page-head { display: flex; align-items: center; justify-content: space-between; gap: 1rem; flex-wrap: wrap; }
+.page-head h1 { margin: 0; }
+.page-head .actions { margin: 0; }
+section.card + section.card { margin-top: 1rem; }
+.card-head { display: flex; align-items: center; justify-content: space-between; gap: 1rem; }
+.card-head h2 { margin: 0 0 0.75rem; }
+.count {
+    display: inline-block; min-width: 1.6rem; padding: 0 0.45rem; margin-left: 0.3rem;
+    border-radius: 999px; background: var(--accent-soft); font-size: 0.9rem; text-align: center;
+}
+.table tr.selected td { background: var(--accent-soft); }
+button.link { background: none; border: none; padding: 0; font: inherit; color: var(--accent); cursor: pointer; text-decoration: underline; }
+
+.settings-group .field {
+    display: grid;
+    grid-template-columns: minmax(180px, 1fr) minmax(180px, 1.2fr);
+    grid-template-areas: "label input" "help help";
+    gap: 0.2rem 1rem;
+    padding: 0.6rem 0;
+    border-bottom: 1px solid var(--border);
+}
+.settings-group .field:last-child { border-bottom: none; }
+.settings-group .field > label { grid-area: label; margin: 0; display: flex; flex-direction: column; }
+.field-label { font-weight: 600; }
+.field-key { color: var(--muted); font-size: 0.8rem; }
+.field-input { grid-area: input; }
+.field-input input, .field-input select { margin: 0; }
+.field-help { grid-area: help; display: flex; flex-direction: column; gap: 0.15rem; font-size: 0.85rem; }
+.field.dirty { box-shadow: inset 3px 0 0 var(--accent); padding-left: 0.6rem; }
+.field.has-error input, .field.has-error select { border-color: var(--error); }
+.hint-warn { color: var(--warn); }
+select {
+    display: block; width: 100%; font: inherit; padding: 0.5rem 0.65rem; border-radius: 7px;
+    border: 1px solid var(--border); background: var(--surface-2); color: var(--text);
+}
+@media (max-width: 600px) {
+    .settings-group .field { grid-template-columns: 1fr; grid-template-areas: "label" "input" "help"; }
+}

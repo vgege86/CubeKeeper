@@ -31,8 +31,7 @@ public sealed class ConfigurationAdvisor(DataPaths paths, TimeProvider time)
         {
             return changed;
         }
-        var backup = $"{paths.ServerProperties}.{time.GetLocalNow():yyyyMMdd-HHmmss}.bak";
-        File.Copy(paths.ServerProperties, backup, overwrite: true);
+        PropertiesBackup.Create(paths, time);
         await doc.SaveAsync(paths.ServerProperties, ct).ConfigureAwait(false);
         return changed;
     }

@@ -66,6 +66,25 @@ public sealed class ServerPropertiesDocument
         _ => null,
     };
 
+    /// <summary>
+    /// Comentarios que acompañan a la clave en el archivo. En el server.properties de BDS van justo DESPUÉS de la clave.
+    /// Se devuelven sin el '#'.
+    /// </summary>
+    public string? GetComment(string key)
+    {
+        var index = _lines.FindLastIndex(l => string.Equals(l.Key, key, StringComparison.Ordinal));
+        if (index < 0)
+        {
+            return null;
+        }
+        var parts = new List<string>();
+        for (var i = index + 1; i < _lines.Count && _lines[i].IsComment; i++)
+        {
+            parts.Add(_lines[i].Raw!.TrimStart().TrimStart('#', '!').Trim());
+        }
+        return parts.Count == 0 ? null : string.Join(" ", parts);
+    }
+
     /// <summary>Cambia (o añade al final) el valor de una clave. Devuelve true si el documento cambia.</summary>
     public bool Set(string key, string value)
     {

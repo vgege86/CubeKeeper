@@ -1,0 +1,179 @@
+@page "/jugadores"
+@rendermode InteractiveServer
+@implements IDisposable
+@using CubeKeeper.Core.Players
+@using CubeKeeper.Infrastructure.Players
+@using CubeKeeper.Web.Formatting
+@inject IPlayerPresence Presence
+@inject IServerController Server
+@inject PlayerStatsService Stats
+@inject TimeProvider Time
+
+<PageTitle>Jugadores · CubeKeeper</PageTitle>
+
+<h1>Jugadores</h1>
+
+@if (_error is not null)
+{
+    <p class="alert alert-error">@_error</p>
+}
+
+<section class="card">
+    <div class="card-head">
+        <h2>Conectados ahora <span class="count">@_online.Count</span></h2>
+        <button class="btn btn-ghost" disabled="@(_busy || Server.Snapshot.Status != ServerStatus.Running)" @onclick="ResyncAsync"
+                title="Envía list al servidor y corrige la lista">Comprobar</button>
+    </div>
+    @if (_online.Count == 0)
+    {
+        <p class="muted">No hay nadie conectado.</p>
+    }
+    else
+    {
+        <table class="table">
+            <thead><tr><th>Jugador</th><th>XUID</th><th>Desde</th><th>Tiempo</th></tr></thead>
+            <tbody>
+                @foreach (var p in _online)
+                {
+                    <tr>
+                        <td><strong>@p.Name</strong></td>
+                        <td><code>@(p.Xuid ?? "—")</code></td>
+                        <td>@Format.When(p.Since, Time)</td>
+                        <td>@Format.Duration(Time.GetUtcNow() - p.Since)</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    }
+</section>
+
+<section class="card">
+    <h2>Todos los jugadores</h2>
+    @if (_players is null)
+    {
+        <p class="muted">Cargando…</p>
+    }
+    else if (_players.Count == 0)
+    {
+        <p class="muted">Todavía no ha entrado nadie. Los jugadores aparecen aquí al conectarse, identificados por su XUID.</p>
+    }
+    else
+    {
+        <table class="table">
+            <thead><tr><th>Jugador</th><th>XUID</th><th>Hoy</th><th>Total</th><th>Sesiones</th><th>Primera vez</th><th>Última vez</th></tr></thead>
+            <tbody>
+                @foreach (var p in _players)
+                {
+                    <tr class="@(p.Xuid == _selected ? "selected" : null)">
+                        <td><button class="link" @onclick="() => SelectAsync(p.Xuid)">@p.Name</button></td>
+                        <td><code>@p.Xuid</code></td>
+                        <td>@Format.Duration(p.PlayedToday)</td>
+                        <td>@Format.Duration(p.TotalPlayed)</td>
+                        <td>@p.Sessions</td>
+                        <td>@Format.When(p.FirstSeen, Time)</td>
+                        <td>@(IsOnline(p.Xuid) ? "ahora" : Format.When(p.LastSeen, Time))</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    }
+</section>
+
+<section class="card">
+    <div class="card-head">
+        <h2>@(_selected is null ? "Últimas sesiones" : $"Sesiones de {_players?.FirstOrDefault(p => p.Xuid == _selected)?.Name}")</h2>
+        @if (_selected is not null)
+        {
+            <button class="btn btn-ghost" @onclick="() => SelectAsync(null)">Ver todas</button>
+        }
+    </div>
+    @if (_sessions is { Count: > 0 })
+    {
+        <table class="table">
+            <thead><tr><th>Jugador</th><th>Entrada</th><th>Salida</th><th>Duración</th><th>Fin</th></tr></thead>
+            <tbody>
+                @foreach (var s in _sessions)
+                {
+                    <tr>
+                        <td>@s.Name</td>
+                        <td>@Format.When(s.ConnectedAt, Time)</td>
+                        <td>@(s.DisconnectedAt is { } end ? Format.When(end, Time) : "—")</td>
+                        <td>@Format.Duration(s.Duration)</td>
+                        <td class="muted">@Format.Reason(s.EndReason)</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    }
+    else
+    {
+        <p class="muted">Sin sesiones.</p>
+    }
+</section>
+
+@code {
+    private IReadOnlyList<OnlinePlayer> _online = [];
+    private IReadOnlyList<PlayerSummary>? _players;
+    private IReadOnlyList<SessionRow>? _sessions;
+    private string? _selected;
+    private string? _error;
+    private bool _busy;
+    private Timer? _refresh;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _online = Presence.Online;
+        Presence.Changed += OnChanged;
+        await LoadAsync();
+        // Para que avance el "tiempo conectado".
+        _refresh = new Timer(_ => InvokeAsync(StateHasChanged), null, TimeSpan.FromSeconds(30), TimeSpan.FromSeconds(30));
+    }
+
+    private bool IsOnline(string xuid) => _online.Any(o => o.Xuid == xuid);
+
+    private void OnChanged()
+    {
+        _ = InvokeAsync(async () =>
+        {
+            _online = Presence.Online;
+            await LoadAsync();
+            StateHasChanged();
+        });
+    }
+
+    private async Task LoadAsync()
+    {
+        _players = await Stats.GetPlayersAsync();
+        _sessions = await Stats.GetRecentSessionsAsync(50, _selected);
+    }
+
+    private async Task SelectAsync(string? xuid)
+    {
+        _selected = xuid;
+        _sessions = await Stats.GetRecentSessionsAsync(50, _selected);
+    }
+
+    private async Task ResyncAsync()
+    {
+        _busy = true;
+        _error = null;
+        try
+        {
+            await Presence.ResyncAsync();
+        }
+        catch (InvalidOperationException ex)
+        {
+            _error = ex.Message;
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+
+    public void Dispose()
+    {
+        Presence.Changed -= OnChanged;
+        _refresh?.Dispose();
+    }
+}

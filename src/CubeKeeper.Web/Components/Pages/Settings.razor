@@ -1,0 +1,244 @@
+@page "/ajustes"
+@rendermode InteractiveServer
+@using CubeKeeper.Core.Properties
+@using CubeKeeper.Infrastructure.Settings
+@inject PropertiesEditor Editor
+@inject IServerController Server
+@inject IPlayerPresence Presence
+
+<PageTitle>Ajustes · CubeKeeper</PageTitle>
+
+<div class="page-head">
+    <h1>Ajustes del servidor</h1>
+    <div class="actions">
+        <button class="btn" disabled="@(_busy || !IsDirty)" @onclick="Discard">Descartar</button>
+        <button class="btn btn-primary" disabled="@(_busy || !IsDirty)" @onclick="SaveAsync">Guardar@(IsDirty ? $" ({DirtyCount})" : "")</button>
+    </div>
+</div>
+
+<p class="muted">
+    Edita <code>server.properties</code> conservando sus comentarios. BDS solo lo lee al arrancar:
+    los cambios se aplican al <strong>reiniciar el servidor</strong>. Antes de guardar se hace una copia del archivo.
+</p>
+
+@if (_message is not null)
+{
+    <div class="alert @(_messageIsError ? "alert-error" : "alert-ok")" role="status">
+        @_message
+        @if (_needsRestart && Server.Snapshot.Status.IsProcessAlive())
+        {
+            <div class="actions">
+                @if (Presence.Online.Count > 0 && !_confirmRestart)
+                {
+                    <button class="btn" @onclick="() => _confirmRestart = true">Reiniciar ahora…</button>
+                }
+                else
+                {
+                    <button class="btn btn-primary" disabled="@_busy" @onclick="RestartAsync">
+                        @(Presence.Online.Count > 0 ? $"Reiniciar (hay {Presence.Online.Count} conectado/s)" : "Reiniciar ahora")
+                    </button>
+                }
+            </div>
+        }
+    </div>
+}
+
+@if (_fields is null)
+{
+    <p class="muted">Cargando…</p>
+}
+else if (_fields.Count == 0)
+{
+    <p class="alert alert-warn">Todavía no hay <code>server.properties</code>: se crea al instalar el servidor desde el panel.</p>
+}
+else
+{
+    @foreach (var group in Groups)
+    {
+        <section class="card settings-group">
+            <h2>@group.Key</h2>
+            @foreach (var f in group)
+            {
+                var key = f.Definition.Key;
+                var value = _values[key];
+                var error = _errors.GetValueOrDefault(key);
+                var deviates = f.Recommended is not null &&
+                               !string.Equals(value.Trim(), f.Recommended.Value, StringComparison.OrdinalIgnoreCase) &&
+                               !(f.Recommended.OnlyIfPresent && value.Length == 0);
+                <div class="field @(value != f.Value ? "dirty" : null) @(error is not null ? "has-error" : null)">
+                    <label for="@Id(key)">
+                        <span class="field-label">@f.Definition.Label</span>
+                        @if (f.Definition.Label != key)
+                        {
+                            <code class="field-key">@key</code>
+                        }
+                    </label>
+                    <div class="field-input">
+                        @switch (f.Definition.Kind)
+                        {
+                            case PropertyKind.Boolean:
+                                <select id="@Id(key)" value="@value" @onchange="e => SetValue(key, e.Value?.ToString())">
+                                    <option value="true">Sí (true)</option>
+                                    <option value="false">No (false)</option>
+                                    @if (value is not ("true" or "false"))
+                                    {
+                                        <option value="@value">@value</option>
+                                    }
+                                </select>
+                                break;
+                            case PropertyKind.Choice:
+                                <select id="@Id(key)" value="@value" @onchange="e => SetValue(key, e.Value?.ToString())">
+                                    @foreach (var c in f.Definition.Choices!)
+                                    {
+                                        <option value="@c">@c</option>
+                                    }
+                                    @if (!f.Definition.Choices!.Contains(value))
+                                    {
+                                        <option value="@value">@value (no válido)</option>
+                                    }
+                                </select>
+                                break;
+                            case PropertyKind.Integer:
+                                <input id="@Id(key)" type="number" inputmode="numeric" min="@f.Definition.Min" max="@f.Definition.Max"
+                                       value="@value" @oninput="e => SetValue(key, e.Value?.ToString())" />
+                                break;
+                            default:
+                                <input id="@Id(key)" type="text" value="@value" maxlength="@f.Definition.MaxLength"
+                                       @oninput="e => SetValue(key, e.Value?.ToString())" spellcheck="false" autocomplete="off" />
+                                break;
+                        }
+                    </div>
+                    <div class="field-help">
+                        @if (error is not null)
+                        {
+                            <span class="validation-message">@error</span>
+                        }
+                        @if (deviates)
+                        {
+                            <span class="hint-warn">Recomendado: <code>@(f.Recommended!.Value.Length == 0 ? "(vacío)" : f.Recommended.Value)</code>. @f.Recommended.Reason</span>
+                        }
+                        else if (f.Definition.Warning is not null && value != f.Value)
+                        {
+                            <span class="hint-warn">@f.Definition.Warning</span>
+                        }
+                        @if (f.Definition.Help is not null)
+                        {
+                            <span class="muted">@f.Definition.Help</span>
+                        }
+                        else if (f.FileComment is not null)
+                        {
+                            <span class="muted" lang="en">@f.FileComment</span>
+                        }
+                    </div>
+                </div>
+            }
+        </section>
+    }
+}
+
+@code {
+    private IReadOnlyList<PropertyField>? _fields;
+    private Dictionary<string, string> _values = [];
+    private Dictionary<string, string> _errors = [];
+    private string? _message;
+    private bool _messageIsError;
+    private bool _needsRestart;
+    private bool _confirmRestart;
+    private bool _busy;
+
+    private IEnumerable<IGrouping<string, PropertyField>> Groups =>
+        _fields!.GroupBy(f => f.Definition.Category)
+            .OrderBy(g => PropertyDefinitions.CategoryOrder.ToList().IndexOf(g.Key) is var i && i < 0 ? int.MaxValue : i);
+
+    private IEnumerable<PropertyField> Dirty => _fields?.Where(f => _values[f.Definition.Key] != f.Value) ?? [];
+
+    private bool IsDirty => Dirty.Any();
+
+    private int DirtyCount => Dirty.Count();
+
+    private static string Id(string key) => "prop-" + key;
+
+    protected override async Task OnInitializedAsync() => await LoadAsync();
+
+    private async Task LoadAsync()
+    {
+        _fields = await Editor.LoadAsync();
+        _values = _fields.ToDictionary(f => f.Definition.Key, f => f.Value);
+        _errors = [];
+    }
+
+    private void SetValue(string key, string? value)
+    {
+        _values[key] = value ?? string.Empty;
+        var def = PropertyDefinitions.For(key);
+        if (def.Validate(_values[key]) is { } error)
+        {
+            _errors[key] = error;
+        }
+        else
+        {
+            _errors.Remove(key);
+        }
+    }
+
+    private void Discard()
+    {
+        _values = _fields!.ToDictionary(f => f.Definition.Key, f => f.Value);
+        _errors = [];
+        _message = null;
+    }
+
+    private async Task SaveAsync()
+    {
+        _busy = true;
+        try
+        {
+            var changes = Dirty.ToDictionary(f => f.Definition.Key, f => _values[f.Definition.Key]);
+            var result = await Editor.SaveAsync(changes);
+            if (!result.Succeeded)
+            {
+                _errors = result.Errors.ToDictionary();
+                _message = "Hay valores no válidos: revisa los campos marcados. No se ha guardado nada.";
+                _messageIsError = true;
+                _needsRestart = false;
+                return;
+            }
+
+            await LoadAsync();
+            _message = $"Guardado: {string.Join(", ", result.Changed)}. Reinicia el servidor para aplicarlo.";
+            _messageIsError = false;
+            _needsRestart = true;
+            _confirmRestart = false;
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            _message = $"No se pudo guardar: {ex.Message}";
+            _messageIsError = true;
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+
+    private async Task RestartAsync()
+    {
+        _busy = true;
+        try
+        {
+            await Server.RestartAsync();
+            _message = "Servidor reiniciado con los ajustes nuevos.";
+            _messageIsError = false;
+            _needsRestart = false;
+        }
+        catch (InvalidOperationException ex)
+        {
+            _message = ex.Message;
+            _messageIsError = true;
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+}

@@ -118,6 +118,23 @@ La imagen `ghcr.io/vgege86/cubekeeper` la publica GitHub Actions al fusionar en 
 Si **no arranca**, mira la consola del panel o los registros de la app en TrueNAS. Si sale un error
 del tipo `error while loading shared libraries: libXXX.so`, dime qué librería falta y la añado a la imagen.
 
+## 7b. Pruebas de la fase 1B
+
+| # | Prueba | Resultado esperado |
+|---|---|---|
+| 1 | Entrar al servidor desde el Ally y abrir **Jugadores** | Apareces en «Conectados ahora» con tu XUID |
+| 2 | **Panel** | En «Jugadores» pone «1 conectado · tu gamertag» |
+| 3 | Salir del juego | Desapareces de «Conectados ahora»; en «Últimas sesiones» consta la salida («salió») y la duración |
+| 4 | Entrar, y **Parar** el servidor desde el panel | La sesión se cierra como «servidor parado» |
+| 5 | Pulsar **Comprobar** en Jugadores con alguien dentro | En la consola aparece `list` y la lista no cambia |
+| 6 | **Ajustes** → cambiar «Dificultad» a `hard` → Guardar | Mensaje «Guardado: difficulty» y botón «Reiniciar ahora» |
+| 7 | Reiniciar desde ese botón y entrar al juego | La dificultad es Difícil |
+| 8 | Ajustes → «Jugadores máximos» = 0 → Guardar | Error en el campo; no se guarda nada |
+| 9 | Abrir `/mnt/vms/cubekeeper/server/` en la shell | Hay un `server.properties.AAAAMMDD-HHMMSS.bak` por cada guardado, y los comentarios siguen en `server.properties` |
+| 10 | Reiniciar la app de TrueNAS con alguien dentro | Al volver, su sesión anterior está cerrada y empieza una nueva |
+
+Al actualizar, la base de datos se migra sola (se añaden las tablas de jugadores); los usuarios del panel se conservan.
+
 ## 8. Si no puedes entrar
 
 - La pantalla de login dice por qué no hay usuario, por ejemplo si la contraseña es demasiado corta. Corrígelo en

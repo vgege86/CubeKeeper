@@ -37,8 +37,16 @@ public static class DependencyInjection
         services.AddSingleton<IServerController>(sp => sp.GetRequiredService<ServerSupervisor>());
         services.AddHostedService<ServerSupervisorHost>();
 
-        services.AddDbContext<CubeKeeperDbContext>((sp, o) =>
+        // Fábrica para los servicios singleton (jugadores) y contexto con ámbito para Identity.
+        services.AddDbContextFactory<CubeKeeperDbContext>((sp, o) =>
             o.UseSqlite($"Data Source={sp.GetRequiredService<DataPaths>().Database}"));
+        services.AddScoped(sp => sp.GetRequiredService<IDbContextFactory<CubeKeeperDbContext>>().CreateDbContext());
+
+        services.AddSingleton<Players.PlayerTrackingService>();
+        services.AddSingleton<IPlayerPresence>(sp => sp.GetRequiredService<Players.PlayerTrackingService>());
+        services.AddHostedService(sp => sp.GetRequiredService<Players.PlayerTrackingService>());
+        services.AddSingleton<Players.PlayerStatsService>();
+        services.AddSingleton<Settings.PropertiesEditor>();
 
         services.AddSingleton<Settings.ConfigurationAdvisor>();
         services.AddHealthChecks().AddCheck<BdsHealthProbe>("bds");
