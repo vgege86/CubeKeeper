@@ -132,20 +132,51 @@ consola no manda su identidad por LAN y el servidor, con `online-mode=true`, la 
 [BedrockConnect](https://github.com/Pugmatt/BedrockConnect): se desvía uno de los servidores destacados a su menú, y
 desde ahí se entra al tuyo.
 
-1. En **AdGuard → Filtros → Reescrituras DNS → Añadir**: dominio `mco.lbsg.net` (Lifeboat), respuesta
-   `104.238.130.180`: el BedrockConnect público, que mantiene el autor del proyecto (es la dirección que da su
-   [README](https://github.com/Pugmatt/BedrockConnect) para Xbox). O la IP del tuyo, si lo montas en casa (abajo).
-2. En la Xbox, DNS en **automático** (para que use AdGuard). Si cambiaste algo, desenchúfala 30 segundos.
-3. **Servidores → Lifeboat → Unirse.** Sale el menú de BedrockConnect: **Connect to a Server**, dirección
+Se desvían **todos** los destacados que consulta Minecraft (salen en el registro de AdGuard al abrir la pestaña
+Servidores). Así, si uno deja de funcionar, se prueba con otro sin tocar nada:
+
+| Servidor destacado | Dominio | En la Xbox (26.60) |
+|---|---|---|
+| The Hive | `nethernet.playhive.com` | ✅ Sale el menú |
+| Lifeboat | `mco.lbsg.net` | Funcionó el primer día; luego entraba al Lifeboat real |
+| Mineville / InPvP (MegaSMP, GenWars, OneBlockOnline) | `play.inpvp.net` | Sin probar |
+| MegaSMP | `play.megasmp.gg` | Sin probar |
+| Enchanted | `play.enchanted.gg` | Sin probar |
+| CubeCraft | `mco.cubecraft.net` | Sin probar (BedrockConnect no lo da como compatible) |
+
+1. En **AdGuard → Filtros → Reglas de filtrado personalizadas**, pega este bloque y guarda:
+
+   ```
+   ! CubeKeeper: destacados de Minecraft → BedrockConnect (menú para entrar al servidor de casa desde la Xbox)
+   ||nethernet.playhive.com^$dnsrewrite=104.238.130.180
+   ||mco.lbsg.net^$dnsrewrite=104.238.130.180
+   ||play.inpvp.net^$dnsrewrite=104.238.130.180
+   ||play.megasmp.gg^$dnsrewrite=104.238.130.180
+   ||play.enchanted.gg^$dnsrewrite=104.238.130.180
+   ||mco.cubecraft.net^$dnsrewrite=104.238.130.180
+   ```
+
+   `104.238.130.180` es el BedrockConnect público, que mantiene el autor del proyecto (es la dirección que da su
+   [README](https://github.com/Pugmatt/BedrockConnect) para Xbox). Si montas el tuyo en casa (abajo), cambia esa IP
+   en todas las líneas. Las reglas van todas juntas, en un solo sitio. Si ya tenías reescrituras en
+   **Filtros → Reescrituras DNS** para estos dominios, bórralas para que no haya dos.
+2. En la Xbox, DNS en **automático** (para que use AdGuard). Si cambiaste algo, desenchúfala de la corriente 30
+   segundos: la consola recuerda las direcciones y no hay forma de borrarlas.
+3. **Servidores → The Hive → Unirse.** Sale el menú de BedrockConnect: **Connect to a Server**, dirección
    `192.168.1.21`, puerto `19132`, marca **Add to server list** y **Submit**.
-4. Las siguientes veces: Lifeboat → Unirse → elige tu servidor en la lista.
+4. Las siguientes veces: The Hive → Unirse → elige tu servidor en la lista. Si The Hive deja de llevar al menú,
+   prueba con los otros de la tabla (en el BedrockConnect público, tu lista guardada es la misma entres por donde
+   entres).
 
-Mientras la reescritura esté activa, Lifeboat no se puede jugar desde casa (lleva siempre al menú). El servidor de
-BedrockConnect es de terceros: solo hace de menú; la partida va directamente de la Xbox a tu NAS.
+Mientras estas reglas estén activas, esos servidores destacados no se pueden jugar desde casa (llevan siempre al
+menú). Para jugar en uno, pon `!` delante de su línea para desactivarla. El servidor de BedrockConnect es de terceros:
+solo hace de menú; la partida va directamente de la Xbox a tu NAS.
 
-Si al unirte entras en el Lifeboat de verdad, la Xbox no está preguntando a AdGuard: mira su registro de consultas.
-Suele ser por IPv6 (la Xbox usa el DNS de IPv6 del operador): desactívalo en el router o anuncia AdGuard también
-como DNS de IPv6.
+Si al unirte entras en el servidor real: en el registro de consultas de AdGuard, filtra por la Xbox y comprueba que
+su dominio sale como «Reescrito». Si no aparece, la Xbox pregunta a otro DNS (por ejemplo, el de IPv6 del operador);
+si aparece reescrito, desenchufa la Xbox 30 segundos, vuelve a cargar la lista de Servidores o prueba con otro de la
+tabla. Si Mojang o los servidores cambian de nombre, en ese mismo registro se ve qué dominios consulta Minecraft al
+abrir la pestaña Servidores: añade el nuevo con la misma forma.
 
 ### BedrockConnect en casa (opcional)
 
@@ -173,13 +204,14 @@ como `br0`, usa el puente) y la puerta de enlace (normalmente `192.168.1.1`).
 3. **Apps → Discover Apps → ⋮ → Install via YAML**, nombre `bedrockconnect`, con
    [`deploy/bedrockconnect/docker-compose.yml`](../deploy/bedrockconnect/docker-compose.yml). Cambia las tres líneas
    marcadas con `CAMBIA` (IP, tarjeta y puerta de enlace).
-4. En AdGuard, cambia la respuesta de la reescritura de `mco.lbsg.net` por la IP que le hayas dado.
-5. Xbox: **Servidores → Lifeboat → Unirse** → «CubeKeeper».
+4. En AdGuard, en las reglas personalizadas del paso anterior, cambia `104.238.130.180` por la IP que le hayas dado
+   (en todas las líneas).
+5. Xbox: **Servidores → The Hive → Unirse** → «CubeKeeper».
 
 Las listas de servidores que guardó la Xbox en el BedrockConnect público no pasan al tuyo (cada instancia tiene las
 suyas), pero con `custom_servers.json` el tuyo ya sale sin guardarlo.
 
-**Cuando se actualice el juego.** Si la Xbox se actualiza a una versión con protocolo nuevo, al entrar en Lifeboat
+**Cuando se actualice el juego.** Si la Xbox se actualiza a una versión con protocolo nuevo, al entrar en The Hive
 dirá que el servidor está desactualizado o no conectará. Mira la última versión en
 [Docker Hub](https://hub.docker.com/r/pugmatt/bedrock-connect/tags), cámbiala en la línea `image:` de la app
 (**Apps → bedrockconnect → Edit**) y guarda. Las listas de los jugadores se conservan (están en el dataset). Ese
