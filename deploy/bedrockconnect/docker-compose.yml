@@ -17,13 +17,13 @@ services:
       lan:
         ipv4_address: 192.168.1.22          # CAMBIA: IP libre para BedrockConnect
 
-    user: "568:568"
+    # Sin «user: 568:568» ni /tmp en memoria: la imagen necesita ejecutarse como root dentro del contenedor y
+    # cargar su librería de red nativa (NetherNet) desde /tmp. Comprobado en el NAS: con cualquiera de las dos
+    # se cierra al arrancar y se reinicia sin parar. Sigue sin capacidades y sin poder escalar privilegios.
     cap_drop:
       - ALL
     security_opt:
       - no-new-privileges:true
-    tmpfs:
-      - /tmp
 
     environment:
       TZ: Europe/Madrid
