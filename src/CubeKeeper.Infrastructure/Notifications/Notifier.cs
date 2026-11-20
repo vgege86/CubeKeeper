@@ -123,7 +123,26 @@ public sealed partial class Notifier(
 
     public NotificationKind Enabled => state.Current.Notifications;
 
-    public void SetEnabled(NotificationKind kinds) => state.Update(s => s with { Notifications = kinds });
+    public void SetEnabled(NotificationKind kinds) => state.Update(s => s with { Notifications = kinds, KnownNotificationKinds = AllKinds });
+
+    private static NotificationKind AllKinds => NotificationKindText.All.Aggregate(NotificationKind.None, (a, k) => a | k.Kind);
+
+    /// <summary>
+    /// Los tipos de aviso nuevos que van activados por defecto se activan también en instalaciones que ya tenían su
+    /// elección guardada (una sola vez: si luego se desactivan, se respeta).
+    /// </summary>
+    public void EnableNewDefaultKinds()
+    {
+        // Antes de existir este campo se conocían los seis primeros tipos.
+        const NotificationKind original = NotificationKind.AccessRequest | NotificationKind.ServerDown | NotificationKind.BackupFailed
+            | NotificationKind.Update | NotificationKind.NewVersion | NotificationKind.PlayerJoin;
+        var known = state.Current.KnownNotificationKinds ?? original;
+        var added = NotificationKind.Defaults & ~known;
+        if (added != NotificationKind.None || known != AllKinds)
+        {
+            state.Update(s => s with { Notifications = s.Notifications | added, KnownNotificationKinds = AllKinds });
+        }
+    }
 
     /// <summary>Envía el aviso si su tipo está activado y no se envió uno igual hace poco.</summary>
     public async Task<SendResult> NotifyAsync(Notification n, CancellationToken ct = default)

@@ -10,3 +10,5 @@ deploy/
 **/*.user
 **/.vs/
 **/.vscode/
+e2e/
+artifacts/

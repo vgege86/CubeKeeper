@@ -47,6 +47,9 @@ services:
       CUBEKEEPER_ADMIN_USER: admin
       # Solo hace falta en el primer arranque (crea el usuario). Después, bórrala.
       CUBEKEEPER_ADMIN_PASSWORD: "cambia-esta-contraseña"
+      # Cifra las claves de /data/keys (sesiones, token de ntfy, cuenta de Realms). Genera una con
+      # «openssl rand -base64 32» y guárdala también en tu gestor de contraseñas: sin ella no arranca.
+      CUBEKEEPER_KEY_SECRET: "pega-aquí-el-secreto-generado"
       # Panel accesible solo desde casa y la VPN (además de la Access List de NPM).
       CUBEKEEPER_ALLOWED_NETWORKS: 192.168.1.0/24,10.6.0.0/24
       # De quién aceptar X-Forwarded-For: redes de Docker (NPM en bridge) y el propio NAS (NPM en host).

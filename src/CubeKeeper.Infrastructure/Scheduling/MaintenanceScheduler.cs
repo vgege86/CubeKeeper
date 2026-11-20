@@ -29,6 +29,9 @@ public sealed class MaintenanceScheduler(
     public static readonly TimeSpan VersionCheckInterval = TimeSpan.FromHours(6);
 
     private DateTimeOffset _nextVersionCheck = DateTimeOffset.MinValue;
+
+    // Para avisar una vez cuando el segundo destino falla, no en cada copia.
+    private bool _secondaryNotified;
     private static readonly TimeSpan Tick = TimeSpan.FromSeconds(30);
     private readonly CubeKeeperOptions _options = options.Value;
 
@@ -127,6 +130,7 @@ public sealed class MaintenanceScheduler(
             _activitySinceBackup = presence.Online.Count > 0;
             await backups.CreateAsync(BackupKind.Scheduled, ct).ConfigureAwait(false);
             NextBackupAt = time.GetUtcNow() + interval;
+            await CheckSecondaryAsync(ct).ConfigureAwait(false);
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
@@ -143,6 +147,27 @@ public sealed class MaintenanceScheduler(
                     "/copias"), ct).ConfigureAwait(false);
             }
         }
+    }
+
+    private async Task CheckSecondaryAsync(CancellationToken ct)
+    {
+        if (backups.SecondaryProblem is not { } problem)
+        {
+            _secondaryNotified = false;
+            return;
+        }
+        if (_secondaryNotified || notifier is null)
+        {
+            return;
+        }
+        var result = await notifier.NotifyAsync(new Core.Notifications.Notification(
+            Core.Notifications.NotificationKind.Maintenance,
+            "Las copias no llegan al segundo destino",
+            $"{problem} Las copias se siguen guardando en /data/backups.",
+            "secondary",
+            Core.Notifications.NotificationPriority.High,
+            "/copias"), ct).ConfigureAwait(false);
+        _secondaryNotified = result.Sent || !notifier.Configured;
     }
 
     /// <summary>Avisa (una vez por versión) si Mojang ha publicado una más nueva que la instalada.</summary>

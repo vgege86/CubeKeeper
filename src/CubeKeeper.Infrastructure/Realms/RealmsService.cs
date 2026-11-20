@@ -147,6 +147,27 @@ public sealed class RealmsService : IDisposable
         return name;
     }
 
+    /// <summary>
+    /// Renueva la sesión aunque no haga falta todavía: así el token de renovación no caduca por no usarse y se sabe a
+    /// tiempo si Microsoft lo ha revocado. Lanza <see cref="RealmsAuthException"/> si no funciona.
+    /// </summary>
+    public async Task CheckSessionAsync(CancellationToken ct = default)
+    {
+        await _tokenGate.WaitAsync(ct).ConfigureAwait(false);
+        try
+        {
+            _msa = null;
+            _xsts = null;
+        }
+        finally
+        {
+            _tokenGate.Release();
+        }
+        await GetXstsAsync(ct).ConfigureAwait(false);
+    }
+
+    public bool IsConnected => _state.Current.Realms is not null;
+
     private async Task WaitForLoginAsync(DeviceCode code, CancellationTokenSource cts)
     {
         var ct = cts.Token;

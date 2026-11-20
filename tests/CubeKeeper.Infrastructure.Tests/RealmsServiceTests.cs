@@ -36,6 +36,8 @@ public class RealmsServiceTests
 
         public bool IdentityFails { get; set; }
 
+        public bool RefreshFails { get; set; }
+
         protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken ct)
         {
             var body = request.Content is null ? "" : await request.Content.ReadAsStringAsync(ct);
@@ -54,6 +56,10 @@ public class RealmsServiceTests
                 case "login.live.com/oauth20_token.srf":
                     if (body.Contains("grant_type=refresh_token"))
                     {
+                        if (RefreshFails)
+                        {
+                            return Json("""{"error":"invalid_grant"}""", HttpStatusCode.BadRequest);
+                        }
                         Refreshes++;
                         Expect(body.Contains("refresh_token=rt-" + Refreshes), "token de renovación vigente");
                         return Json($$"""{"access_token":"at-r{{Refreshes}}","refresh_token":"rt-{{Refreshes + 1}}","expires_in":3600}""");
@@ -355,6 +361,33 @@ public class RealmsServiceTests
         Assert.Equal(RealmsStatus.Disconnected, s.Realms.View.Status);
         Assert.Null(s.State.Current.Realms);
         await Assert.ThrowsAsync<RealmsAuthException>(() => s.Realms.ListAsync());
+    }
+
+    [Fact]
+    public async Task Session_monitor_renews_daily_and_notifies_once_after_three_failures()
+    {
+        await using var s = Create();
+        var ntfy = new NotifierTests.CaptureHandler();
+        var notifier = NotifierTests.Create(s.Fixture.Root, ntfy);
+        var monitor = new RealmsSessionMonitor(s.Realms, TimeProvider.System, NullLogger<RealmsSessionMonitor>.Instance, notifier);
+
+        Assert.True(await monitor.CheckOnceAsync(default)); // sin cuenta: nada que hacer
+        await ConnectAsync(s.Realms);
+        Assert.True(await monitor.CheckOnceAsync(default));
+        Assert.Equal(1, s.Fake.Refreshes);
+
+        s.Fake.RefreshFails = true;
+        for (var i = 0; i < 5; i++)
+        {
+            Assert.False(await monitor.CheckOnceAsync(default));
+        }
+        var (_, body) = Assert.Single(ntfy.Requests);
+        Assert.Contains("Realms", body);
+        Assert.Contains("caducado", body);
+
+        s.Fake.RefreshFails = false;
+        Assert.True(await monitor.CheckOnceAsync(default));
+        Assert.Empty(s.Fake.Problems);
     }
 
     [Theory]

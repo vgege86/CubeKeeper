@@ -28,12 +28,15 @@ lo descarga, lo arranca y lo para, lee su consola y le envía comandos. No neces
 - **Fase 3C ✅** Avisos al móvil con ntfy: solicitudes de acceso, caídas, copias fallidas, actualizaciones y versiones nuevas
   de BDS (y, si se activan, entradas y salidas).
 - **Fase 3D ✅** Mapa del mundo con uNmINeD o bedrock-viz (se instalan desde el panel), cada noche y bajo demanda.
+- **Mejoras ✅** Claves cifradas con `CUBEKEEPER_KEY_SECRET`, cabeceras de seguridad, avisos de fallos de
+  mantenimiento y pruebas en el navegador en cada cambio.
 - **Realms ✅** Conectar la cuenta de Microsoft con un código (microsoft.com/link) y descargar los mundos de tus
   Realms para importarlos.
 - El MCP queda aparcado por ahora.
 
 Plan completo y decisiones: [docs/ARQUITECTURA.md](docs/ARQUITECTURA.md) ·
-Instalación en el NAS y pruebas: [docs/TRUENAS.md](docs/TRUENAS.md).
+Instalación en el NAS: [docs/TRUENAS.md](docs/TRUENAS.md) · Uso diario: [docs/USO.md](docs/USO.md) ·
+Si algo falla: [docs/PROBLEMAS.md](docs/PROBLEMAS.md) · Pruebas en el NAS: [docs/PRUEBAS.md](docs/PRUEBAS.md).
 
 ## Configuración
 
@@ -47,6 +50,7 @@ Todo se configura con variables de entorno. Para los secretos se admite el sufij
 | `TZ` | `Europe/Madrid` | Zona horaria |
 | `CUBEKEEPER_ADMIN_USER` | `admin` | Usuario inicial |
 | `CUBEKEEPER_ADMIN_PASSWORD` | — | Contraseña inicial (mínimo 10 caracteres); solo se usa si no hay usuarios |
+| `CUBEKEEPER_KEY_SECRET` | — | Secreto (16+ caracteres; mejor `openssl rand -base64 32`) con el que se cifran las claves de `/data/keys`. Va fuera del dataset; si se pierde, ver [PROBLEMAS.md](docs/PROBLEMAS.md) |
 | `CUBEKEEPER_ADMIN_RESET` | `false` | Con `true`, pone `CUBEKEEPER_ADMIN_PASSWORD` al administrador, lo desbloquea y le quita la verificación en dos pasos (para recuperar el acceso) |
 | `CUBEKEEPER_ACCEPT_EULA` | `false` | Aceptación de la EULA; sin ella no se descarga BDS |
 | `CUBEKEEPER_CHANNEL` | `Stable` | `Stable` o `Preview` |
@@ -78,7 +82,7 @@ Otros ajustes avanzados se pueden dar con la notación de .NET, por ejemplo
 /data
 ├── cubekeeper.db      usuarios del panel, jugadores y sesiones (SQLite)
 ├── state.json         estado deseado, versión instalada, modo de acceso, ajustes y sesión de Realms (cifrada)
-├── keys/              claves de las cookies
+├── keys/              claves de cookies, token de ntfy y sesión de Realms (cifradas con CUBEKEEPER_KEY_SECRET)
 ├── server/            directorio de trabajo de bedrock_server (worlds/, server.properties…)
 ├── versions/<v>/      versiones de BDS descargadas (se guardan 2)
 ├── downloads/         temporales
@@ -118,3 +122,21 @@ CubeKeeper__Bds__LaunchCommand=dotnet CubeKeeper__Bds__LaunchArguments="$PWD/tes
 ```
 
 Abre `http://localhost:5229` y entra con `admin` / `desarrollo123` (solo en desarrollo; los datos van a `.devdata/`).
+
+### Pruebas en el navegador
+
+`e2e/` tiene pruebas con Playwright que arrancan el panel publicado (como en el contenedor) con el servidor falso y
+un Microsoft simulado para Realms. Se ejecutan en GitHub Actions en cada cambio; la imagen solo se publica si pasan.
+En local (necesita Node 22):
+
+```bash
+dotnet publish src/CubeKeeper.Web -c Release -o artifacts/web
+```
+
+```bash
+dotnet build tests/FakeBedrockServer -c Release
+```
+
+```bash
+cd e2e && npm ci && npx playwright install chromium && npx playwright test
+```

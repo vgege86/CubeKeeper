@@ -44,6 +44,9 @@ public sealed class BackupService(
     /// <summary>Si el segundo destino está configurado y montado.</summary>
     public bool SecondaryAvailable => SecondaryPath is { } p && Directory.Exists(p);
 
+    /// <summary>Por qué no llegó la última copia al segundo destino (null si llegó o no hay segundo destino).</summary>
+    public string? SecondaryProblem { get; private set; }
+
     public async Task<string> GetWorldNameAsync(CancellationToken ct = default)
     {
         var doc = await ServerPropertiesDocument.LoadAsync(paths.ServerProperties, ct).ConfigureAwait(false);
@@ -354,11 +357,13 @@ public sealed class BackupService(
     {
         if (SecondaryPath is null)
         {
+            SecondaryProblem = null;
             return;
         }
         if (!SecondaryAvailable)
         {
             logger.LogWarning("El segundo destino de copias {Path} no existe: ¿está montado?", SecondaryPath);
+            SecondaryProblem = $"La carpeta {SecondaryPath} no existe: ¿está montado el dataset?";
             return;
         }
         try
@@ -367,10 +372,12 @@ public sealed class BackupService(
             var tmp = dest + ".part";
             File.Copy(file, tmp, overwrite: true);
             File.Move(tmp, dest, overwrite: true);
+            SecondaryProblem = null;
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {
             logger.LogError(ex, "No se pudo copiar {File} al segundo destino", file);
+            SecondaryProblem = $"No se pudo copiar a {SecondaryPath}: {ex.Message}";
         }
     }
 

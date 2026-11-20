@@ -141,6 +141,26 @@ public class BackupServiceTests
         Assert.Equal(2, backups.List().Count);
         Assert.All(backups.List(), e => Assert.True(e.InSecondary));
         Assert.Equal(2, Directory.GetFiles(secondary, "*.mcworld").Length);
+        Assert.Null(backups.SecondaryProblem);
+    }
+
+    [Fact]
+    public async Task Missing_secondary_destination_is_reported_and_clears_when_mounted()
+    {
+        await using var f = new SupervisorFixture();
+        var secondary = Path.Combine(f.Root, "sin-montar");
+        var backups = Create(f, o => o.SecondaryPath = secondary);
+        Directory.CreateDirectory(WorldDir(f));
+        File.WriteAllText(Path.Combine(WorldDir(f), "level.dat"), "x");
+
+        await backups.CreateAsync(BackupKind.Manual);
+        Assert.Contains("¿está montado", backups.SecondaryProblem);
+        Assert.Single(backups.List());
+
+        Directory.CreateDirectory(secondary);
+        await Task.Delay(1100);
+        await backups.CreateAsync(BackupKind.Manual);
+        Assert.Null(backups.SecondaryProblem);
     }
 
     [Fact]
