@@ -68,7 +68,7 @@ El segundo destino se prepara en la instalación ([TRUENAS.md](TRUENAS.md#1-prep
 |---|---|---|
 | 1 | **Copias** → «Destinos» | `/data/backups` y `/backups (montado)` |
 | 2 | Entrar al juego, **Hacer copia ahora** | «Copia creada»; en la consola `save hold`, `save query`… y `Changes to the level are resumed`. Sigues jugando sin cortes |
-| 3 | Mirar `/mnt/vms/cubekeeper/backups` y `/mnt/DATOS/backups/cubekeeper` | El mismo `.mcworld` en los dos |
+| 3 | Mirar `/mnt/vms/cubekeeper/backups` y `/mnt/DATOS/backups/cubekeeper` | ✅ Comprobado (tras corregir permisos del dataset): el mismo `.mcworld` en los dos |
 | 4 | **Descargar** una copia y abrirla con doble clic en el Ally | Minecraft la importa como mundo |
 | 5 | Romper algo en el juego, **Restaurar…** la copia anterior | El servidor se reinicia, el mundo vuelve a como estaba y aparece una copia «Antes de restaurar» |
 | 6 | Jugar más de una hora | Aparece una copia «Programada» cada hora; si nadie juega, no se hacen |
