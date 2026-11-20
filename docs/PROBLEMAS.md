@@ -59,11 +59,27 @@ En GitHub → *Packages → cubekeeper → Package settings*, la visibilidad deb
 - **Aviso «Las copias no llegan al segundo destino»** o **Copias → Destinos** dice que `/backups` no está montado:
   comprueba que el dataset `DATOS/backups/cubekeeper` existe y es de 568, y que el pool DATOS está importado. Las
   copias se siguen guardando en `/data/backups` mientras tanto.
-- Si Docker creó `/mnt/DATOS/backups/cubekeeper` como root (porque no existía), corrige el propietario:
+- **Aviso «No se pudo copiar a /backups: Access to the path '/backups/….part' is denied»:** CubeKeeper (usuario 568)
+  no puede escribir en el dataset. Mira de quién es:
 
   ```bash
-  sudo chown -R 568:568 /mnt/DATOS/backups/cubekeeper
+  ls -ld /mnt/DATOS/backups/cubekeeper
   ```
+
+  - **Es de `root`** (u otro que no sea `apps`/568): Docker creó la carpeta porque no existía al arrancar la app.
+    Corrige el propietario:
+
+    ```bash
+    sudo chown -R 568:568 /mnt/DATOS/backups/cubekeeper
+    ```
+
+  - **Es de `apps` pero sigue fallando**, o los permisos terminan en `+` (por ejemplo `drwxrwx---+`): el dataset usa
+    permisos ACL (pasa si no se creó con el preset **Apps**) y no dejan escribir a 568 aunque sea el propietario. En
+    **Datasets → DATOS → backups → cubekeeper → Permissions → Edit**, aplica el preset **APPS** (o añade una entrada
+    para el usuario **apps (568)** con permiso **Modify**), marca **Apply permissions recursively** y guarda.
+
+  No hace falta reiniciar: comprueba con **Copias → Hacer copia ahora** que la copia aparece también en
+  `/mnt/DATOS/backups/cubekeeper`. El aviso vuelve a saltar si deja de funcionar otra vez.
 
 ## Mapa
 
