@@ -133,7 +133,8 @@ consola no manda su identidad por LAN y el servidor, con `online-mode=true`, la 
 desde ahí se entra al tuyo.
 
 1. En **AdGuard → Filtros → Reescrituras DNS → Añadir**: dominio `mco.lbsg.net` (Lifeboat), respuesta
-   `104.238.130.180` (el BedrockConnect público).
+   `104.238.130.180`: el BedrockConnect público, que mantiene el autor del proyecto (es la dirección que da su
+   [README](https://github.com/Pugmatt/BedrockConnect) para Xbox). O la IP del tuyo, si lo montas en casa (abajo).
 2. En la Xbox, DNS en **automático** (para que use AdGuard). Si cambiaste algo, desenchúfala 30 segundos.
 3. **Servidores → Lifeboat → Unirse.** Sale el menú de BedrockConnect: **Connect to a Server**, dirección
    `192.168.1.21`, puerto `19132`, marca **Add to server list** y **Submit**.
@@ -145,6 +146,54 @@ BedrockConnect es de terceros: solo hace de menú; la partida va directamente de
 Si al unirte entras en el Lifeboat de verdad, la Xbox no está preguntando a AdGuard: mira su registro de consultas.
 Suele ser por IPv6 (la Xbox usa el DNS de IPv6 del operador): desactívalo en el router o anuncia AdGuard también
 como DNS de IPv6.
+
+### BedrockConnect en casa (opcional)
+
+Para no depender del servidor público: BedrockConnect como app aparte en el NAS, con su propia IP en la red de casa
+(macvlan), porque el puerto 19132 del NAS ya lo usa el servidor de juego. No hace falta otra tarjeta de red: va sobre
+la misma que tiene la `192.168.1.21`.
+
+Necesitas: una IP libre de la red que el router no reparta por DHCP (por ejemplo `192.168.1.22`), el nombre de la
+tarjeta del NAS que tiene la `192.168.1.21` (**Network → Interfaces**: `enp…`, `eno1`; si está dentro de un puente
+como `br0`, usa el puente) y la puerta de enlace (normalmente `192.168.1.1`).
+
+1. **Dataset** `vms/bedrockconnect` (preset Apps) con una carpeta `players`, todo de 568:
+
+   ```bash
+   sudo mkdir -p /mnt/vms/bedrockconnect/players
+   ```
+
+   ```bash
+   sudo chown -R 568:568 /mnt/vms/bedrockconnect
+   ```
+
+2. Copia [`deploy/bedrockconnect/custom_servers.json`](../deploy/bedrockconnect/custom_servers.json) a
+   `/mnt/vms/bedrockconnect/custom_servers.json`. Hace que «CubeKeeper» salga en el menú para todos, sin escribir la
+   dirección.
+3. **Apps → Discover Apps → ⋮ → Install via YAML**, nombre `bedrockconnect`, con
+   [`deploy/bedrockconnect/docker-compose.yml`](../deploy/bedrockconnect/docker-compose.yml). Cambia las tres líneas
+   marcadas con `CAMBIA` (IP, tarjeta y puerta de enlace).
+4. En AdGuard, cambia la respuesta de la reescritura de `mco.lbsg.net` por la IP que le hayas dado.
+5. Xbox: **Servidores → Lifeboat → Unirse** → «CubeKeeper».
+
+Las listas de servidores que guardó la Xbox en el BedrockConnect público no pasan al tuyo (cada instancia tiene las
+suyas), pero con `custom_servers.json` el tuyo ya sale sin guardarlo.
+
+**Cuando se actualice el juego.** Si la Xbox se actualiza a una versión con protocolo nuevo, al entrar en Lifeboat
+dirá que el servidor está desactualizado o no conectará. Mira la última versión en
+[Docker Hub](https://hub.docker.com/r/pugmatt/bedrock-connect/tags), cámbiala en la línea `image:` de la app
+(**Apps → bedrockconnect → Edit**) y guarda. Las listas de los jugadores se conservan (están en el dataset). Ese
+mismo día suele hacer falta también la versión nueva de BDS: CubeKeeper avisa al móvil, y se cambia con
+`CUBEKEEPER_BDS_VERSION` y **Instalar**.
+
+**Si no funciona** (sin probar todavía en el NAS):
+
+- **No arranca por permisos** (en los registros, algo como `AccessDeniedException` en `/docker/brc`): la imagen no
+  está pensada para un usuario sin privilegios. Quita la línea `user: "568:568"` y vuelve a probar.
+- **TrueNAS rechaza la red** `macvlan`: comprueba el nombre de la tarjeta y que la IP no esté en uso.
+- **Sale el menú pero no conecta a CubeKeeper**: la Xbox se conecta al NAS directamente, como con el público; revisa
+  que en `custom_servers.json` esté `192.168.1.21` y el puerto `19132`.
+- Desde el propio NAS no se puede hacer ping a esa IP (es normal con macvlan); desde otro equipo de casa sí.
 
 ## 8. Actualizar
 

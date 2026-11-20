@@ -1,0 +1,63 @@
+# BedrockConnect en casa: el menú para que la Xbox entre a CubeKeeper (ver docs/TRUENAS.md, apartado 7b).
+# App aparte en TrueNAS (Apps → Discover Apps → ⋮ → Install via YAML), nombre: bedrockconnect.
+#
+# Antes de instalar, cambia los tres valores marcados con «CAMBIA»:
+#   - la tarjeta de red del NAS que tiene la 192.168.1.21 (Network → Interfaces: enp…, eno1, br0…)
+#   - una IP libre de la red de casa que el router no reparta por DHCP (para BedrockConnect)
+#   - la puerta de enlace de la red (normalmente 192.168.1.1)
+# Y crea antes el dataset vms/bedrockconnect (propietario 568) con custom_servers.json dentro.
+services:
+  bedrockconnect:
+    # Versión fijada. Al actualizarse el juego, cámbiala por la nueva (hub.docker.com/r/pugmatt/bedrock-connect/tags).
+    image: pugmatt/bedrock-connect:1.72.1
+    restart: unless-stopped
+
+    # Su propia IP en la red de casa (macvlan): el puerto 19132 del NAS ya lo usa el servidor de juego.
+    networks:
+      lan:
+        ipv4_address: 192.168.1.22          # CAMBIA: IP libre para BedrockConnect
+
+    user: "568:568"
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    tmpfs:
+      - /tmp
+
+    environment:
+      TZ: Europe/Madrid
+      # Tu servidor aparece siempre en el menú, para todos (sin escribir la dirección).
+      BC_CUSTOM_SERVERS: /docker/brc/data/custom_servers.json
+      # Cada jugador puede guardar además sus propios servidores (se guardan en /docker/brc/players).
+      BC_USER_SERVERS: "true"
+      # Mostrar también los servidores destacados en el menú (false = solo el tuyo).
+      BC_FEATURED_SERVERS: "true"
+
+    volumes:
+      # Listas de servidores de cada jugador (para no perderlas al actualizar).
+      - /mnt/vms/bedrockconnect/players:/docker/brc/players
+      # custom_servers.json (ver deploy/bedrockconnect/custom_servers.json).
+      - /mnt/vms/bedrockconnect:/docker/brc/data:ro
+
+    deploy:
+      resources:
+        limits:
+          cpus: "1"
+          memory: 512M
+
+    logging:
+      driver: json-file
+      options:
+        max-size: "5m"
+        max-file: "2"
+
+networks:
+  lan:
+    driver: macvlan
+    driver_opts:
+      parent: enp1s0                        # CAMBIA: tarjeta del NAS con la 192.168.1.21
+    ipam:
+      config:
+        - subnet: 192.168.1.0/24
+          gateway: 192.168.1.1              # CAMBIA si tu puerta de enlace es otra
