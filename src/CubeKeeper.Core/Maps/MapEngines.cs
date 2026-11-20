@@ -16,7 +16,8 @@ public static class MapEngines
         "unmined",
         "uNmINeD",
         ["unmined-cli"],
-        "web render --world \"{world}\" --output \"{output}\"",
+        // PNG: con el formato por defecto (JPEG), uNmINeD se cae al guardar la primera imagen (GetJpegEncoder, código 134).
+        "web render --world \"{world}\" --output \"{output}\" --imageformat png",
         "Descarga la versión CLI para Linux x64 desde unmined.net (gratuita para uso personal) y súbela aquí, o pega el enlace de descarga.");
 
     public static readonly MapEngine BedrockViz = new(

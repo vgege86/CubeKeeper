@@ -218,10 +218,10 @@ dirá que el servidor está desactualizado o no conectará. Mira la última vers
 mismo día suele hacer falta también la versión nueva de BDS: CubeKeeper avisa al móvil, y se cambia con
 `CUBEKEEPER_BDS_VERSION` y **Instalar**.
 
-**Si no funciona** (sin probar todavía en el NAS):
+**Si no funciona:**
 
-- **No arranca por permisos** (en los registros, algo como `AccessDeniedException` en `/docker/brc`): la imagen no
-  está pensada para un usuario sin privilegios. Quita la línea `user: "568:568"` y vuelve a probar.
+- **Se para y arranca sola sin parar:** el YAML de la guía ya no lleva `user: "568:568"` ni el `/tmp` en memoria
+  (`tmpfs`), que la hacían cerrarse al arrancar. Si los añadiste, quítalos.
 - **TrueNAS rechaza la red** `macvlan`: comprueba el nombre de la tarjeta y que la IP no esté en uso.
 - **Sale el menú pero no conecta a CubeKeeper**: la Xbox se conecta al NAS directamente, como con el público; revisa
   que en `custom_servers.json` esté `192.168.1.21` y el puerto `19132`.

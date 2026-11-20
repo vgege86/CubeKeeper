@@ -15,7 +15,7 @@ public class CommandTemplateTests
     public void Builds_unmined_default_command()
     {
         var args = CommandTemplate.Build(MapEngines.Unmined.DefaultCommand, Values);
-        Assert.Equal(["web", "render", "--world", "/data/map/.work/world con espacios", "--output", "/data/map/.work/output"], args);
+        Assert.Equal(["web", "render", "--world", "/data/map/.work/world con espacios", "--output", "/data/map/.work/output", "--imageformat", "png"], args);
     }
 
     [Fact]

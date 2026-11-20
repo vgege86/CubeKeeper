@@ -67,6 +67,8 @@ En GitHub → *Packages → cubekeeper → Package settings*, la visibilidad deb
 
 ## Mapa
 
+- **Código 134 con `GetJpegEncoder` en el registro:** uNmINeD falla al guardar en JPEG. Añade `--imageformat png` al
+  comando en los ajustes del mapa (ya viene así por defecto en las instalaciones nuevas).
 - **«Permission denied»** al generar: el dataset `vms/cubekeeper` no puede estar montado con `exec=off`.
 - **«Unknown command»** o similar: mira en `unmined-cli --help` (o en su web) el comando de tu versión y cámbialo en
   los ajustes del mapa.

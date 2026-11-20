@@ -163,7 +163,7 @@ Instala los motores solo desde su web oficial: es un programa que se ejecuta den
 
 | # | Prueba | Resultado esperado |
 |---|---|---|
-| 1 | Generar ahora | En el registro se ve la copia, el comando y la salida del programa; al terminar aparece el mapa |
+| 1 | Generar ahora | ✅ Comprobado con uNmINeD y `--imageformat png`: en el registro se ve la copia, el comando y la salida del programa; al terminar aparece el mapa |
 | 2 | Si falla con «Unknown command» o similar | Mira en `unmined-cli --help` (o en su web) el comando de tu versión y cámbialo en Ajustes del mapa |
 | 3 | Entrar como operador | Ve el mapa, pero no los botones de generar ni instalar |
 | 4 | Al día siguiente | «Última generación» es de esta madrugada (a la hora configurada) |
@@ -184,7 +184,7 @@ Si falla: [PROBLEMAS.md](PROBLEMAS.md#mapa).
 |---|---|---|
 | 1 | Conectar cuenta y usar el código | «Conectada como» con tu gamertag y la lista de Realms |
 | 2 | Importar una ranura sin «Usarlo ahora» | Aparece en **Mundos**; el servidor sigue con el mundo que tenía |
-| 3 | En Mundos, «Usar este» con el importado y entrar desde la Xbox | Es el mundo del Realm |
+| 3 | En Mundos, «Usar este» con el importado y entrar desde la Xbox | ✅ Comprobado: es el mundo del Realm |
 | 4 | Reiniciar la app y volver a Realms → Actualizar lista | Sigue conectada sin pedir código (renueva la sesión sola) |
 | 5 | Desconectar… | Vuelve a «Conectar cuenta»; en Auditoría quedan conectar, importar y desconectar |
 
