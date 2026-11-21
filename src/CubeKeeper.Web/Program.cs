@@ -130,6 +130,28 @@ app.UseAuthentication();
 app.UseAuthorization();
 app.UseAntiforgery();
 
+// Un formulario (login, verificación en dos pasos, Mi cuenta) enviado con la protección caducada: pasa en el móvil
+// cuando el sistema cierra la app instalada y, al volver, restaura la página sin la cookie de sesión que la protege.
+// En lugar de un 400 en blanco, se vuelve a cargar la página con un aviso (la protección sigue igual).
+app.Use(async (ctx, next) =>
+{
+    if (HttpMethods.IsPost(ctx.Request.Method) &&
+        ctx.Features.Get<Microsoft.AspNetCore.Antiforgery.IAntiforgeryValidationFeature>() is { IsValid: false })
+    {
+        var target = ctx.Request.Path.StartsWithSegments("/cuenta") ? "/cuenta?caducado=true" : "/login?caducado=true";
+        var returnUrl = ctx.Request.Query["ReturnUrl"].ToString();
+        if (target.StartsWith("/login", StringComparison.Ordinal) && returnUrl.StartsWith('/') &&
+            !returnUrl.StartsWith("//", StringComparison.Ordinal) && !returnUrl.StartsWith("/\\", StringComparison.Ordinal))
+        {
+            target += "&ReturnUrl=" + Uri.EscapeDataString(returnUrl);
+        }
+        app.Logger.LogInformation("Formulario con la protección caducada en {Path}: se vuelve a cargar", ctx.Request.Path);
+        ctx.Response.Redirect(target);
+        return;
+    }
+    await next();
+});
+
 app.MapHealthChecks("/health", new HealthCheckOptions
 {
     ResultStatusCodes =

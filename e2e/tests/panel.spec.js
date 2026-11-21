@@ -190,3 +190,20 @@ test('Jugadores muestra el tiempo de juego por día', async ({ page }) => {
   await card.locator('button:has-text("30 días")').click();
   await expect(card.locator('.stack-col')).toHaveCount(30);
 });
+
+test('un login con la protección caducada vuelve a cargar con aviso (app del móvil restaurada)', async ({ browser }) => {
+  const ctx = await browser.newContext({ viewport: { width: 390, height: 844 } });
+  const page = await ctx.newPage();
+  await page.goto('/login?ReturnUrl=%2Fjugadores');
+  await page.fill('input[autocomplete=username]', ADMIN.user);
+  await page.fill('input[type=password]', ADMIN.password);
+  await ctx.clearCookies(); // el móvil cerró la app y borró las cookies de sesión
+  await page.click('button[type=submit]');
+  await expect(page.locator('.alert-warn')).toContainText('había caducado');
+  await page.fill('input[autocomplete=username]', ADMIN.user);
+  await page.fill('input[type=password]', ADMIN.password);
+  await page.click('button[type=submit]');
+  await expect(page).toHaveURL(/\/jugadores$/);
+  expect((await page.request.get('/login?caducado=loquesea')).status()).toBe(200);
+  await ctx.close();
+});

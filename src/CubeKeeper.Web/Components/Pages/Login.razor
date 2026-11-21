@@ -44,6 +44,10 @@
         </p>
     }
 
+    @if (Expired && _error is null)
+    {
+        <p class="alert alert-warn" role="status">La página había caducado (la app estuvo cerrada un rato). Vuelve a escribir tu usuario y contraseña.</p>
+    }
     @if (_error is not null)
     {
         <p class="alert alert-error" role="alert">@_error</p>
@@ -89,6 +93,12 @@
 
     [SupplyParameterFromQuery]
     private string? ReturnUrl { get; set; }
+
+    /// <summary>Se ha vuelto a cargar porque el formulario anterior había caducado (ver Program).</summary>
+    [SupplyParameterFromQuery(Name = "caducado")]
+    private string? ExpiredFlag { get; set; }
+
+    private bool Expired => ExpiredFlag is "true" or "1";
 
     [CascadingParameter]
     private HttpContext? HttpContext { get; set; }
