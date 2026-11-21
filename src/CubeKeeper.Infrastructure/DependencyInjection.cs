@@ -58,6 +58,7 @@ public static class DependencyInjection
         services.AddSingleton<Diagnostics.DiagnosticsService>();
         services.AddHostedService<Storage.StorageMonitor>();
         services.AddSingleton<Updates.UpdateService>();
+        services.AddSingleton<Access.AccessActionTokens>();
         services.AddSingleton<Access.AccessService>();
         services.AddHostedService(sp => sp.GetRequiredService<Access.AccessService>());
         services.AddSingleton<Game.GameControlService>();

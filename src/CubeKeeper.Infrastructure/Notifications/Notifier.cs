@@ -162,7 +162,7 @@ public sealed partial class Notifier(
             return new SendResult(false, "Ya se avisó hace poco.");
         }
         _lastSent[key] = now;
-        return await SendAsync(n.Title, n.Message, n.Priority, n.Path, ct).ConfigureAwait(false);
+        return await SendAsync(n.Title, n.Message, n.Priority, n.Path, ct, n.Actions).ConfigureAwait(false);
     }
 
     /// <summary>Mensaje de prueba desde el panel (sin filtros).</summary>
@@ -171,7 +171,11 @@ public sealed partial class Notifier(
             ? SendAsync("CubeKeeper: prueba", "Si ves esto, los avisos funcionan. 🎉", NotificationPriority.Default, "/avisos", ct)
             : Task.FromResult(new SendResult(false, "Falta el tema de ntfy: escríbelo en el formulario y guarda."));
 
-    private async Task<SendResult> SendAsync(string title, string message, NotificationPriority priority, string? path, CancellationToken ct)
+    /// <summary>Hay dirección del panel: se pueden poner enlaces y botones en los avisos.</summary>
+    public bool HasPanelUrl => !string.IsNullOrWhiteSpace(Config.PanelUrl);
+
+    private async Task<SendResult> SendAsync(string title, string message, NotificationPriority priority, string? path, CancellationToken ct,
+        IReadOnlyList<NotificationAction>? actions = null)
     {
         var config = Config;
         try
@@ -188,6 +192,18 @@ public sealed partial class Notifier(
             if (!string.IsNullOrWhiteSpace(config.PanelUrl))
             {
                 body["click"] = config.PanelUrl.TrimEnd('/') + (path ?? "/");
+                if (actions is { Count: > 0 })
+                {
+                    // Botones de ntfy: la app del móvil hace el POST ella misma y quita el aviso.
+                    body["actions"] = actions.Take(3).Select(a => new Dictionary<string, object>
+                    {
+                        ["action"] = "http",
+                        ["label"] = a.Label,
+                        ["url"] = config.PanelUrl.TrimEnd('/') + a.Path,
+                        ["method"] = "POST",
+                        ["clear"] = true,
+                    }).ToArray();
+                }
             }
             // Cuerpo completo con Content-Length (y no por partes): lo aceptan también los proxies más estrictos.
             request.Content = new StringContent(JsonSerializer.Serialize(body), Encoding.UTF8, "application/json");

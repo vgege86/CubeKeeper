@@ -179,6 +179,88 @@ public sealed class NotifierTests : IDisposable
         }
     }
 
+    [Fact]
+    public async Task Access_request_notification_has_buttons_that_decide_once()
+    {
+        await using var f = new SupervisorFixture();
+        var handler = new CaptureHandler();
+        var notifier = Create(f.Root, handler);
+        var factory = new DbFactory(f.Paths.Database);
+        await using (var db = factory.CreateDbContext())
+        {
+            await db.Database.MigrateAsync();
+        }
+        var tracking = new PlayerTrackingService(f.Supervisor, f.Console, factory, TimeProvider.System, NullLogger<PlayerTrackingService>.Instance);
+        var tokens = new AccessActionTokens(TimeProvider.System);
+        var access = new AccessService(f.Supervisor, tracking, f.Paths, f.State, factory, TimeProvider.System, NullLogger<AccessService>.Instance, notifier, tokens);
+        await tracking.StartAsync(CancellationToken.None);
+        await access.StartAsync(CancellationToken.None);
+        try
+        {
+            await f.Supervisor.StartAsync();
+            await f.WaitForStatusAsync(ServerStatus.Running);
+            await access.SetModeAsync(AccessMode.ApprovedOnly);
+            await access.StartEnrollmentAsync(5);
+            await f.Supervisor.SendCommandAsync("join Primo 2535400000000007");
+
+            var deadline = DateTime.UtcNow.AddSeconds(10);
+            while (handler.Requests.Count == 0)
+            {
+                Assert.True(DateTime.UtcNow < deadline, "No llegó el aviso.");
+                await Task.Delay(50);
+            }
+            using var json = JsonDocument.Parse(handler.Requests[0].Body);
+            var actions = json.RootElement.GetProperty("actions").EnumerateArray().ToList();
+            Assert.Equal(2, actions.Count);
+            Assert.Equal("http", actions[0].GetProperty("action").GetString());
+            Assert.Equal("POST", actions[0].GetProperty("method").GetString());
+            var approveUrl = actions[0].GetProperty("url").GetString()!;
+            Assert.StartsWith("https://cubekeeper.alucard86.fyi/acceso/aviso/", approveUrl);
+            Assert.EndsWith("/aprobar", approveUrl);
+            var token = approveUrl.Split('/')[^2];
+            Assert.True(token.Length >= 40);
+
+            var result = await access.DecideFromNotificationAsync(token, approve: true);
+            Assert.Contains("aprobado como visitante", result);
+            var overview = await access.GetOverviewAsync();
+            Assert.Contains(overview.Approved, p => p.Xuid == "2535400000000007" && p.Permission == PermissionLevel.Visitor);
+            Assert.Empty(overview.Pending);
+
+            // El mismo enlace (y el de «Rechazar») ya no valen.
+            await Assert.ThrowsAsync<InvalidOperationException>(() => access.DecideFromNotificationAsync(token, approve: false));
+            await Assert.ThrowsAsync<InvalidOperationException>(() => access.DecideFromNotificationAsync("inventado", approve: true));
+        }
+        finally
+        {
+            await access.StopAsync(CancellationToken.None);
+            await tracking.StopAsync(CancellationToken.None);
+        }
+    }
+
+    [Fact]
+    public void Action_links_expire_and_are_single_use()
+    {
+        var clock = new ManualTime();
+        var tokens = new AccessActionTokens(clock);
+        var a = tokens.Issue("1", "Primo");
+        var b = tokens.Issue("1", "Primo");
+        var c = tokens.Issue("2", "Otro");
+
+        Assert.NotNull(tokens.Redeem(a));
+        Assert.Null(tokens.Redeem(a));
+        Assert.Null(tokens.Redeem(b)); // otro aviso del mismo jugador: ya se decidió
+
+        clock.Now += AccessActionTokens.Lifetime + TimeSpan.FromSeconds(1);
+        Assert.Null(tokens.Redeem(c));
+    }
+
+    private sealed class ManualTime : TimeProvider
+    {
+        public DateTimeOffset Now { get; set; } = DateTimeOffset.UtcNow;
+
+        public override DateTimeOffset GetUtcNow() => Now;
+    }
+
     private sealed class DbFactory(string path) : IDbContextFactory<CubeKeeperDbContext>
     {
         public CubeKeeperDbContext CreateDbContext() =>

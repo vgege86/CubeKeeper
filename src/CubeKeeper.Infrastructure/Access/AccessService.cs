@@ -58,6 +58,8 @@ public sealed class AccessService : BackgroundService
     private ServerStatus _lastStatus;
     private readonly Notifications.Notifier? _notifier;
 
+    private readonly AccessActionTokens? _actionTokens;
+
     public AccessService(
         IServerController server,
         IPlayerPresence presence,
@@ -66,9 +68,11 @@ public sealed class AccessService : BackgroundService
         IDbContextFactory<CubeKeeperDbContext> dbFactory,
         TimeProvider time,
         ILogger<AccessService> logger,
-        Notifications.Notifier? notifier = null)
+        Notifications.Notifier? notifier = null,
+        AccessActionTokens? actionTokens = null)
     {
         _notifier = notifier;
+        _actionTokens = actionTokens;
         _server = server;
         _presence = presence;
         _paths = paths;
@@ -435,14 +439,53 @@ public sealed class AccessService : BackgroundService
         RaiseChanged();
         if (_notifier is not null)
         {
+            // Con dirección del panel, el aviso lleva botones para decidir sin abrir el panel (enlace de un solo uso).
+            IReadOnlyList<Core.Notifications.NotificationAction>? actions = null;
+            if (_actionTokens is not null && _notifier.HasPanelUrl)
+            {
+                var token = _actionTokens.Issue(xuid, name);
+                actions =
+                [
+                    new("Aprobar (visitante)", $"/acceso/aviso/{token}/aprobar"),
+                    new("Rechazar", $"/acceso/aviso/{token}/rechazar"),
+                ];
+            }
             await _notifier.NotifyAsync(new Core.Notifications.Notification(
                 Core.Notifications.NotificationKind.AccessRequest,
                 $"Solicitud de acceso: {name}",
-                $"{name} quiere entrar al servidor. Apruébalo o recházalo en Acceso.",
+                actions is null
+                    ? $"{name} quiere entrar al servidor. Apruébalo o recházalo en Acceso."
+                    : $"{name} quiere entrar al servidor. Apruébalo como visitante o recházalo con los botones (valen 30 minutos), o decide en Acceso.",
                 xuid,
                 Core.Notifications.NotificationPriority.High,
-                "/acceso"), ct).ConfigureAwait(false);
+                "/acceso",
+                actions), ct).ConfigureAwait(false);
         }
+    }
+
+    /// <summary>
+    /// Decide una solicitud desde el botón de un aviso. Devuelve el texto para responder (y para el aviso de
+    /// confirmación), o lanza <see cref="InvalidOperationException"/> si el enlace no vale.
+    /// </summary>
+    public async Task<string> DecideFromNotificationAsync(string token, bool approve, CancellationToken ct = default)
+    {
+        var ticket = _actionTokens?.Redeem(token) ?? throw new InvalidOperationException("El enlace ha caducado o ya se usó. Decide en Acceso.");
+        await using (var db = await _dbFactory.CreateDbContextAsync(ct).ConfigureAwait(false))
+        {
+            var pending = await db.AccessRequests.AsNoTracking()
+                .FirstOrDefaultAsync(r => r.Xuid == ticket.Xuid && r.Status == AccessRequestStatus.Pending, ct).ConfigureAwait(false);
+            if (pending is null)
+            {
+                throw new InvalidOperationException($"La solicitud de {ticket.Name} ya se decidió.");
+            }
+            if (!approve)
+            {
+                await RejectAsync(pending.Id, ct).ConfigureAwait(false);
+                return $"Solicitud de {ticket.Name} rechazada.";
+            }
+        }
+        await ApproveAsync(ticket.Xuid, ticket.Name, PermissionLevel.Visitor, ct).ConfigureAwait(false);
+        return $"{ticket.Name} aprobado como visitante. Ya puede entrar.";
     }
 
     private async Task WatchEnrollmentAsync(CancellationToken ct)

@@ -40,7 +40,17 @@ public static class NotificationKindText
 
 /// <summary>Un aviso para enviar.</summary>
 /// <param name="Key">Para no repetir el mismo aviso: dos con el mismo tipo y clave en 10 minutos se envían una sola vez.</param>
-public sealed record Notification(NotificationKind Kind, string Title, string Message, string Key, NotificationPriority Priority = NotificationPriority.Default, string? Path = null);
+public sealed record Notification(
+    NotificationKind Kind,
+    string Title,
+    string Message,
+    string Key,
+    NotificationPriority Priority = NotificationPriority.Default,
+    string? Path = null,
+    IReadOnlyList<NotificationAction>? Actions = null);
+
+/// <summary>Botón del aviso: al pulsarlo, el móvil hace un POST a <c>PanelUrl + Path</c> (máximo 3 por aviso).</summary>
+public sealed record NotificationAction(string Label, string Path);
 
 public enum NotificationPriority
 {
