@@ -3,7 +3,10 @@
 Qué hace cada página del panel y cómo se usa. Instalación: [TRUENAS.md](TRUENAS.md) · Problemas:
 [PROBLEMAS.md](PROBLEMAS.md).
 
-En el móvil, el menú se pliega tras el botón **Menú** de arriba.
+En el móvil, el menú se pliega tras el botón **Menú** de arriba. Desde `https://cubekeeper.alucard86.fyi` se puede
+instalar como app: en Chrome, **⋮ → Instalar aplicación** (o «Añadir a pantalla de inicio»); en el iPhone, Safari →
+**Compartir → Añadir a pantalla de inicio**. Se abre sin la barra del navegador. (Hace falta entrar por https: por
+`http://192.168.1.21:8765` solo se puede añadir como acceso directo.)
 
 Hay dos tipos de usuario del panel:
 
@@ -17,6 +20,20 @@ Hay dos tipos de usuario del panel:
 
 Estado del servidor (arrancar, parar, reiniciar), quién está jugando, versión de BDS y cómo conectarse (en PC con
 la dirección y el puerto; en la Xbox, con BedrockConnect: [TRUENAS.md](TRUENAS.md#7b-xbox-entrar-con-bedrockconnect)).
+
+### Recursos
+
+Memoria y CPU que usa el servidor, con gráficas de la última hora, 6 h o 24 h (se miden cada 30 s y se pierden al
+reiniciar la app). La memoria del contenedor se compara con su límite (4 GB en el YAML). Si pasa del 90 % un rato,
+llega un aviso: reinicia el servidor, activa el reinicio programado o sube el límite de la app en TrueNAS. Si lo
+alcanzara, el sistema cerraría el servidor de golpe.
+
+### Reinicio programado
+
+Reinicia el servidor cada día a la hora elegida (desactivado hasta que lo actives). Avisa por el chat a los minutos que
+pongas (por defecto 5 y 1) y, si marcas «No reiniciar si hay alguien jugando», ese día se lo salta. Tampoco reinicia si
+el servidor está parado o hay una copia o actualización en marcha. Elige una hora distinta de la del mapa nocturno
+(04:15) y de la comprobación de versiones (05:00): por ejemplo 05:30.
 
 ### Versión de BDS
 
@@ -41,6 +58,10 @@ Las versiones nuevas de BDS suelen traer arreglos de seguridad: conviene no qued
 
 Quién está conectado (con su XUID), las últimas sesiones y el tiempo jugado. **Comprobar** pregunta al servidor la
 lista real por si algo se ha desincronizado.
+
+**Tiempo de juego:** gráfica de columnas por día de los últimos 7, 14 o 30 días, con un color por jugador (siempre el
+mismo), y una tabla con el total, los días jugados y la media por día jugado. «Ver como tabla» da los mismos datos
+día a día. Pasando el ratón por una columna se ve el detalle.
 
 ## Acceso
 

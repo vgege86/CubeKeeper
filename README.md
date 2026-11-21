@@ -30,6 +30,8 @@ lo descarga, lo arranca y lo para, lee su consola y le envía comandos. No neces
 - **Fase 3D ✅** Mapa del mundo con uNmINeD o bedrock-viz (se instalan desde el panel), cada noche y bajo demanda.
 - **Mejoras ✅** Claves cifradas con `CUBEKEEPER_KEY_SECRET`, cabeceras de seguridad, avisos de fallos de
   mantenimiento y pruebas en el navegador en cada cambio.
+- **Más ✅** Uso de CPU y memoria con gráficas y aviso, reinicio programado, panel instalable como app en el móvil y
+  estadísticas de tiempo de juego.
 - **Mantenimiento ✅** Instalar la versión nueva de BDS desde el Panel, espacio en disco con aviso, comprobación
   semanal de copias, diagnóstico descargable y menú plegable en el móvil.
 - **Realms ✅** Conectar la cuenta de Microsoft con un código (microsoft.com/link) y descargar los mundos de tus

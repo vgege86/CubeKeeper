@@ -155,3 +155,38 @@ test('se puede descargar el diagnóstico y no lleva secretos', async ({ page }) 
   // Los nombres de archivo del zip van sin comprimir: deben estar.
   expect(body.includes(Buffer.from('resumen.txt'))).toBe(true);
 });
+
+test('el panel se puede instalar como app (manifiesto e iconos)', async ({ request }) => {
+  const manifest = await request.get('/manifest.webmanifest');
+  expect(manifest.status()).toBe(200);
+  expect(manifest.headers()['content-type']).toContain('manifest+json');
+  const json = await manifest.json();
+  expect(json.display).toBe('standalone');
+  for (const icon of json.icons) {
+    expect((await request.get('/' + icon.src)).status(), icon.src).toBe(200);
+  }
+});
+
+test('el Panel guarda el reinicio programado y muestra los recursos', async ({ page }) => {
+  await login(page, ADMIN);
+  await interactive(page);
+  await expect(page.getByRole('heading', { name: 'Recursos' })).toBeVisible();
+  const card = page.locator('section.card:has(h2:has-text("Reinicio programado"))');
+  await card.locator('input[type=checkbox]').first().check();
+  await card.locator('input[type=time]').fill('04:45');
+  await card.locator('button:has-text("Guardar")').click();
+  await expect(page.locator('.alert-ok')).toContainText('04:45');
+  await expect(card).toContainText('Próximo');
+});
+
+test('Jugadores muestra el tiempo de juego por día', async ({ page }) => {
+  await login(page, ADMIN);
+  await page.goto('/jugadores');
+  await interactive(page);
+  const card = page.locator('section.card:has(h2:has-text("Tiempo de juego"))');
+  await expect(card).toBeVisible();
+  // En la prueba de arrancar el servidor entró «Alucard»: tiene tiempo hoy.
+  await expect(card.locator('.legend')).toContainText('Alucard');
+  await card.locator('button:has-text("30 días")').click();
+  await expect(card.locator('.stack-col')).toHaveCount(30);
+});

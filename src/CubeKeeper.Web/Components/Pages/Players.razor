@@ -48,6 +48,43 @@
 </section>
 
 <section class="card">
+    <div class="card-head">
+        <h2>Tiempo de juego</h2>
+        <div class="segmented" role="group" aria-label="Periodo">
+            @foreach (var days in new[] { 7, 14, 30 })
+            {
+                <button class="@(_days == days ? "on" : null)" aria-pressed="@(_days == days)" @onclick="() => SetDaysAsync(days)">@days días</button>
+            }
+        </div>
+    </div>
+    @if (_daily is null)
+    {
+        <p class="muted">Cargando…</p>
+    }
+    else
+    {
+        <PlaytimeChart Dates="@Stats.DailyDates(_days)" Players="@_daily" />
+        @if (_daily.Count > 0)
+        {
+            <table class="table mt">
+                <thead><tr><th>Jugador</th><th>Total</th><th>Días jugados</th><th>Media por día jugado</th></tr></thead>
+                <tbody>
+                    @foreach (var p in _daily.OrderByDescending(p => p.Total))
+                    {
+                        <tr>
+                            <td><strong>@p.Name</strong></td>
+                            <td data-label="Total">@Format.Duration(p.Total)</td>
+                            <td data-label="Días jugados">@p.DaysPlayed de @_days</td>
+                            <td data-label="Media">@Format.Duration(p.DaysPlayed > 0 ? p.Total / p.DaysPlayed : TimeSpan.Zero)</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        }
+    }
+</section>
+
+<section class="card">
     <h2>Todos los jugadores</h2>
     @if (_players is null)
     {
@@ -119,6 +156,14 @@
     private string? _error;
     private bool _busy;
     private Timer? _refresh;
+    private int _days = 7;
+    private IReadOnlyList<PlayerDaily>? _daily;
+
+    private async Task SetDaysAsync(int days)
+    {
+        _days = days;
+        _daily = await Stats.GetDailyAllAsync(_days);
+    }
 
     protected override async Task OnInitializedAsync()
     {
@@ -144,6 +189,7 @@
     private async Task LoadAsync()
     {
         _players = await Stats.GetPlayersAsync();
+        _daily = await Stats.GetDailyAllAsync(_days);
         _sessions = await Stats.GetRecentSessionsAsync(50, _selected);
     }
 

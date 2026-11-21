@@ -7,6 +7,16 @@ Instalación: [TRUENAS.md](TRUENAS.md) · Uso: [USO.md](USO.md) · Problemas: [P
 
 ---
 
+## Recursos, reinicio programado, app en el móvil y estadísticas
+
+| # | Prueba | Resultado esperado |
+|---|---|---|
+| 1 | **Panel → Recursos** tras unos minutos con el servidor en marcha | Memoria del servidor y del contenedor «de 4 GB (N %)», gráfica con la línea del límite y CPU |
+| 2 | **Panel → Reinicio programado**: activarlo para dentro de 10 minutos, avisos 5,1, sin nadie jugando | A los 5 y 1 minutos, mensaje en el chat; a la hora, se reinicia; «Último: … Reiniciado» |
+| 3 | Lo mismo con alguien dentro y «No reiniciar si hay alguien jugando» | No reinicia; «Último: No se reinició: había gente jugando (…)» |
+| 4 | En el móvil, `https://cubekeeper.alucard86.fyi` → Instalar aplicación / Añadir a pantalla de inicio | Icono del cubo en el móvil; se abre sin la barra del navegador |
+| 5 | **Jugadores → Tiempo de juego**, 7/14/30 días | Columnas por día con un color por jugador, leyenda con totales y tabla |
+
 ## Mantenimiento (versión desde el panel, disco, copias, diagnóstico, móvil)
 
 | # | Prueba | Resultado esperado |
