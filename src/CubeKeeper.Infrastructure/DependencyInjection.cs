@@ -51,6 +51,11 @@ public static class DependencyInjection
         services.AddSingleton<ConsoleCommandRunner>();
         services.AddSingleton<Backups.BackupService>();
         services.AddSingleton<Storage.StorageService>();
+        services.AddSingleton<Backups.BackupVerifier>();
+        services.AddHostedService<Backups.BackupVerifyScheduler>();
+        // Program la registra antes como proveedor de registro: aquí solo si no lo está (pruebas).
+        Microsoft.Extensions.DependencyInjection.Extensions.ServiceCollectionDescriptorExtensions.TryAddSingleton<Diagnostics.RecentLogs>(services);
+        services.AddSingleton<Diagnostics.DiagnosticsService>();
         services.AddHostedService<Storage.StorageMonitor>();
         services.AddSingleton<Updates.UpdateService>();
         services.AddSingleton<Access.AccessService>();

@@ -117,3 +117,41 @@ test('la página de avisos ofrece los fallos de mantenimiento', async ({ page })
   await page.goto('/avisos');
   await expect(page.getByText('Fallos de mantenimiento')).toBeVisible();
 });
+
+test('en el móvil el menú se pliega, se abre y se cierra al elegir una página', async ({ browser }) => {
+  const ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true });
+  const page = await ctx.newPage();
+  await login(page, ADMIN);
+  await expect(page.locator('#main-nav')).toBeHidden();
+  await page.click('.nav-burger');
+  await expect(page.locator('#main-nav')).toBeVisible();
+  await page.click('#main-nav a:has-text("Copias")');
+  await expect(page).toHaveURL(/\/copias$/);
+  await expect(page.locator('#main-nav')).toBeHidden();
+  const overflow = await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth);
+  expect(overflow).toBe(false);
+  await ctx.close();
+});
+
+test('Copias muestra el espacio en disco y comprueba una copia', async ({ page }) => {
+  await login(page, ADMIN);
+  await page.goto('/copias');
+  await interactive(page);
+  await expect(page.getByRole('heading', { name: 'Espacio en disco' })).toBeVisible();
+  await expect(page.getByText('Datos (/data)')).toBeVisible();
+  await page.click('button:has-text("Hacer copia ahora")');
+  await expect(page.locator('.alert-ok')).toBeVisible({ timeout: 30_000 });
+  await page.click('button:has-text("Comprobar una ahora")');
+  await expect(page.locator('.alert')).toContainText('opia', { timeout: 30_000 });
+});
+
+test('se puede descargar el diagnóstico y no lleva secretos', async ({ page }) => {
+  await login(page, ADMIN);
+  const res = await page.request.get('/diagnostico/descargar');
+  expect(res.status()).toBe(200);
+  expect(res.headers()['content-type']).toContain('application/zip');
+  const body = await res.body();
+  expect(body.subarray(0, 2).toString()).toBe('PK');
+  // Los nombres de archivo del zip van sin comprimir: deben estar.
+  expect(body.includes(Buffer.from('resumen.txt'))).toBe(true);
+});

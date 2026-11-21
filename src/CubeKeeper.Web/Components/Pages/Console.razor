@@ -15,6 +15,8 @@
     <label class="check follow">
         <input type="checkbox" @bind="_follow" /> Seguir el final
     </label>
+    <a class="btn btn-ghost" href="/diagnostico/descargar" download
+       title="Un .zip con el estado, la configuración sin secretos, el registro y la consola, para pedir ayuda">Descargar diagnóstico</a>
 </div>
 
 <div class="console" @ref="_consoleEl" role="log" aria-live="polite">

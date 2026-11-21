@@ -172,6 +172,7 @@ socket de Docker, otro contenedor no puede llegar a esa consola.
 | **3C** ✅ | Avisos al móvil con ntfy |
 | **3D** ✅ | Mapa del mundo con uNmINeD o bedrock-viz (MCP aparcado) |
 | **4A** ✅ | Realms: conectar la cuenta de Microsoft con un código y descargar mundos como `.mcworld` |
+| **4C** ✅ | Versión de BDS desde el panel (`VersionPin`), espacio en disco (`StorageService`/`StorageMonitor`), comprobación semanal de copias con CRC32 (`BackupVerifier`), diagnóstico (`DiagnosticsService` + `RecentLogs`), menú plegable en el móvil |
 | **4B** ✅ | Claves cifradas, cabeceras de seguridad, avisos de mantenimiento, pruebas de navegador en CI, documentación reorganizada |
 | ~~3~~ | Horarios y límites por jugador, estadísticas, usuarios con roles, auditoría, notificaciones, MCP para Home365 (`ModelContextProtocol.AspNetCore`, como Home365), mapa con uNmINeD |
 

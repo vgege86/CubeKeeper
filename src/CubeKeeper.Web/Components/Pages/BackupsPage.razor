@@ -11,6 +11,7 @@
 @using Microsoft.Extensions.Options
 @inject BackupService Backups
 @inject CubeKeeper.Infrastructure.Storage.StorageService Storage
+@inject BackupVerifier Verifier
 @inject MaintenanceScheduler Scheduler
 @inject IServerController Server
 @inject IOptions<CubeKeeperOptions> Options
@@ -73,6 +74,19 @@
             {
                 <span class="muted"> · sin segundo destino (<code>CUBEKEEPER_BACKUP_SECONDARY</code>)</span>
             }
+        </dd>
+        <dt>Comprobación</dt>
+        <dd>
+            @if (Verifier.LastCheck is { } check)
+            {
+                <span class="@(check.Ok ? null : "hint-warn")">@Format.When(check.At, Time): <code>@check.File</code> · @check.Message</span>
+            }
+            else
+            {
+                <span class="muted">Todavía ninguna.</span>
+            }
+            <span class="muted"> Cada semana se abre una copia al azar para ver que se puede restaurar.</span>
+            <button class="btn btn-ghost" disabled="@(_busy || Verifier.IsBusy || _entries.Count == 0)" @onclick="VerifyAsync">Comprobar una ahora</button>
         </dd>
     </dl>
     <p class="muted small">
@@ -194,6 +208,33 @@
     }
 
     private void RefreshStorage() => _ = LoadStorageAsync(refresh: true);
+
+    private async Task VerifyAsync()
+    {
+        _busy = true;
+        _message = null;
+        StateHasChanged();
+        try
+        {
+            var result = await Verifier.VerifyAsync();
+            if (result is not null)
+            {
+                _message = result.Ok ? $"Copia comprobada: {result.File}. {result.Message}" : $"La copia {result.File} está dañada: {result.Message}";
+                _messageIsError = !result.Ok;
+                await AuditAsync("backup.verify", result.File, result.Message);
+            }
+        }
+        catch (Exception ex) when (ex is IOException or InvalidOperationException)
+        {
+            Logger.LogWarning(ex, "No se pudo comprobar la copia");
+            _message = ex.Message;
+            _messageIsError = true;
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
 
     private async Task LoadAsync()
     {

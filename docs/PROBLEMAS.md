@@ -2,7 +2,10 @@
 
 Instalación: [TRUENAS.md](TRUENAS.md) · Uso: [USO.md](USO.md).
 
-Lo primero, casi siempre: **Apps → cubekeeper → Logs** en TrueNAS, y la **Consola** del panel si es el servidor de juego.
+Lo primero, casi siempre: **Consola → Descargar diagnóstico** en el panel. El `.zip` lleva el estado, la configuración
+sin secretos, el registro de CubeKeeper y la consola del servidor; con él se ve casi siempre qué pasa. Si el panel no
+abre, los registros están en TrueNAS (**Apps → cubekeeper → Logs**) o en la shell:
+`sudo docker logs --tail 200 ix-cubekeeper-cubekeeper-1`.
 
 ---
 
@@ -36,6 +39,13 @@ mundos, copias, usuarios y jugadores no se pierden.
   NPM (por ejemplo, sin la VPN).
 - **La página carga pero los botones no hacen nada:** falta *Websockets Support* en el proxy de NPM.
 - **La contraseña del YAML no funciona:** si lleva `$`, escríbelo doble (`$$`).
+
+## Versión de BDS
+
+- **El Panel dice «fijada desde el panel» y quieres la de la variable:** pulsa **Usar la de la variable** y después
+  **Instalar** con esa versión.
+- **«Instalar x.y.z» falla y vuelve a la anterior:** el motivo está en la consola (y en el diagnóstico). La versión
+  fijada no cambia hasta que una instalación va bien.
 
 ## TrueNAS no descarga la imagen
 
@@ -80,6 +90,13 @@ En GitHub → *Packages → cubekeeper → Package settings*, la visibilidad deb
 
   No hace falta reiniciar: comprueba con **Copias → Hacer copia ahora** que la copia aparece también en
   `/mnt/DATOS/backups/cubekeeper`. El aviso vuelve a saltar si deja de funcionar otra vez.
+
+- **Aviso «Una copia del mundo está dañada»:** la comprobación semanal ha encontrado una copia que no se podría
+  restaurar. No significa que estén mal todas: en **Copias**, pulsa **Comprobar una ahora** unas cuantas veces (o mira
+  la siguiente programada). Si fallan muchas, revisa el estado del pool en TrueNAS (**Storage**) y descarga el
+  diagnóstico.
+- **Aviso «Queda poco espacio en disco»:** en **Copias → Espacio en disco** se ve qué ocupa más. Lo habitual: bajar
+  la retención (`CUBEKEEPER_BACKUP_KEEP_*`), borrar copias manuales antiguas o ampliar el dataset.
 
 ## Mapa
 

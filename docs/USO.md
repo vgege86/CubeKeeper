@@ -3,6 +3,8 @@
 Qué hace cada página del panel y cómo se usa. Instalación: [TRUENAS.md](TRUENAS.md) · Problemas:
 [PROBLEMAS.md](PROBLEMAS.md).
 
+En el móvil, el menú se pliega tras el botón **Menú** de arriba.
+
 Hay dos tipos de usuario del panel:
 
 - **Administrador:** todo.
@@ -18,10 +20,17 @@ la dirección y el puerto; en la Xbox, con BedrockConnect: [TRUENAS.md](TRUENAS.
 
 ### Versión de BDS
 
-Con `CUBEKEEPER_BDS_VERSION` fijada, CubeKeeper instala exactamente esa versión y no actualiza solo; te avisa si Mojang
-publica una más nueva. Para cambiar: pon la nueva en la variable, reinicia la app y pulsa **Instalar**. Antes se hace
-una copia del mundo, y si la nueva no arranca vuelve sola a la anterior. **Volver a la versión anterior** reinstala la
-de antes sin descargarla.
+Con la versión fijada (al principio, la de `CUBEKEEPER_BDS_VERSION`), CubeKeeper instala exactamente esa y no
+actualiza solo. Cuando Mojang publica una más nueva, te llega un aviso al móvil y en el Panel aparece el botón
+**Instalar x.y.z**: hace una copia del mundo, instala, comprueba que arranca y, si no, vuelve sola a la anterior. Si
+va bien, esa versión queda fijada desde el panel; no hace falta tocar la app de TrueNAS. **Volver a la versión
+anterior** reinstala la de antes sin descargarla (y también queda fijada).
+
+El Panel dice si la versión fijada viene de la variable o del panel. Si cambias la variable a otra distinta de la
+fijada desde el panel, manda la del panel hasta que pulses **Usar la de la variable**.
+
+El mismo día que se actualice la Xbox con un protocolo nuevo, actualiza también BedrockConnect si lo tienes en casa
+([TRUENAS.md](TRUENAS.md#7b-xbox-entrar-con-bedrockconnect)).
 
 Sin versión fijada, la comprueba cada día a las 05:00 y, si hay una nueva, avisa por el chat a los 5 y 1 minutos y
 actualiza.
@@ -87,6 +96,12 @@ Copias del mundo sin parar la partida: cada hora si alguien ha jugado (24 horari
 cada cambio importante y a mano con **Hacer copia ahora**. Se guardan en `/data/backups` y en el segundo destino.
 **Restaurar…** vuelve a una copia (haciendo antes otra de seguridad). **Descargar** baja el `.mcworld`.
 
+- **Comprobación:** cada semana se abre una copia al azar para ver que se podría restaurar (que tiene el mundo completo
+  y ningún archivo dañado). Si alguna está mal, llega un aviso. **Comprobar una ahora** lo hace en el momento.
+- **Espacio en disco:** cuánto queda libre en `/data` y en el segundo destino, y cuánto ocupa cada cosa (copias,
+  mundos, versiones, mapa…). Si queda menos del 10 % o de 5 GB, llega un aviso al móvil y sale en el Panel
+  (configurable con `CUBEKEEPER_DISK_WARN_PERCENT` y `CUBEKEEPER_DISK_WARN_GB`).
+
 ## Mapa
 
 Mapa del mundo con uNmINeD o bedrock-viz, que se instalan desde la propia página (desde su web oficial). Se genera
@@ -95,6 +110,11 @@ cada noche y con **Generar ahora**. Los operadores lo ven, pero no lo configuran
 ## Consola
 
 La salida del servidor en vivo y una barra para enviar comandos de BDS (`list`, `say`, `kick`…).
+
+**Descargar diagnóstico** baja un `.zip` con el estado, las versiones, la configuración (sin contraseñas, tokens ni
+secretos), el espacio en disco, la lista de copias, el registro reciente de CubeKeeper, la consola reciente,
+`server.properties` y el último registro del mapa. Es lo que hay que pasar cuando algo falla, en lugar de buscar
+registros en la shell.
 
 ## Avisos al móvil
 

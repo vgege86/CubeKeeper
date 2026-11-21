@@ -7,6 +7,17 @@ Instalación: [TRUENAS.md](TRUENAS.md) · Uso: [USO.md](USO.md) · Problemas: [P
 
 ---
 
+## Mantenimiento (versión desde el panel, disco, copias, diagnóstico, móvil)
+
+| # | Prueba | Resultado esperado |
+|---|---|---|
+| 1 | Abrir el panel en el móvil | Arriba solo «CubeKeeper», «Menú» y «Salir»; «Menú» abre las páginas en dos columnas y se cierra al elegir una |
+| 2 | **Copias → Espacio en disco** | Libre de `/data` y del segundo destino, y lo que ocupa cada carpeta |
+| 3 | **Copias → Comprobar una ahora** | «Copia comprobada: … Bien: N archivos…» |
+| 4 | **Consola → Descargar diagnóstico** y abrir el `.zip` | `resumen.txt`, `registro-cubekeeper.txt`, `consola-servidor.txt`…; sin la contraseña ni el secreto de las claves |
+| 5 | Cuando Mojang publique una versión más nueva que la fijada | Aviso al móvil y, en el Panel, «Instalar x.y.z»; al pulsarlo, copia, instala y queda «fijada desde el panel» |
+| 6 | (Opcional) `CUBEKEEPER_DISK_WARN_PERCENT: "99"` y reiniciar | En una hora (o al abrir el Panel) aviso de poco espacio; quítala después |
+
 ## Seguridad y avisos de mantenimiento
 
 Antes de actualizar, añade `CUBEKEEPER_KEY_SECRET` a la app ([TRUENAS.md](TRUENAS.md#4-generar-el-secreto-de-las-claves)).
