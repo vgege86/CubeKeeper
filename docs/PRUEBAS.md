@@ -34,7 +34,7 @@ Antes de actualizar, añade `CUBEKEEPER_KEY_SECRET` a la app ([TRUENAS.md](TRUEN
 | 5 | Consola: `list` | `There are 0/10 players online:` |
 | 6 | ROG Ally: Servidores → Añadir `192.168.1.21` : `19132` y entrar | Entras al mundo. La consola muestra `Player connected: …, xuid: …` |
 | 7 | Consola: `say Hola` | El mensaje aparece en el chat del juego |
-| 8 | Xbox: Servidores → The Hive → Unirse (con la reescritura de AdGuard, [TRUENAS.md](TRUENAS.md#7b-xbox-entrar-con-bedrockconnect)) | ✅ Comprobado: menú de BedrockConnect y, desde ahí, entras a tu servidor |
+| 8 | Xbox: Servidores → The Hive → Unirse (con las reglas de AdGuard, [TRUENAS.md](TRUENAS.md#7b-xbox-entrar-con-bedrockconnect)) | ✅ Comprobado con el BedrockConnect público y con el de casa: sale el menú con «CubeKeeper» y entras a tu servidor |
 | 9 | Xbox: «Partidas LAN» | Aparece el servidor (unirse probablemente siga dando «Boat») |
 | 10 | Panel → Parar, con alguien dentro | La consola muestra `Quit correctly`; el mundo se guarda |
 | 11 | Simular una caída: `sudo pkill -9 bedrock_server` en la shell del NAS | «Se ha cerrado inesperadamente» y, a los 5 s, vuelve a arrancar solo |

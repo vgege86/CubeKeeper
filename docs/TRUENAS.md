@@ -188,14 +188,15 @@ Necesitas: una IP libre de la red que el router no reparta por DHCP (por ejemplo
 tarjeta del NAS que tiene la `192.168.1.21` (**Network → Interfaces**: `enp…`, `eno1`; si está dentro de un puente
 como `br0`, usa el puente) y la puerta de enlace (normalmente `192.168.1.1`).
 
-1. **Dataset** `vms/bedrockconnect` (preset Apps) con una carpeta `players`, todo de 568:
+1. **Dataset** `vms/bedrockconnect` (preset Apps) con una carpeta `players` que sea **de root**: el contenedor
+   funciona como root pero sin capacidades, así que no puede escribir en carpetas de otro usuario.
 
    ```bash
    sudo mkdir -p /mnt/vms/bedrockconnect/players
    ```
 
    ```bash
-   sudo chown -R 568:568 /mnt/vms/bedrockconnect
+   sudo chown -R root:root /mnt/vms/bedrockconnect/players
    ```
 
 2. Copia [`deploy/bedrockconnect/custom_servers.json`](../deploy/bedrockconnect/custom_servers.json) a
@@ -220,9 +221,17 @@ mismo día suele hacer falta también la versión nueva de BDS: CubeKeeper avisa
 
 **Si no funciona:**
 
+- **La Xbox entra en el menú y la echa enseguida;** en el registro de la app (`sudo docker logs --tail 100
+  ix-bedrockconnect-bedrockconnect-1`) sale `An error occurred saving to player file` y `Permission denied`: la
+  carpeta `players` no es de root. `sudo chown -R root:root /mnt/vms/bedrockconnect/players` (no hace falta
+  reiniciar).
 - **Se para y arranca sola sin parar:** el YAML de la guía ya no lleva `user: "568:568"` ni el `/tmp` en memoria
   (`tmpfs`), que la hacían cerrarse al arrancar. Si los añadiste, quítalos.
 - **TrueNAS rechaza la red** `macvlan`: comprueba el nombre de la tarjeta y que la IP no esté en uso.
+- **La Xbox no llega a BedrockConnect** (en el registro de la app no aparece ninguna línea al intentar entrar):
+  comprueba en el registro de consultas de AdGuard que el destacado se reescribe a la IP de tu BedrockConnect, y
+  desenchufa la Xbox 30 segundos. Para ver si esa IP responde, abre `http://IP:19132/` desde el móvil en el wifi de
+  casa: un error «404» quiere decir que sí llega.
 - **Sale el menú pero no conecta a CubeKeeper**: la Xbox se conecta al NAS directamente, como con el público; revisa
   que en `custom_servers.json` esté `192.168.1.21` y el puerto `19132`.
 - Desde el propio NAS no se puede hacer ping a esa IP (es normal con macvlan); desde otro equipo de casa sí.
