@@ -5,7 +5,10 @@
         <span class="brand-cube" aria-hidden="true"></span>
         CubeKeeper
     </a>
-    <nav>
+    @* En el móvil el menú se pliega tras el botón «Menú» (casilla + etiqueta: funciona sin JavaScript). *@
+    <input type="checkbox" id="nav-toggle" class="nav-toggle" aria-controls="main-nav" />
+    <label for="nav-toggle" class="nav-burger"><span aria-hidden="true">☰</span> Menú</label>
+    <nav id="main-nav">
         <NavLink href="/" Match="NavLinkMatch.All">Panel</NavLink>
         <NavLink href="/jugadores">Jugadores</NavLink>
         <NavLink href="/familia">Familia</NavLink>
