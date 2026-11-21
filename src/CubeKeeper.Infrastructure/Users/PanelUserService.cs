@@ -78,6 +78,16 @@ public sealed class PanelUserService(UserManager<PanelUser> users, RoleManager<I
         Check(await users.ResetAuthenticatorKeyAsync(user));
     }
 
+    /// <summary>
+    /// Cierra todas las sesiones abiertas de un usuario: cambia su sello de seguridad, así que sus cookies dejan de
+    /// valer en menos de un minuto (es cada cuánto se revalidan).
+    /// </summary>
+    public async Task SignOutEverywhereAsync(string userId)
+    {
+        var user = await FindAsync(userId);
+        Check(await users.UpdateSecurityStampAsync(user));
+    }
+
     public async Task DeleteAsync(string userId, string currentUserName)
     {
         var user = await FindAsync(userId);

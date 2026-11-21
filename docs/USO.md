@@ -69,6 +69,9 @@ día a día. Pasando el ratón por una columna se ve el detalle.
 - **Solo aprobados:** solo los de la lista. Para añadir a alguien, activa la **inscripción** unos minutos y que intente
   entrar: le expulsa con «Solicitud enviada» y aparece en Solicitudes para aprobarlo como visitante, miembro u operador.
 - **Bloquear** expulsa al jugador cada vez que entra.
+- **Desde el aviso del móvil:** si en Avisos está puesta la dirección del panel, el aviso de solicitud trae los botones
+  **Aprobar (visitante)** y **Rechazar**. Valen 30 minutos y una sola vez. El móvil tiene que estar en casa o en la VPN
+  (es él quien llama al panel). Si aprobaste como visitante y quieres darle más permisos, cámbialo en Acceso.
 
 Los jugadores se identifican por su XUID, no por el nombre: cambiar de gamertag no les quita el acceso.
 
@@ -143,7 +146,9 @@ Con la app **ntfy**:
 
 1. **Avisos** → «Generar» un tema difícil de adivinar, escribe la dirección del panel y **Guardar**.
 2. En la app ntfy, suscríbete a ese tema.
-3. Elige qué avisos quieres: solicitudes de acceso, caídas, copias fallidas, actualizaciones, versiones nuevas de BDS,
+3. (Opcional) Si tienes BedrockConnect en casa, escribe su versión en la tarjeta **BedrockConnect**: te avisará cuando
+   salga otra, junto con las versiones nuevas de BDS.
+4. Elige qué avisos quieres: solicitudes de acceso, caídas, copias fallidas, actualizaciones, versiones nuevas de BDS,
    fallos de mantenimiento (mapa nocturno, segundo destino de copias, cuenta de Realms) y entradas y salidas.
 
 ## Auditoría
@@ -156,5 +161,7 @@ normas de familia, etc.
 **Usuarios** (administradores): crear usuarios, cambiar su rol o contraseña, desbloquearlos y quitarles la verificación
 en dos pasos.
 
-**Mi cuenta** (clic en tu nombre): cambiar tu contraseña y activar la verificación en dos pasos con una app de
-autenticación (Google o Microsoft Authenticator). Guarda los códigos de recuperación.
+**Mi cuenta** (clic en tu nombre): cambiar tu contraseña, activar la verificación en dos pasos con una app de
+autenticación (Google o Microsoft Authenticator; guarda los códigos de recuperación) y **Cerrar las demás sesiones**
+si entraste desde un equipo que no es tuyo o perdiste el móvil. Un administrador puede hacer lo mismo con otro usuario
+desde Usuarios → **Cerrar sesiones**. Dejan de valer en menos de un minuto.

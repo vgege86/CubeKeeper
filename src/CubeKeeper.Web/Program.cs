@@ -184,6 +184,32 @@ app.MapPost("/logout", async (SignInManager<PanelUser> signIn, HttpContext http,
 });
 
 // Descarga de copias (solo administradores).
+// Botones «Aprobar» y «Rechazar» del aviso de solicitud de acceso: los pulsa la app ntfy del móvil (POST). El enlace
+// de un solo uso es la autorización; el filtro de redes (casa y VPN) sigue aplicándose.
+app.MapPost("/acceso/aviso/{token}/{decision}", async (string token, string decision,
+    CubeKeeper.Infrastructure.Access.AccessService access, CubeKeeper.Infrastructure.Audit.AuditLog audit,
+    CubeKeeper.Infrastructure.Notifications.Notifier notifier, CancellationToken ct) =>
+{
+    if (decision is not ("aprobar" or "rechazar"))
+    {
+        return Results.NotFound();
+    }
+    try
+    {
+        var approve = decision == "aprobar";
+        var result = await access.DecideFromNotificationAsync(token, approve, ct);
+        await audit.RecordAsync("aviso del móvil", approve ? "access.approve" : "access.reject", result, "botón del aviso de ntfy", ct);
+        await notifier.NotifyAsync(new CubeKeeper.Core.Notifications.Notification(
+            CubeKeeper.Core.Notifications.NotificationKind.AccessRequest, "Acceso", result, "decision:" + token,
+            CubeKeeper.Core.Notifications.NotificationPriority.Low, "/acceso"), ct);
+        return Results.Text(result);
+    }
+    catch (InvalidOperationException ex)
+    {
+        return Results.Text(ex.Message, statusCode: StatusCodes.Status409Conflict);
+    }
+}).AllowAnonymous().DisableAntiforgery();
+
 app.MapGet("/diagnostico/descargar", async (HttpContext http, CubeKeeper.Infrastructure.Diagnostics.DiagnosticsService diagnostics,
     CubeKeeper.Infrastructure.Audit.AuditLog audit, CancellationToken ct) =>
 {

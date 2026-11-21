@@ -63,6 +63,8 @@
                             }
                             @if (u.UserName != _me)
                             {
+                                <button class="btn btn-ghost" disabled="@_busy" @onclick="() => SignOutEverywhereAsync(u)"
+                                        title="Cierra todas sus sesiones abiertas (navegadores y app del móvil): tendrá que volver a entrar">Cerrar sesiones</button>
                                 <button class="btn btn-ghost" disabled="@_busy" @onclick="() => _deleteFor = u.Id">Borrar…</button>
                             }
                         }
@@ -152,6 +154,13 @@
         await UserService.DisableTwoFactorAsync(u.Id);
         await AuditAsync("user.2fa.disable", u.UserName);
         _message = $"Verificación en dos pasos de {u.UserName} quitada.";
+    });
+
+    private Task SignOutEverywhereAsync(PanelUserInfo u) => RunAsync(async () =>
+    {
+        await UserService.SignOutEverywhereAsync(u.Id);
+        await AuditAsync("user.signout", u.UserName);
+        _message = $"Sesiones de {u.UserName} cerradas: en menos de un minuto tendrá que volver a entrar.";
     });
 
     private Task DeleteAsync(PanelUserInfo u) => RunAsync(async () =>

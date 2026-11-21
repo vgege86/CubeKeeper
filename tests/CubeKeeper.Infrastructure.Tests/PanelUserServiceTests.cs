@@ -103,6 +103,20 @@ public sealed class PanelUserServiceTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task Sign_out_everywhere_changes_the_security_stamp()
+    {
+        var op = await Service.CreateAsync("papa", "otra-contraseña", PanelRoles.Operator);
+        var user = (await Users.FindByIdAsync(op.Id))!;
+        var stamp = await Users.GetSecurityStampAsync(user);
+
+        await Service.SignOutEverywhereAsync(op.Id);
+
+        user = (await Users.FindByIdAsync(op.Id))!;
+        Assert.NotEqual(stamp, await Users.GetSecurityStampAsync(user));
+        Assert.True(await Users.CheckPasswordAsync(user, "otra-contraseña"));
+    }
+
+    [Fact]
     public async Task Totp_from_authenticator_key_enables_two_factor_and_admin_can_remove_it()
     {
         var info = await Service.CreateAsync("papa", "otra-contraseña", PanelRoles.Operator);

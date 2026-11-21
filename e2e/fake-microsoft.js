@@ -54,6 +54,7 @@ http.createServer((req, res) => {
       if (path === '/xsts') return send({ Token: 'xsts', NotAfter: '2099-01-01T00:00:00Z', DisplayClaims: { xui: [{ uhs: 'u', xid: '1', gtg: 'Papa86' }] } });
       return send({ Token: 't', DisplayClaims: { xui: [{ uhs: 'u' }] } });
     }
+    if (path === '/hub/tags') return send({ results: [{ name: 'latest' }, { name: '1.73.0' }, { name: '1.72.1' }] });
     if (path === '/worlds') return send({ servers: [
       { id: 42, name: 'Casa', owner: '', ownerUUID: '1', state: 'OPEN', activeSlot: 3, expired: false },
       { id: 7, name: 'De un amigo', owner: 'Otro', ownerUUID: '9', state: 'CLOSED', activeSlot: 1, expired: false },

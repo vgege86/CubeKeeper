@@ -57,6 +57,7 @@ module.exports = defineConfig({
         CubeKeeper__Realms__TitleAuthUrl: `${ms}/title`,
         CubeKeeper__Realms__XstsUrl: `${ms}/xsts`,
         CubeKeeper__Realms__Host: ms,
+        CubeKeeper__BedrockConnect__TagsUrl: `${ms}/hub/tags`,
       },
     },
   ],

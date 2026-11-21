@@ -32,7 +32,7 @@ public static class NotificationKindText
         (NotificationKind.ServerDown, "Caídas del servidor", "Se ha cerrado inesperadamente, o se ha caído varias veces y ya no se reintenta."),
         (NotificationKind.BackupFailed, "Copias fallidas", "No se ha podido hacer una copia programada del mundo."),
         (NotificationKind.Update, "Actualizaciones", "Una actualización ha fallado (y se ha vuelto atrás), o la programada ha ido bien."),
-        (NotificationKind.NewVersion, "Versión nueva de BDS", "Mojang ha publicado una versión más nueva que la instalada (también con la versión fijada)."),
+        (NotificationKind.NewVersion, "Versión nueva de BDS", "Mojang ha publicado una versión más nueva que la instalada (también con la versión fijada), o hay una nueva de BedrockConnect si lo tienes en casa."),
         (NotificationKind.Maintenance, "Fallos de mantenimiento", "Queda poco espacio en disco, falla el mapa nocturno o la comprobación de copias, el segundo destino no está montado o la cuenta de Realms deja de funcionar."),
         (NotificationKind.PlayerJoin, "Entradas y salidas", "Cada vez que un jugador entra o sale."),
     ];
@@ -40,7 +40,17 @@ public static class NotificationKindText
 
 /// <summary>Un aviso para enviar.</summary>
 /// <param name="Key">Para no repetir el mismo aviso: dos con el mismo tipo y clave en 10 minutos se envían una sola vez.</param>
-public sealed record Notification(NotificationKind Kind, string Title, string Message, string Key, NotificationPriority Priority = NotificationPriority.Default, string? Path = null);
+public sealed record Notification(
+    NotificationKind Kind,
+    string Title,
+    string Message,
+    string Key,
+    NotificationPriority Priority = NotificationPriority.Default,
+    string? Path = null,
+    IReadOnlyList<NotificationAction>? Actions = null);
+
+/// <summary>Botón del aviso: al pulsarlo, el móvil hace un POST a <c>PanelUrl + Path</c> (máximo 3 por aviso).</summary>
+public sealed record NotificationAction(string Label, string Path);
 
 public enum NotificationPriority
 {

@@ -5,6 +5,8 @@
 @using CubeKeeper.Core.Notifications
 @using CubeKeeper.Infrastructure.Notifications
 @inject Notifier Notifier
+@inject BedrockConnectWatcher BedrockConnect
+@inject TimeProvider Time
 
 <PageTitle>Avisos · CubeKeeper</PageTitle>
 
@@ -81,6 +83,28 @@
         }
         <p class="muted small">El mismo aviso no se repite antes de 10 minutos, para que una racha de caídas no llene el móvil.</p>
     </section>
+
+    <section class="card">
+        <h2>BedrockConnect</h2>
+        <p class="muted small">
+            Si tienes BedrockConnect en casa para la Xbox, escribe su versión (la de la línea <code>image:</code> de su app, por
+            ejemplo 1.72.1) y CubeKeeper avisará con «Versión nueva de BDS» cuando salga otra. Vacío = no se vigila.
+        </p>
+        <div class="form-row">
+            <label>Versión que tienes <input @bind="_bcVersion" placeholder="1.72.1" inputmode="decimal" /></label>
+        </div>
+        <div class="actions">
+            <button class="btn" disabled="@_busy" @onclick="SaveBedrockConnectAsync">Guardar</button>
+            <button class="btn btn-ghost" disabled="@_busy" @onclick="CheckBedrockConnectAsync">Comprobar ahora</button>
+        </div>
+        @if (BedrockConnect.Watch.NewestSeen is { } newest)
+        {
+            <p class="small">
+                Última publicada: <strong>@newest</strong>
+                @if (BedrockConnect.Watch.CheckedAt is { } at) {<span class="muted"> · comprobado @CubeKeeper.Web.Formatting.Format.When(at, Time)</span>}
+            </p>
+        }
+    </section>
 </div>
 
 @code {
@@ -93,6 +117,35 @@
     private string _token = string.Empty;
     private bool _clearToken;
     private string _panelUrl = string.Empty;
+    private string _bcVersion = string.Empty;
+
+    private async Task SaveBedrockConnectAsync()
+    {
+        if (BedrockConnect.SetInstalledVersion(_bcVersion) is { } error)
+        {
+            _message = error;
+            _messageIsError = true;
+            return;
+        }
+        await AuditAsync("notifications.bedrockconnect", _bcVersion);
+        _message = string.IsNullOrWhiteSpace(_bcVersion) ? "BedrockConnect ya no se vigila." : $"Guardado: tienes BedrockConnect {_bcVersion.Trim()}.";
+        _messageIsError = false;
+    }
+
+    private async Task CheckBedrockConnectAsync()
+    {
+        _busy = true;
+        try
+        {
+            var newest = await BedrockConnect.CheckAsync();
+            _message = newest is null ? "No se pudo consultar Docker Hub." : $"Última versión de BedrockConnect: {newest}.";
+            _messageIsError = newest is null;
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
 
     protected override void OnInitialized()
     {
@@ -101,6 +154,7 @@
         _url = c.Url;
         _topic = c.Topic ?? string.Empty;
         _panelUrl = c.PanelUrl ?? string.Empty;
+        _bcVersion = BedrockConnect.Watch.InstalledVersion ?? string.Empty;
     }
 
     private void GenerateTopic() =>
