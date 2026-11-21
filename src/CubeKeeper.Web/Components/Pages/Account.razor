@@ -35,6 +35,17 @@
         </section>
 
         <section class="card">
+            <h2>Sesiones</h2>
+            <p>
+                Si entraste en el panel desde un equipo que no es tuyo, o has perdido el móvil con la app instalada, cierra
+                las demás sesiones: dejarán de valer en menos de un minuto. Esta sigue abierta.
+            </p>
+            <EditForm Model="Empty" method="post" OnSubmit="SignOutOthersAsync" FormName="signout-others">
+                <div class="actions"><button type="submit" class="btn">Cerrar las demás sesiones</button></div>
+            </EditForm>
+        </section>
+
+        <section class="card">
             <h2>Verificación en dos pasos</h2>
             @if (_recoveryCodes is not null)
             {
@@ -215,6 +226,19 @@
         await Audit.RecordAsync(_user.UserName!, "account.2fa.disable");
         Ok("Verificación en dos pasos desactivada.");
         await LoadAsync();
+    }
+
+    /// <summary>Cambia el sello de seguridad (invalida las demás cookies) y renueva la de esta sesión.</summary>
+    private async Task SignOutOthersAsync()
+    {
+        if (_user is null)
+        {
+            return;
+        }
+        await Users.UpdateSecurityStampAsync(_user);
+        await SignInManager.RefreshSignInAsync(_user);
+        await Audit.RecordAsync(_user.UserName!, "account.signout.others");
+        Ok("Las demás sesiones se cerrarán en menos de un minuto. Esta sigue abierta.");
     }
 
     private async Task NewRecoveryCodesAsync()

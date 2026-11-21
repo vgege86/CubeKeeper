@@ -1,0 +1,51 @@
+# Dependabot: GitHub propone cada semana las versiones nuevas de las dependencias. Cada propuesta pasa las pruebas
+# (unitarias y de navegador) antes de poder fusionarse; las de un mismo tipo van juntas en una sola propuesta.
+version: 2
+updates:
+  # Paquetes de .NET (versiones centralizadas en Directory.Packages.props).
+  - package-ecosystem: nuget
+    directory: "/"
+    schedule:
+      interval: weekly
+      day: monday
+      time: "06:00"
+      timezone: Europe/Madrid
+    open-pull-requests-limit: 5
+    groups:
+      dotnet:
+        patterns: ["*"]
+    commit-message:
+      prefix: "Dependencias"
+
+  # Imagen base del contenedor (mcr.microsoft.com/dotnet/aspnet y sdk).
+  - package-ecosystem: docker
+    directory: "/"
+    schedule:
+      interval: weekly
+      day: monday
+      time: "06:00"
+      timezone: Europe/Madrid
+    commit-message:
+      prefix: "Imagen base"
+
+  # Acciones de GitHub del CI.
+  - package-ecosystem: github-actions
+    directory: "/"
+    schedule:
+      interval: monthly
+    groups:
+      actions:
+        patterns: ["*"]
+    commit-message:
+      prefix: "CI"
+
+  # Playwright de las pruebas de navegador.
+  - package-ecosystem: npm
+    directory: "/e2e"
+    schedule:
+      interval: monthly
+    groups:
+      e2e:
+        patterns: ["*"]
+    commit-message:
+      prefix: "Pruebas e2e"
