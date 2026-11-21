@@ -29,6 +29,14 @@ public sealed class CubeKeeperOptions
     public SecurityOptions Security { get; set; } = new();
 
     public StorageOptions Storage { get; set; } = new();
+
+    public BedrockConnectOptions BedrockConnect { get; set; } = new();
+}
+
+public sealed class BedrockConnectOptions
+{
+    /// <summary>Lista de etiquetas de la imagen en Docker Hub.</summary>
+    public string TagsUrl { get; set; } = "https://hub.docker.com/v2/repositories/pugmatt/bedrock-connect/tags?page_size=50&ordering=last_updated";
 }
 
 /// <summary>Cuándo avisar de que queda poco espacio (salta con lo que llegue antes).</summary>

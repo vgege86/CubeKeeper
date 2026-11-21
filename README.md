@@ -30,6 +30,8 @@ lo descarga, lo arranca y lo para, lee su consola y le envía comandos. No neces
 - **Fase 3D ✅** Mapa del mundo con uNmINeD o bedrock-viz (se instalan desde el panel), cada noche y bajo demanda.
 - **Mejoras ✅** Claves cifradas con `CUBEKEEPER_KEY_SECRET`, cabeceras de seguridad, avisos de fallos de
   mantenimiento y pruebas en el navegador en cada cambio.
+- **Avisos y seguridad ✅** Aprobar o rechazar solicitudes desde el aviso del móvil, aviso de versiones nuevas de
+  BedrockConnect, cerrar las demás sesiones y Dependabot.
 - **Más ✅** Uso de CPU y memoria con gráficas y aviso, reinicio programado, panel instalable como app en el móvil y
   estadísticas de tiempo de juego.
 - **Mantenimiento ✅** Instalar la versión nueva de BDS desde el Panel, espacio en disco con aviso, comprobación

@@ -47,6 +47,9 @@ public sealed record AppState
 
     public RestartRecord? LastRestart { get; init; }
 
+    /// <summary>Vigilancia de versiones nuevas de BedrockConnect (si hay uno en casa).</summary>
+    public BedrockConnectWatch BedrockConnect { get; init; } = new();
+
     /// <summary>Cuenta de Microsoft conectada para descargar mundos de Realms (secretos cifrados).</summary>
     public RealmsSession? Realms { get; init; }
 }
@@ -76,6 +79,8 @@ public sealed record RealmsSession(string ProtectedRefreshToken, string Protecte
 public sealed record BdsPinSetting(string Version);
 
 public sealed record RestartSettings(bool Enabled = false, string Time = "05:30", string WarningMinutes = "5,1", bool SkipIfPlayersOnline = true);
+
+public sealed record BedrockConnectWatch(string? InstalledVersion = null, string? NewestSeen = null, string? LastNotifiedVersion = null, DateTimeOffset? CheckedAt = null);
 
 public sealed record RestartRecord(DateTimeOffset At, bool Restarted, string Message);
 

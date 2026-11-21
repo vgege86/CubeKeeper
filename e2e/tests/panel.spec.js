@@ -207,3 +207,33 @@ test('un login con la protección caducada vuelve a cargar con aviso (app del m�
   expect((await page.request.get('/login?caducado=loquesea')).status()).toBe(200);
   await ctx.close();
 });
+
+test('Avisos vigila la versión de BedrockConnect', async ({ page }) => {
+  await login(page, ADMIN);
+  await page.goto('/avisos');
+  await interactive(page);
+  const card = page.locator('section.card:has(h2:has-text("BedrockConnect"))');
+  await card.locator('input').fill('1.72.1');
+  await card.locator('button:has-text("Guardar")').click();
+  await expect(page.locator('.alert-ok')).toContainText('1.72.1');
+  await card.locator('button:has-text("Comprobar ahora")').click();
+  await expect(page.locator('.alert-ok')).toContainText('1.73.0');
+  await expect(card).toContainText('Última publicada: 1.73.0');
+});
+
+test('Mi cuenta cierra las demás sesiones y esta sigue abierta', async ({ page }) => {
+  await login(page, ADMIN);
+  await page.goto('/cuenta');
+  await page.click('button:has-text("Cerrar las demás sesiones")');
+  await expect(page.locator('.alert-ok')).toContainText('demás sesiones');
+  await page.goto('/');
+  await expect(page).toHaveURL('/');
+});
+
+test('un enlace de aviso inventado no aprueba a nadie ni pide login', async ({ request }) => {
+  const res = await request.post('/acceso/aviso/inventado/aprobar', { maxRedirects: 0 });
+  expect(res.status()).toBe(409);
+  expect(await res.text()).toContain('caducado');
+  // Una acción que no existe no hace nada (redirige al login como cualquier otra página).
+  expect((await request.post('/acceso/aviso/x/borrar-todo', { maxRedirects: 0 })).status()).not.toBe(200);
+});

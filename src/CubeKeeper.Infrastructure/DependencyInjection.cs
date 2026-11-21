@@ -73,6 +73,10 @@ public static class DependencyInjection
         services.AddSingleton(sp => ActivatorUtilities.CreateInstance<Notifications.Notifier>(sp,
             sp.GetRequiredService<IHttpClientFactory>().CreateClient(Notifications.Notifier.HttpClientName)));
         services.AddHostedService<Notifications.NotificationWatcher>();
+        services.AddHttpClient(Notifications.BedrockConnectWatcher.HttpClientName, c => c.DefaultRequestHeaders.UserAgent.ParseAdd(userAgent));
+        services.AddSingleton(sp => ActivatorUtilities.CreateInstance<Notifications.BedrockConnectWatcher>(sp,
+            sp.GetRequiredService<IHttpClientFactory>().CreateClient(Notifications.BedrockConnectWatcher.HttpClientName)));
+        services.AddHostedService(sp => sp.GetRequiredService<Notifications.BedrockConnectWatcher>());
         services.AddHttpClient(Maps.MapService.HttpClientName, c =>
         {
             c.Timeout = TimeSpan.FromMinutes(10);

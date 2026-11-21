@@ -7,6 +7,16 @@ Instalación: [TRUENAS.md](TRUENAS.md) · Uso: [USO.md](USO.md) · Problemas: [P
 
 ---
 
+## Avisos con botones, BedrockConnect, sesiones y Dependabot
+
+| # | Prueba | Resultado esperado |
+|---|---|---|
+| 1 | Con la dirección del panel en Avisos, activar la inscripción y que alguien no aprobado intente entrar | El aviso trae «Aprobar (visitante)» y «Rechazar»; al pulsar Aprobar llega «… aprobado como visitante» y aparece en Acceso como visitante |
+| 2 | Pulsar otra vez el botón de ese aviso (si siguiera ahí) o uno de hace más de 30 minutos | No hace nada: «El enlace ha caducado o ya se usó» |
+| 3 | **Avisos → BedrockConnect**: escribir la versión de casa y «Comprobar ahora» | «Última versión de BedrockConnect: …» (si hay una más nueva, llega el aviso) |
+| 4 | Entrar en el panel en dos navegadores; en uno, **Mi cuenta → Cerrar las demás sesiones** | En menos de un minuto, el otro vuelve a pedir el login; este sigue dentro |
+| 5 | En GitHub, pestaña Pull requests, los lunes | Propuestas de Dependabot con las versiones nuevas; se fusionan si las pruebas pasan |
+
 ## Recursos, reinicio programado, app en el móvil y estadísticas
 
 | # | Prueba | Resultado esperado |
