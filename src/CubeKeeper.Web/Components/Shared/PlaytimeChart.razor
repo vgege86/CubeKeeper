@@ -1,0 +1,113 @@
+@* Tiempo jugado por día, una columna por día apilada por jugador (HTML, sin JavaScript).
+   Cada jugador conserva su color por antigüedad (Rank), en cualquier periodo; a partir del 8.º se agrupan en «Otros».
+   Leyenda siempre visible, hueco de 2 px entre segmentos, extremo superior redondeado, rejilla fina y el detalle al
+   pasar el ratón; los mismos datos en tabla debajo. *@
+@using System.Globalization
+@using CubeKeeper.Infrastructure.Players
+@using CubeKeeper.Web.Formatting
+
+@if (_series.Count == 0)
+{
+    <p class="muted">Nadie ha jugado en este periodo.</p>
+}
+else
+{
+    <ul class="legend">
+        @foreach (var s in _series)
+        {
+            <li><span class="swatch" style="background:@s.Color"></span>@s.Name <span class="muted">@Format.Duration(s.Total)</span></li>
+        }
+    </ul>
+    <div class="stack-chart" role="img" aria-label="@AriaLabel">
+        <div class="stack-plot">
+            @for (var g = 1; g <= 4; g++)
+            {
+                var pct = g * 25;
+                <div class="stack-grid" style="bottom:@pct%"><span>@HoursLabel(_max.TotalHours * g / 4)</span></div>
+            }
+            <div class="stack-cols">
+                @for (var d = 0; d < Dates.Count; d++)
+                {
+                    var day = d;
+                    <div class="stack-col">
+                        @foreach (var s in _series.Where(s => s.Days[day] > TimeSpan.Zero))
+                        {
+                            <div class="stack-seg" style="height:@Pct(s.Days[day]);background:@s.Color"
+                                 title="@($"{s.Name} · {DayText(Dates[day])}: {Format.Duration(s.Days[day])}")"></div>
+                        }
+                    </div>
+                }
+            </div>
+        </div>
+        <div class="stack-x">
+            @for (var d = 0; d < Dates.Count; d++)
+            {
+                <span>@(ShowLabel(d) ? DayShort(Dates[d]) : "")</span>
+            }
+        </div>
+    </div>
+    <details class="table-view">
+        <summary>Ver como tabla</summary>
+        <table class="table">
+            <thead><tr><th>Día</th>@foreach (var s in _series) {<th>@s.Name</th>}<th>Total</th></tr></thead>
+            <tbody>
+                @for (var d = Dates.Count - 1; d >= 0; d--)
+                {
+                    var day = d;
+                    <tr>
+                        <td>@DayText(Dates[day])</td>
+                        @foreach (var s in _series) {<td data-label="@s.Name">@(s.Days[day] > TimeSpan.Zero ? Format.Duration(s.Days[day]) : "—")</td>}
+                        <td data-label="Total">@Format.Duration(_series.Aggregate(TimeSpan.Zero, (a, s) => a + s.Days[day]))</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </details>
+}
+
+@code {
+    private const int Slots = 8;
+    private static readonly CultureInfo Es = CultureInfo.GetCultureInfo("es-ES");
+
+    [Parameter, EditorRequired] public IReadOnlyList<DateOnly> Dates { get; set; } = [];
+
+    [Parameter, EditorRequired] public IReadOnlyList<PlayerDaily> Players { get; set; } = [];
+
+    private sealed record Series(string Name, string Color, IReadOnlyList<TimeSpan> Days, TimeSpan Total);
+
+    private List<Series> _series = [];
+    private TimeSpan _max = TimeSpan.FromHours(1);
+
+    protected override void OnParametersSet()
+    {
+        // Los 7 primeros por antigüedad con su color fijo; el resto, juntos en «Otros» (gris).
+        _series = Players.Where(p => p.Rank < Slots - 1)
+            .Select(p => new Series(p.Name, $"var(--series-{p.Rank + 1})", p.Days, p.Total))
+            .ToList();
+        var others = Players.Where(p => p.Rank >= Slots - 1).ToList();
+        if (others.Count > 0)
+        {
+            var days = Enumerable.Range(0, Dates.Count).Select(i => others.Aggregate(TimeSpan.Zero, (a, p) => a + p.Days[i])).ToList();
+            _series.Add(new Series($"Otros ({others.Count})", "var(--series-other)", days, others.Aggregate(TimeSpan.Zero, (a, p) => a + p.Total)));
+        }
+        var top = Enumerable.Range(0, Dates.Count).Select(i => _series.Aggregate(TimeSpan.Zero, (a, s) => a + s.Days[i])).DefaultIfEmpty().Max();
+        _max = TimeSpan.FromHours(new[] { 1, 2, 3, 4, 6, 8, 12, 16, 24 }.First(h => h >= top.TotalHours || h == 24));
+    }
+
+    private string Pct(TimeSpan value) => (value / _max * 100).ToString("0.###", CultureInfo.InvariantCulture) + "%";
+
+    private static string HoursLabel(double hours) => hours < 1 ? $"{hours * 60:0} min" : $"{hours:0.#} h";
+
+    private bool ShowLabel(int index)
+    {
+        var step = Dates.Count <= 7 ? 1 : Dates.Count <= 14 ? 2 : 5;
+        return index == Dates.Count - 1 || (Dates.Count - 1 - index) % step == 0;
+    }
+
+    private static string DayShort(DateOnly d) => d.ToString("ddd d", Es);
+
+    private static string DayText(DateOnly d) => d.ToString("dddd d/MM", Es);
+
+    private string AriaLabel => $"Tiempo jugado por día en los últimos {Dates.Count} días: " +
+        string.Join(", ", _series.Select(s => $"{s.Name} {Format.Duration(s.Total)}"));
+}

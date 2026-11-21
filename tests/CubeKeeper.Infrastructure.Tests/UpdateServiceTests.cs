@@ -79,7 +79,14 @@ public class UpdateServiceTests : IDisposable
         }
     }
 
-    private (UpdateService Updates, StubServer Server, DataPaths Paths, BackupService Backups) Create()
+    private (UpdateService Updates, StubServer Server, DataPaths Paths, BackupService Backups) Create() => Create(null).Tuple;
+
+    private sealed record Setup(UpdateService Updates, StubServer Server, DataPaths Paths, BackupService Backups, AppStateStore State, Versions.VersionPin Pin)
+    {
+        public (UpdateService, StubServer, DataPaths, BackupService) Tuple => (Updates, Server, Paths, Backups);
+    }
+
+    private Setup Create(string? pinnedEnvironment)
     {
         var paths = new DataPaths(_root);
         paths.EnsureCreated();
@@ -92,6 +99,7 @@ public class UpdateServiceTests : IDisposable
 
         var options = new CubeKeeperOptions { DataPath = _root };
         options.Updates.HealthTimeoutSeconds = 2;
+        options.Bds.PinnedVersion = pinnedEnvironment;
         var installer = new StubInstaller(paths);
         var server = new StubServer(installer);
         var console = new ConsoleLog(TimeProvider.System);
@@ -101,9 +109,10 @@ public class UpdateServiceTests : IDisposable
         // Con el servidor simulado "en marcha" no hay quien responda a save hold: las copias de estos tests se hacen en frío.
         server.StopAsync().Wait();
         server.StartAsync().Wait();
+        var pin = new Versions.VersionPin(state, Options.Create(options));
         var updates = new UpdateService(server, installer, new NullVersionSource(), backups, new NoPlayers(), console, paths, state,
-            Options.Create(options), TimeProvider.System, NullLogger<UpdateService>.Instance);
-        return (updates, server, paths, backups);
+            Options.Create(options), TimeProvider.System, NullLogger<UpdateService>.Instance, pin: pin);
+        return new Setup(updates, server, paths, backups, state, pin);
     }
 
     private sealed class NullVersionSource : IVersionSource
@@ -144,6 +153,60 @@ public class UpdateServiceTests : IDisposable
         Assert.Equal("1.0.0.0", updates.PreviousVersion);
         Assert.Single(backups.List());
         Assert.Equal(["2.0.0.0"], server.Installed);
+    }
+
+    [Fact]
+    public async Task Installing_a_newer_version_from_the_panel_keeps_it_pinned_and_rollback_follows()
+    {
+        var s = Create("1.0.0.0");
+        await s.Server.StopAsync();
+        Assert.True(s.Updates.IsPinned);
+        Assert.False(s.Pin.FromPanel);
+
+        var up = await s.Updates.UpdateAsync(Release("2.0.0.0"), []);
+
+        Assert.True(up.Succeeded);
+        Assert.Equal("2.0.0.0", s.Pin.Version);
+        Assert.True(s.Pin.FromPanel);
+        Assert.False(s.Updates.AutoUpdateActive);
+
+        await s.Server.StopAsync();
+        var back = await s.Updates.RollbackAsync();
+
+        // Al volver a la de la variable, manda otra vez la variable.
+        Assert.True(back.Succeeded);
+        Assert.Equal("1.0.0.0", s.Pin.Version);
+        Assert.False(s.Pin.FromPanel);
+    }
+
+    [Fact]
+    public async Task A_failed_update_does_not_change_the_pinned_version()
+    {
+        var s = Create("1.0.0.0");
+        await s.Server.StopAsync();
+        s.Server.Broken.Add("2.0.0.0");
+
+        var result = await s.Updates.UpdateAsync(Release("2.0.0.0"), []);
+
+        Assert.False(result.Succeeded);
+        Assert.Equal("1.0.0.0", s.Pin.Version);
+        Assert.False(s.Pin.FromPanel);
+    }
+
+    [Fact]
+    public async Task Without_a_pinned_version_installs_do_not_pin_and_the_panel_can_go_back_to_the_variable()
+    {
+        var s = Create(null);
+        await s.Server.StopAsync();
+        Assert.True((await s.Updates.UpdateAsync(Release("2.0.0.0"), [])).Succeeded);
+        Assert.False(s.Updates.IsPinned);
+        Assert.Null(s.State.Current.BdsPin);
+
+        var pinned = Create("1.0.0.0");
+        pinned.State.Update(st => st with { BdsPin = new BdsPinSetting("3.0.0.0") });
+        Assert.Equal("3.0.0.0", pinned.Pin.Version);
+        pinned.Pin.UseEnvironment();
+        Assert.Equal("1.0.0.0", pinned.Pin.Version);
     }
 
     public void Dispose()

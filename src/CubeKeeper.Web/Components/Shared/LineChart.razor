@@ -1,0 +1,142 @@
+@* Gráfica de una serie a lo largo del tiempo (SVG, sin JavaScript). Una sola serie: el título de la tarjeta la nombra.
+   Línea de 2 px con relleno suave, rejilla fina, línea de referencia opcional (por ejemplo, el límite) y huecos donde
+   no hay datos. Al pasar el ratón por una franja se ve la hora y el valor. *@
+@using System.Globalization
+
+<figure class="linechart" aria-label="@Label">
+    <div class="linechart-plot">
+        <div class="linechart-ymax">@Format(YMax)</div>
+        <svg viewBox="0 0 @W @H" preserveAspectRatio="none" role="img" aria-label="@Label">
+            @for (var g = 1; g <= 3; g++)
+            {
+                var gy = Y(YMax * g / 4);
+                <line class="grid" x1="0" x2="@W" y1="@N(gy)" y2="@N(gy)" vector-effect="non-scaling-stroke" />
+            }
+            <line class="axis" x1="0" x2="@W" y1="@H" y2="@H" vector-effect="non-scaling-stroke" />
+            @if (Reference is double r && r <= YMax)
+            {
+                <line class="reference" x1="0" x2="@W" y1="@N(Y(r))" y2="@N(Y(r))" vector-effect="non-scaling-stroke" />
+            }
+            @foreach (var segment in Segments())
+            {
+                <path class="area" d="@AreaPath(segment)" />
+                <path class="line" d="@LinePath(segment)" vector-effect="non-scaling-stroke" />
+            }
+            @for (var i = 0; i < Points.Count; i++)
+            {
+                var p = Points[i];
+                var x0 = i == 0 ? 0 : (X(Points[i - 1].At) + X(p.At)) / 2;
+                var x1 = i == Points.Count - 1 ? W : (X(p.At) + X(Points[i + 1].At)) / 2;
+                <rect class="hit" x="@N(x0)" y="0" width="@N(Math.Max(0.5, x1 - x0))" height="@H">
+                    <title>@TimeText(p.At): @(p.Value is double v ? Format(v) : "sin datos")</title>
+                </rect>
+            }
+        </svg>
+    </div>
+    <figcaption class="linechart-x">
+        <span>@TimeText(From)</span>
+        @if (Reference is double rr && ReferenceLabel is not null)
+        {
+            <span class="linechart-ref"><span class="ref-key" aria-hidden="true"></span>@ReferenceLabel</span>
+        }
+        <span>@TimeText(To)</span>
+    </figcaption>
+</figure>
+
+@code {
+    private const double W = 600;
+    private const double H = 140;
+
+    [Parameter, EditorRequired] public IReadOnlyList<(DateTimeOffset At, double? Value)> Points { get; set; } = [];
+
+    [Parameter, EditorRequired] public string Label { get; set; } = "";
+
+    [Parameter, EditorRequired] public Func<double, string> Format { get; set; } = v => v.ToString("0.#", CultureInfo.InvariantCulture);
+
+    /// <summary>Inicio y fin del eje de tiempo.</summary>
+    [Parameter, EditorRequired] public DateTimeOffset From { get; set; }
+
+    [Parameter, EditorRequired] public DateTimeOffset To { get; set; }
+
+    [Parameter] public double? Max { get; set; }
+
+    [Parameter] public double? Reference { get; set; }
+
+    [Parameter] public string? ReferenceLabel { get; set; }
+
+    [Inject] private TimeProvider Time { get; set; } = default!;
+
+    private double YMax
+    {
+        get
+        {
+            var top = Points.Where(p => p.Value is not null).Select(p => p.Value!.Value).DefaultIfEmpty(0).Max();
+            if (Reference is double r)
+            {
+                top = Math.Max(top, r);
+            }
+            var max = Max ?? NiceCeiling(top * 1.1);
+            return max <= 0 ? 1 : max;
+        }
+    }
+
+    private static double NiceCeiling(double v)
+    {
+        if (v <= 0)
+        {
+            return 1;
+        }
+        var exp = Math.Pow(10, Math.Floor(Math.Log10(v)));
+        foreach (var step in new[] { 1, 2, 2.5, 5, 10 })
+        {
+            if (step * exp >= v)
+            {
+                return step * exp;
+            }
+        }
+        return 10 * exp;
+    }
+
+    private double X(DateTimeOffset at)
+    {
+        var span = (To - From).TotalSeconds;
+        return span <= 0 ? W : Math.Clamp((at - From).TotalSeconds / span * W, 0, W);
+    }
+
+    private double Y(double v) => H - Math.Clamp(v / YMax, 0, 1) * (H - 2);
+
+    private static string N(double v) => v.ToString("0.##", CultureInfo.InvariantCulture);
+
+    private IEnumerable<List<(double X, double Y)>> Segments()
+    {
+        var current = new List<(double, double)>();
+        foreach (var p in Points)
+        {
+            if (p.Value is double v)
+            {
+                current.Add((X(p.At), Y(v)));
+            }
+            else if (current.Count > 0)
+            {
+                yield return current;
+                current = [];
+            }
+        }
+        if (current.Count > 0)
+        {
+            yield return current;
+        }
+    }
+
+    private static string LinePath(List<(double X, double Y)> s) =>
+        s.Count == 1 ? $"M{N(s[0].X - 1)} {N(s[0].Y)} L{N(s[0].X + 1)} {N(s[0].Y)}" : "M" + string.Join(" L", s.Select(p => $"{N(p.X)} {N(p.Y)}"));
+
+    private static string AreaPath(List<(double X, double Y)> s) =>
+        $"{LinePath(s)} L{N(s[^1].X + (s.Count == 1 ? 1 : 0))} {N(H)} L{N(s[0].X - (s.Count == 1 ? 1 : 0))} {N(H)} Z";
+
+    private string TimeText(DateTimeOffset at)
+    {
+        var local = TimeZoneInfo.ConvertTime(at, Time.LocalTimeZone);
+        return local.Date == Time.GetLocalNow().Date ? local.ToString("HH:mm", CultureInfo.InvariantCulture) : local.ToString("dd/MM HH:mm", CultureInfo.InvariantCulture);
+    }
+}

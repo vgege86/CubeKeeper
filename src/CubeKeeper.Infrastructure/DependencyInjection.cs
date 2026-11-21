@@ -19,6 +19,7 @@ public static class DependencyInjection
         services.AddSingleton(TimeProvider.System);
         services.AddSingleton<DataPaths>();
         services.AddSingleton<AppStateStore>();
+        services.AddSingleton<VersionPin>();
         services.AddSingleton<IConsoleLog>(sp => new ConsoleLog(sp.GetRequiredService<TimeProvider>()));
 
         var userAgent = $"CubeKeeper/{typeof(DependencyInjection).Assembly.GetName().Version?.ToString(3)}";
@@ -49,6 +50,13 @@ public static class DependencyInjection
         services.AddSingleton<Settings.PropertiesEditor>();
         services.AddSingleton<ConsoleCommandRunner>();
         services.AddSingleton<Backups.BackupService>();
+        services.AddSingleton<Storage.StorageService>();
+        services.AddSingleton<Backups.BackupVerifier>();
+        services.AddHostedService<Backups.BackupVerifyScheduler>();
+        // Program la registra antes como proveedor de registro: aquí solo si no lo está (pruebas).
+        Microsoft.Extensions.DependencyInjection.Extensions.ServiceCollectionDescriptorExtensions.TryAddSingleton<Diagnostics.RecentLogs>(services);
+        services.AddSingleton<Diagnostics.DiagnosticsService>();
+        services.AddHostedService<Storage.StorageMonitor>();
         services.AddSingleton<Updates.UpdateService>();
         services.AddSingleton<Access.AccessService>();
         services.AddHostedService(sp => sp.GetRequiredService<Access.AccessService>());
@@ -81,6 +89,10 @@ public static class DependencyInjection
         services.AddSingleton<Family.FamilyService>();
         services.AddHostedService(sp => sp.GetRequiredService<Family.FamilyService>());
         services.AddSingleton<Addons.AddonService>();
+        services.AddSingleton<Resources.ResourceMonitor>();
+        services.AddHostedService(sp => sp.GetRequiredService<Resources.ResourceMonitor>());
+        services.AddSingleton<Scheduling.RestartScheduler>();
+        services.AddHostedService(sp => sp.GetRequiredService<Scheduling.RestartScheduler>());
         services.AddSingleton<Scheduling.MaintenanceScheduler>();
         services.AddHostedService(sp => sp.GetRequiredService<Scheduling.MaintenanceScheduler>());
 

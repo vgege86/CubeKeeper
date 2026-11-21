@@ -7,6 +7,27 @@ Instalación: [TRUENAS.md](TRUENAS.md) · Uso: [USO.md](USO.md) · Problemas: [P
 
 ---
 
+## Recursos, reinicio programado, app en el móvil y estadísticas
+
+| # | Prueba | Resultado esperado |
+|---|---|---|
+| 1 | **Panel → Recursos** tras unos minutos con el servidor en marcha | Memoria del servidor y del contenedor «de 4 GB (N %)», gráfica con la línea del límite y CPU |
+| 2 | **Panel → Reinicio programado**: activarlo para dentro de 10 minutos, avisos 5,1, sin nadie jugando | A los 5 y 1 minutos, mensaje en el chat; a la hora, se reinicia; «Último: … Reiniciado» |
+| 3 | Lo mismo con alguien dentro y «No reiniciar si hay alguien jugando» | No reinicia; «Último: No se reinició: había gente jugando (…)» |
+| 4 | En el móvil, `https://cubekeeper.alucard86.fyi` → Instalar aplicación / Añadir a pantalla de inicio | Icono del cubo en el móvil; se abre sin la barra del navegador |
+| 5 | **Jugadores → Tiempo de juego**, 7/14/30 días | Columnas por día con un color por jugador, leyenda con totales y tabla |
+
+## Mantenimiento (versión desde el panel, disco, copias, diagnóstico, móvil)
+
+| # | Prueba | Resultado esperado |
+|---|---|---|
+| 1 | Abrir el panel en el móvil | Arriba solo «CubeKeeper», «Menú» y «Salir»; «Menú» abre las páginas en dos columnas y se cierra al elegir una |
+| 2 | **Copias → Espacio en disco** | Libre de `/data` y del segundo destino, y lo que ocupa cada carpeta |
+| 3 | **Copias → Comprobar una ahora** | «Copia comprobada: … Bien: N archivos…» |
+| 4 | **Consola → Descargar diagnóstico** y abrir el `.zip` | `resumen.txt`, `registro-cubekeeper.txt`, `consola-servidor.txt`…; sin la contraseña ni el secreto de las claves |
+| 5 | Cuando Mojang publique una versión más nueva que la fijada | Aviso al móvil y, en el Panel, «Instalar x.y.z»; al pulsarlo, copia, instala y queda «fijada desde el panel» |
+| 6 | (Opcional) `CUBEKEEPER_DISK_WARN_PERCENT: "99"` y reiniciar | En una hora (o al abrir el Panel) aviso de poco espacio; quítala después |
+
 ## Seguridad y avisos de mantenimiento
 
 Antes de actualizar, añade `CUBEKEEPER_KEY_SECRET` a la app ([TRUENAS.md](TRUENAS.md#4-generar-el-secreto-de-las-claves)).
@@ -34,7 +55,7 @@ Antes de actualizar, añade `CUBEKEEPER_KEY_SECRET` a la app ([TRUENAS.md](TRUEN
 | 5 | Consola: `list` | `There are 0/10 players online:` |
 | 6 | ROG Ally: Servidores → Añadir `192.168.1.21` : `19132` y entrar | Entras al mundo. La consola muestra `Player connected: …, xuid: …` |
 | 7 | Consola: `say Hola` | El mensaje aparece en el chat del juego |
-| 8 | Xbox: Servidores → The Hive → Unirse (con la reescritura de AdGuard, [TRUENAS.md](TRUENAS.md#7b-xbox-entrar-con-bedrockconnect)) | ✅ Comprobado: menú de BedrockConnect y, desde ahí, entras a tu servidor |
+| 8 | Xbox: Servidores → The Hive → Unirse (con las reglas de AdGuard, [TRUENAS.md](TRUENAS.md#7b-xbox-entrar-con-bedrockconnect)) | ✅ Comprobado con el BedrockConnect público y con el de casa: sale el menú con «CubeKeeper» y entras a tu servidor |
 | 9 | Xbox: «Partidas LAN» | Aparece el servidor (unirse probablemente siga dando «Boat») |
 | 10 | Panel → Parar, con alguien dentro | La consola muestra `Quit correctly`; el mundo se guarda |
 | 11 | Simular una caída: `sudo pkill -9 bedrock_server` en la shell del NAS | «Se ha cerrado inesperadamente» y, a los 5 s, vuelve a arrancar solo |

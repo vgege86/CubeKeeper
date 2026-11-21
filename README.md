@@ -30,6 +30,10 @@ lo descarga, lo arranca y lo para, lee su consola y le envía comandos. No neces
 - **Fase 3D ✅** Mapa del mundo con uNmINeD o bedrock-viz (se instalan desde el panel), cada noche y bajo demanda.
 - **Mejoras ✅** Claves cifradas con `CUBEKEEPER_KEY_SECRET`, cabeceras de seguridad, avisos de fallos de
   mantenimiento y pruebas en el navegador en cada cambio.
+- **Más ✅** Uso de CPU y memoria con gráficas y aviso, reinicio programado, panel instalable como app en el móvil y
+  estadísticas de tiempo de juego.
+- **Mantenimiento ✅** Instalar la versión nueva de BDS desde el Panel, espacio en disco con aviso, comprobación
+  semanal de copias, diagnóstico descargable y menú plegable en el móvil.
 - **Realms ✅** Conectar la cuenta de Microsoft con un código (microsoft.com/link) y descargar los mundos de tus
   Realms para importarlos.
 - El MCP queda aparcado por ahora.
@@ -54,7 +58,7 @@ Todo se configura con variables de entorno. Para los secretos se admite el sufij
 | `CUBEKEEPER_ADMIN_RESET` | `false` | Con `true`, pone `CUBEKEEPER_ADMIN_PASSWORD` al administrador, lo desbloquea y le quita la verificación en dos pasos (para recuperar el acceso) |
 | `CUBEKEEPER_ACCEPT_EULA` | `false` | Aceptación de la EULA; sin ella no se descarga BDS |
 | `CUBEKEEPER_CHANNEL` | `Stable` | `Stable` o `Preview` |
-| `CUBEKEEPER_BDS_VERSION` | — | Versión fijada (p. ej. `1.26.65.1`); vacía = la última |
+| `CUBEKEEPER_BDS_VERSION` | — | Versión fijada inicial (p. ej. `1.26.65.1`); vacía = la última. Desde el Panel se puede instalar una más nueva, que queda fijada |
 | `CUBEKEEPER_DIRECT_DOWNLOAD_URL` | — | Enlace directo a un zip concreto (último recurso) |
 | `CUBEKEEPER_AUTOSTART` | `true` | Arrancar BDS al iniciar el contenedor si estaba encendido |
 | `CUBEKEEPER_PUBLIC_HOST` | host de la petición | Dirección que se muestra para conectarse |
@@ -71,6 +75,7 @@ Todo se configura con variables de entorno. Para los secretos se admite el sufij
 | `CUBEKEEPER_PANEL_URL` | — | Dirección del panel para los avisos (también desde la página Avisos) |
 | `CUBEKEEPER_ALLOWED_NETWORKS` | redes privadas | CIDR desde los que se permite el panel |
 | `CUBEKEEPER_TRUSTED_PROXIES` | `172.16.0.0/12` | Proxies cuyo `X-Forwarded-For` se acepta |
+| `CUBEKEEPER_DISK_WARN_PERCENT` / `_GB` | `10` / `5` | Avisar si queda menos de ese porcentaje o de esos GB libres |
 | `CUBEKEEPER_REALMS_CLIENT_VERSION` | versión de BDS | Versión del juego que se manda a Realms (solo si Realms la rechaza) |
 
 Otros ajustes avanzados se pueden dar con la notación de .NET, por ejemplo

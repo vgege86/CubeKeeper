@@ -192,7 +192,7 @@ public sealed class MaintenanceScheduler(
             }
             var how = updates.AutoUpdateActive
                 ? $"Se instalará sola a las {_options.Updates.Time}."
-                : "Tienes la versión fijada: para pasar a ella, cambia CUBEKEEPER_BDS_VERSION y pulsa Instalar.";
+                : $"Tienes la versión fijada: para pasar a ella, entra en el Panel y pulsa «Instalar {newest.Version}».";
             var result = await notifier.NotifyAsync(new Core.Notifications.Notification(
                 Core.Notifications.NotificationKind.NewVersion,
                 $"BDS {newest.Version} disponible",

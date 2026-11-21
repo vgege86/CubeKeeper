@@ -36,6 +36,17 @@ public sealed record AppState
     /// <summary>Resultado de la última actualización (manual o programada).</summary>
     public UpdateRecord? LastUpdate { get; init; }
 
+    /// <summary>Versión de BDS fijada desde el panel (manda sobre CUBEKEEPER_BDS_VERSION); null = la de la variable.</summary>
+    public BdsPinSetting? BdsPin { get; init; }
+
+    /// <summary>Última comprobación de una copia (que se puede restaurar).</summary>
+    public BackupCheckRecord? BackupCheck { get; init; }
+
+    /// <summary>Reinicio diario de BDS (desde el Panel).</summary>
+    public RestartSettings Restart { get; init; } = new();
+
+    public RestartRecord? LastRestart { get; init; }
+
     /// <summary>Cuenta de Microsoft conectada para descargar mundos de Realms (secretos cifrados).</summary>
     public RealmsSession? Realms { get; init; }
 }
@@ -61,6 +72,14 @@ public sealed record MapRenderRecord(DateTimeOffset At, string EngineId, bool Su
 
 /// <summary>Sesión de Realms: token de renovación y clave de firma, ambos cifrados con Data Protection.</summary>
 public sealed record RealmsSession(string ProtectedRefreshToken, string ProtectedSigningKey, string? Gamertag, string? Xuid, DateTimeOffset ConnectedAt);
+
+public sealed record BdsPinSetting(string Version);
+
+public sealed record RestartSettings(bool Enabled = false, string Time = "05:30", string WarningMinutes = "5,1", bool SkipIfPlayersOnline = true);
+
+public sealed record RestartRecord(DateTimeOffset At, bool Restarted, string Message);
+
+public sealed record BackupCheckRecord(DateTimeOffset At, string File, bool Ok, string Message);
 
 public sealed record UpdateRecord(DateTimeOffset At, string? From, string To, bool Succeeded, string Message);
 

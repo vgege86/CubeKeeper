@@ -117,3 +117,76 @@ test('la página de avisos ofrece los fallos de mantenimiento', async ({ page })
   await page.goto('/avisos');
   await expect(page.getByText('Fallos de mantenimiento')).toBeVisible();
 });
+
+test('en el móvil el menú se pliega, se abre y se cierra al elegir una página', async ({ browser }) => {
+  const ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true });
+  const page = await ctx.newPage();
+  await login(page, ADMIN);
+  await expect(page.locator('#main-nav')).toBeHidden();
+  await page.click('.nav-burger');
+  await expect(page.locator('#main-nav')).toBeVisible();
+  await page.click('#main-nav a:has-text("Copias")');
+  await expect(page).toHaveURL(/\/copias$/);
+  await expect(page.locator('#main-nav')).toBeHidden();
+  const overflow = await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth);
+  expect(overflow).toBe(false);
+  await ctx.close();
+});
+
+test('Copias muestra el espacio en disco y comprueba una copia', async ({ page }) => {
+  await login(page, ADMIN);
+  await page.goto('/copias');
+  await interactive(page);
+  await expect(page.getByRole('heading', { name: 'Espacio en disco' })).toBeVisible();
+  await expect(page.getByText('Datos (/data)')).toBeVisible();
+  await page.click('button:has-text("Hacer copia ahora")');
+  await expect(page.locator('.alert-ok')).toBeVisible({ timeout: 30_000 });
+  await page.click('button:has-text("Comprobar una ahora")');
+  await expect(page.locator('.alert')).toContainText('opia', { timeout: 30_000 });
+});
+
+test('se puede descargar el diagnóstico y no lleva secretos', async ({ page }) => {
+  await login(page, ADMIN);
+  const res = await page.request.get('/diagnostico/descargar');
+  expect(res.status()).toBe(200);
+  expect(res.headers()['content-type']).toContain('application/zip');
+  const body = await res.body();
+  expect(body.subarray(0, 2).toString()).toBe('PK');
+  // Los nombres de archivo del zip van sin comprimir: deben estar.
+  expect(body.includes(Buffer.from('resumen.txt'))).toBe(true);
+});
+
+test('el panel se puede instalar como app (manifiesto e iconos)', async ({ request }) => {
+  const manifest = await request.get('/manifest.webmanifest');
+  expect(manifest.status()).toBe(200);
+  expect(manifest.headers()['content-type']).toContain('manifest+json');
+  const json = await manifest.json();
+  expect(json.display).toBe('standalone');
+  for (const icon of json.icons) {
+    expect((await request.get('/' + icon.src)).status(), icon.src).toBe(200);
+  }
+});
+
+test('el Panel guarda el reinicio programado y muestra los recursos', async ({ page }) => {
+  await login(page, ADMIN);
+  await interactive(page);
+  await expect(page.getByRole('heading', { name: 'Recursos' })).toBeVisible();
+  const card = page.locator('section.card:has(h2:has-text("Reinicio programado"))');
+  await card.locator('input[type=checkbox]').first().check();
+  await card.locator('input[type=time]').fill('04:45');
+  await card.locator('button:has-text("Guardar")').click();
+  await expect(page.locator('.alert-ok')).toContainText('04:45');
+  await expect(card).toContainText('Próximo');
+});
+
+test('Jugadores muestra el tiempo de juego por día', async ({ page }) => {
+  await login(page, ADMIN);
+  await page.goto('/jugadores');
+  await interactive(page);
+  const card = page.locator('section.card:has(h2:has-text("Tiempo de juego"))');
+  await expect(card).toBeVisible();
+  // En la prueba de arrancar el servidor entró «Alucard»: tiene tiempo hoy.
+  await expect(card.locator('.legend')).toContainText('Alucard');
+  await card.locator('button:has-text("30 días")').click();
+  await expect(card.locator('.stack-col')).toHaveCount(30);
+});

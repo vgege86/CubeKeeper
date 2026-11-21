@@ -18,12 +18,16 @@
 @inject DataPaths Paths
 @inject ConfigurationAdvisor Advisor
 @inject UpdateService Updates
+@inject CubeKeeper.Infrastructure.Versions.VersionPin Pin
 @inject MaintenanceScheduler Scheduler
 @inject TimeProvider Time
 @inject CubeKeeper.Web.Hosting.ConnectionInfoService Connection
 @inject NavigationManager Navigation
 @inject ILogger<Home> Logger
 @inject CubeKeeper.Infrastructure.Security.KeyEncryptionSecret KeySecret
+@inject CubeKeeper.Infrastructure.Storage.StorageService Storage
+@inject RestartScheduler Restarts
+@inject CubeKeeper.Infrastructure.Resources.ResourceMonitor Resources
 
 <PageTitle>Panel · CubeKeeper</PageTitle>
 
@@ -34,6 +38,13 @@
     <p class="alert @(_messageIsError ? "alert-error" : "alert-ok")" role="status">@_message</p>
 }
 
+@if (_isAdmin && _lowDisks.Count > 0)
+{
+    <p class="alert alert-warn" role="status">
+        Queda poco espacio: @string.Join(" · ", _lowDisks.Select(d => $"{d.Label}, {Format.Size(d.Free)} libres")).
+        <a href="/copias">Ver en Copias</a>
+    </p>
+}
 @if (!KeySecret.IsSet)
 {
     <AuthorizeView Roles="@PanelRoles.Admin">
@@ -79,7 +90,17 @@
         <h2>Versión de BDS</h2>
         @if (IsPinned)
         {
-            <p class="muted">Versión fijada: <strong>@Options.Value.Bds.PinnedVersion</strong> (sin actualizaciones automáticas)</p>
+            <p class="muted">
+                Versión fijada: <strong>@Pin.Version</strong> (sin actualizaciones automáticas)
+                <span class="small">· @(Pin.FromPanel ? "fijada desde el panel" : "de CUBEKEEPER_BDS_VERSION")</span>
+            </p>
+            @if (Pin.FromPanel && Pin.EnvironmentVersion is { } envVersion && _isAdmin)
+            {
+                <p class="muted small">
+                    La variable <code>CUBEKEEPER_BDS_VERSION</code> dice @envVersion, pero manda la fijada desde el panel.
+                    <button class="btn btn-ghost" disabled="@_busy" @onclick="UseEnvironmentVersionAsync">Usar la de la variable</button>
+                </p>
+            }
         }
         else
         {
@@ -111,6 +132,16 @@
                 <p class="ok">Está al día.</p>
             }
         }
+        @if (NewerPublished is { } newer)
+        {
+            <p class="alert alert-warn">
+                Mojang ha publicado la <strong>@newer.Version</strong> (tienes la @_snap.InstalledVersion).
+                @if (_isAdmin)
+                {
+                    <span>Al instalarla queda fijada; antes se hace una copia del mundo y, si no arranca, se vuelve sola a la actual.</span>
+                }
+            </p>
+        }
         <div class="actions">
             <button class="btn" disabled="@_busy" @onclick="CheckAsync">Comprobar</button>
             <AuthorizeView Roles="@PanelRoles.Admin" Context="adminContext">
@@ -119,6 +150,10 @@
                     <button class="btn btn-primary" disabled="@(_busy || !Options.Value.Bds.AcceptEula)" @onclick="InstallAsync">
                         @(_snap.InstalledVersion is null || IsPinned ? $"Instalar {_latest.Version}" : $"Actualizar a {_latest.Version}")
                     </button>
+                }
+                @if (NewerPublished is { } newerRelease)
+                {
+                    <button class="btn btn-primary" disabled="@(_busy || !Options.Value.Bds.AcceptEula)" @onclick="InstallNewestAsync">Instalar @newerRelease.Version</button>
                 }
             </AuthorizeView>
         </div>
@@ -163,6 +198,81 @@
                 <div class="actions"><button class="btn btn-ghost" disabled="@_busy" @onclick="() => _confirmRollback = true">Volver a la versión anterior (@prev)…</button></div>
             }
         }
+    </section>
+
+    <section class="card">
+        <div class="card-head">
+            <h2>Recursos</h2>
+            <div class="segmented" role="group" aria-label="Periodo">
+                @foreach (var (hours, text) in new[] { (1, "1 h"), (6, "6 h"), (24, "24 h") })
+                {
+                    <button class="@(_resourceHours == hours ? "on" : null)" aria-pressed="@(_resourceHours == hours)" @onclick="() => _resourceHours = hours">@text</button>
+                }
+            </div>
+        </div>
+        @if (!Resources.Supported)
+        {
+            <p class="muted">Solo se mide en Linux (en el NAS).</p>
+        }
+        else
+        {
+            var now = Time.GetUtcNow();
+            var from = now.AddHours(-_resourceHours);
+            var history = Resources.History(TimeSpan.FromHours(_resourceHours));
+            var latest = Resources.Latest;
+            <h3 class="sub">Memoria</h3>
+            <p class="small">
+                @if (latest?.ServerMemory is long sm) {<span>Servidor <strong>@Format.Size(sm)</strong></span>}
+                @if (latest?.ContainerMemory is long cm)
+                {
+                    <span> · contenedor @Format.Size(cm)@(latest.ContainerLimit is long cl ? $" de {Format.Size(cl)} ({latest.ContainerMemoryPercent:0}%)" : "")</span>
+                }
+                @if (latest is null) {<span class="muted">Midiendo…</span>}
+            </p>
+            <LineChart Label="Memoria del contenedor en las últimas horas"
+                       Points="@history.Select(s => (s.At, s.ContainerMemory is long m ? (double?)m : null)).ToList()"
+                       From="from" To="now" Format="@(v => Format.Size((long)v))"
+                       Reference="@(latest?.ContainerLimit is long lim ? lim : null)"
+                       ReferenceLabel="@(latest?.ContainerLimit is long lim2 ? $"límite {Format.Size(lim2)}" : null)" />
+            <h3 class="sub">CPU del servidor</h3>
+            <p class="small">
+                @if (latest?.ServerCpuPercent is double cpu) {<span><strong>@cpu.ToString("0.#")%</strong> de @Resources.Cpus.ToString("0.#") CPU</span>}
+                else {<span class="muted">@(_snap.ProcessId is null ? "El servidor no está en marcha." : "Midiendo…")</span>}
+            </p>
+            <LineChart Label="CPU del servidor en las últimas horas"
+                       Points="@history.Select(s => (s.At, s.ServerCpuPercent)).ToList()"
+                       From="from" To="now" Format="@(v => v.ToString("0.#") + " %")"
+                       Max="@CpuMax(history)" />
+            <p class="muted small">Se mide cada 30 s y se guardan las últimas 24 h (se pierden al reiniciar la app). Avisa al móvil si la memoria se acerca al límite.</p>
+        }
+    </section>
+
+    <section class="card">
+        <h2>Reinicio programado</h2>
+        <p class="muted small">
+            Reiniciar el servidor cada día libera la memoria que BDS va acumulando. Avisa antes por el chat.
+        </p>
+        @if (_isAdmin)
+        {
+            <label class="check"><input type="checkbox" @bind="_restartEnabled" /> Reiniciar cada día</label>
+            <div class="form-row">
+                <label>Hora <input type="time" @bind="_restartTime" disabled="@(!_restartEnabled)" /></label>
+                <label>Avisos (minutos antes) <input @bind="_restartWarnings" disabled="@(!_restartEnabled)" placeholder="5,1" inputmode="numeric" /></label>
+            </div>
+            <label class="check"><input type="checkbox" @bind="_restartSkip" disabled="@(!_restartEnabled)" /> No reiniciar si hay alguien jugando</label>
+            <div class="actions">
+                <button class="btn" disabled="@_busy" @onclick="SaveRestartAsync">Guardar</button>
+            </div>
+        }
+        <dl class="facts small">
+            <dt>Próximo</dt>
+            <dd>@(Restarts.Settings.Enabled ? (Restarts.NextRunAt is { } nr ? Format.When(nr, Time) : $"cada día a las {Restarts.Settings.Time}") : "desactivado")</dd>
+            @if (Restarts.LastRun is { } lr)
+            {
+                <dt>Último</dt>
+                <dd class="@(lr.Restarted ? null : "hint-warn")">@Format.When(lr.At, Time): @lr.Message</dd>
+            }
+        </dl>
     </section>
 
     <section class="card">
@@ -215,7 +325,59 @@
     private bool _isAdmin;
     private IReadOnlyList<CubeKeeper.Core.Properties.SettingDeviation> _deviations = [];
 
-    private bool IsPinned => !string.IsNullOrWhiteSpace(Options.Value.Bds.PinnedVersion);
+    private bool IsPinned => Pin.IsPinned;
+
+    private BdsRelease? _newest;
+
+    private IReadOnlyList<CubeKeeper.Infrastructure.Storage.DiskUsage> _lowDisks = [];
+
+    private int _resourceHours = 6;
+
+    private static double CpuMax(IReadOnlyList<CubeKeeper.Infrastructure.Resources.ResourceSample> history)
+    {
+        var top = history.Select(s => s.ServerCpuPercent ?? 0).DefaultIfEmpty(0).Max();
+        return top <= 10 ? 10 : top <= 25 ? 25 : top <= 50 ? 50 : 100;
+    }
+
+    private void OnResourcesSampled() => _ = InvokeAsync(StateHasChanged);
+
+    private bool _restartEnabled;
+    private TimeOnly _restartTime = new(5, 30);
+    private string _restartWarnings = "5,1";
+    private bool _restartSkip = true;
+
+    private void LoadRestartSettings()
+    {
+        var r = Restarts.Settings;
+        _restartEnabled = r.Enabled;
+        _restartTime = CubeKeeper.Core.Scheduling.DailySchedule.ParseTime(r.Time) ?? new TimeOnly(5, 30);
+        _restartWarnings = r.WarningMinutes;
+        _restartSkip = r.SkipIfPlayersOnline;
+    }
+
+    private Task SaveRestartAsync() => RunAsync(async () =>
+    {
+        if (!await IsAdminAsync())
+        {
+            throw new InvalidOperationException("Solo un administrador puede cambiar el reinicio programado.");
+        }
+        if (Restarts.SaveSettings(_restartEnabled, _restartTime.ToString("HH:mm", System.Globalization.CultureInfo.InvariantCulture), _restartWarnings, _restartSkip) is { } error)
+        {
+            throw new InvalidOperationException(error);
+        }
+        LoadRestartSettings();
+        await AuditAsync("server.restart.schedule", null,
+            _restartEnabled ? $"cada día a las {_restartTime:HH\\:mm}, avisos {_restartWarnings}{(_restartSkip ? ", salvo si hay gente" : "")}" : "desactivado");
+        _message = _restartEnabled ? $"Reinicio programado cada día a las {_restartTime:HH\\:mm}." : "Reinicio programado desactivado.";
+    }, null);
+
+    /// <summary>Con versión fijada: la última publicada, si es más nueva que la instalada (y no es la que ya se ofrece).</summary>
+    private BdsRelease? NewerPublished =>
+        IsPinned && _newest is not null && _snap.InstalledVersion is not null &&
+        BdsVersion.TryParse(_snap.InstalledVersion, out var installedVersion) && installedVersion is not null &&
+        _newest.Version > installedVersion && !(IsNewer && _latest is not null && _latest.Version.Equals(_newest.Version))
+            ? _newest
+            : null;
 
     private bool IsAlive => _snap.Status.IsProcessAlive();
     private bool CanStart => !IsAlive && _snap.Status is not ServerStatus.NotInstalled and not ServerStatus.Installing;
@@ -232,8 +394,33 @@
         _snap = Server.Snapshot;
         Server.StateChanged += OnStateChanged;
         Presence.Changed += OnPresenceChanged;
+        Resources.Sampled += OnResourcesSampled;
         await LoadPropertiesAsync();
         _isAdmin = await IsAdminAsync();
+        LoadRestartSettings();
+        if (_isAdmin)
+        {
+            _lowDisks = Storage.MeasureDisks().Where(d => d.Low).ToList();
+        }
+        // Comprueba las versiones sin bloquear la página (así el botón «Instalar» sale solo tras el aviso al móvil).
+        _ = InvokeAsync(async () =>
+        {
+            try
+            {
+                await LoadVersionsAsync();
+                StateHasChanged();
+            }
+            catch (Exception ex) when (ex is HttpRequestException or InvalidOperationException or TaskCanceledException)
+            {
+                Logger.LogDebug(ex, "No se pudieron comprobar las versiones al abrir el panel");
+            }
+        });
+    }
+
+    private async Task LoadVersionsAsync()
+    {
+        _latest = await Versions.GetLatestAsync(Options.Value.Bds.Channel);
+        _newest = IsPinned ? await Versions.GetNewestPublishedAsync(Options.Value.Bds.Channel) : null;
     }
 
     private async Task LoadPropertiesAsync()
@@ -288,7 +475,7 @@
 
     private Task CheckAsync() => RunAsync(async () =>
     {
-        _latest = await Versions.GetLatestAsync(Options.Value.Bds.Channel);
+        await LoadVersionsAsync();
         if (_latest is null)
         {
             throw new InvalidOperationException("No se pudo obtener la última versión. Revisa la consola del contenedor.");
@@ -322,6 +509,34 @@
         _messageIsError = !result.Succeeded;
         await LoadPropertiesAsync();
         await AuditAsync("server.install", _latest!.Version.Text, result.Message);
+    }, null);
+
+    /// <summary>Instala la última publicada aunque haya una versión fijada; si va bien, queda fijada.</summary>
+    private Task InstallNewestAsync() => RunAsync(async () =>
+    {
+        if (!await IsAdminAsync())
+        {
+            throw new InvalidOperationException("Solo un administrador puede instalar o actualizar.");
+        }
+        var release = NewerPublished ?? throw new InvalidOperationException("No hay una versión más nueva que instalar.");
+        var result = await Updates.UpdateAsync(release, []);
+        _message = result.Message;
+        _messageIsError = !result.Succeeded;
+        await LoadVersionsAsync();
+        await LoadPropertiesAsync();
+        await AuditAsync("server.install", release.Version.Text, result.Message);
+    }, null);
+
+    private Task UseEnvironmentVersionAsync() => RunAsync(async () =>
+    {
+        if (!await IsAdminAsync())
+        {
+            throw new InvalidOperationException("Solo un administrador puede cambiar la versión fijada.");
+        }
+        Pin.UseEnvironment();
+        await LoadVersionsAsync();
+        await AuditAsync("server.pin", Pin.Version, "Vuelve a mandar CUBEKEEPER_BDS_VERSION");
+        _message = $"Ahora manda CUBEKEEPER_BDS_VERSION ({Pin.Version}).";
     }, null);
 
     private async Task RunAsync(Func<Task> action, string? okMessage, string? auditAction = null)
@@ -368,5 +583,6 @@
     {
         Server.StateChanged -= OnStateChanged;
         Presence.Changed -= OnPresenceChanged;
+        Resources.Sampled -= OnResourcesSampled;
     }
 }

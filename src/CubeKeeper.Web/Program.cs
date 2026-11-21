@@ -22,6 +22,11 @@ if (EnvironmentMapping.PanelPort() is int port)
 // Dar tiempo a "stop" de BDS cuando el contenedor recibe SIGTERM (ajustar stop_grace_period en Docker).
 builder.Services.Configure<HostOptions>(o => o.ShutdownTimeout = TimeSpan.FromSeconds(60));
 
+// Últimos mensajes del registro en memoria, para el diagnóstico descargable.
+var recentLogs = new CubeKeeper.Infrastructure.Diagnostics.RecentLogs();
+builder.Logging.AddProvider(recentLogs);
+builder.Services.AddSingleton(recentLogs);
+
 builder.Services.AddCubeKeeperInfrastructure(builder.Configuration);
 builder.Services.AddSingleton<AdminSeedStatus>();
 
@@ -157,6 +162,16 @@ app.MapPost("/logout", async (SignInManager<PanelUser> signIn, HttpContext http,
 });
 
 // Descarga de copias (solo administradores).
+app.MapGet("/diagnostico/descargar", async (HttpContext http, CubeKeeper.Infrastructure.Diagnostics.DiagnosticsService diagnostics,
+    CubeKeeper.Infrastructure.Audit.AuditLog audit, CancellationToken ct) =>
+{
+    var buffer = new MemoryStream();
+    await diagnostics.WriteZipAsync(buffer, ct);
+    buffer.Position = 0;
+    await audit.RecordAsync(http.User.Identity?.Name ?? "?", "diagnostics.download", null, null, ct);
+    return Results.File(buffer, "application/zip", diagnostics.FileName());
+}).RequireAuthorization("Admin");
+
 app.MapGet("/copias/descargar/{file}", (string file, CubeKeeper.Infrastructure.Backups.BackupService backups) =>
     backups.ResolveExisting(file) is { } path
         ? Results.File(path, "application/octet-stream", file, enableRangeProcessing: true)

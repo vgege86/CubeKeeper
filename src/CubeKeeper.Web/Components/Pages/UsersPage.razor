@@ -37,7 +37,7 @@
                             }
                         </select>
                     </td>
-                    <td>@(u.TwoFactorEnabled ? "Sí" : "No")</td>
+                    <td data-label="Dos pasos">@(u.TwoFactorEnabled ? "Sí" : "No")</td>
                     <td class="row-actions">
                         @if (_resetFor == u.Id)
                         {

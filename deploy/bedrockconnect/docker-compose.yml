@@ -5,7 +5,8 @@
 #   - la tarjeta de red del NAS que tiene la 192.168.1.21 (Network → Interfaces: enp…, eno1, br0…)
 #   - una IP libre de la red de casa que el router no reparta por DHCP (para BedrockConnect)
 #   - la puerta de enlace de la red (normalmente 192.168.1.1)
-# Y crea antes el dataset vms/bedrockconnect (propietario 568) con custom_servers.json dentro.
+# Y crea antes el dataset vms/bedrockconnect con custom_servers.json dentro y la carpeta players, que tiene que ser
+# de root (el contenedor va como root pero sin capacidades: no puede escribir en carpetas de otro usuario).
 services:
   bedrockconnect:
     # Versión fijada. Al actualizarse el juego, cámbiala por la nueva (hub.docker.com/r/pugmatt/bedrock-connect/tags).
@@ -35,7 +36,7 @@ services:
       BC_FEATURED_SERVERS: "true"
 
     volumes:
-      # Listas de servidores de cada jugador (para no perderlas al actualizar).
+      # Listas de servidores de cada jugador (para no perderlas al actualizar). La carpeta tiene que ser de root.
       - /mnt/vms/bedrockconnect/players:/docker/brc/players
       # custom_servers.json (ver deploy/bedrockconnect/custom_servers.json).
       - /mnt/vms/bedrockconnect:/docker/brc/data:ro

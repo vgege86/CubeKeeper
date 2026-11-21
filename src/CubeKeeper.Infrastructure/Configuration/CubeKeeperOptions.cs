@@ -27,6 +27,18 @@ public sealed class CubeKeeperOptions
     public NetworkOptions Network { get; set; } = new();
 
     public SecurityOptions Security { get; set; } = new();
+
+    public StorageOptions Storage { get; set; } = new();
+}
+
+/// <summary>Cuándo avisar de que queda poco espacio (salta con lo que llegue antes).</summary>
+public sealed class StorageOptions
+{
+    /// <summary>Porcentaje libre por debajo del cual se avisa.</summary>
+    public double WarnPercent { get; set; } = 10;
+
+    /// <summary>GB libres por debajo de los cuales se avisa.</summary>
+    public double WarnGigabytes { get; set; } = 5;
 }
 
 public sealed class SecurityOptions
