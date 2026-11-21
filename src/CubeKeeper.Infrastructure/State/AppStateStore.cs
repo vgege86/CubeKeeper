@@ -42,6 +42,11 @@ public sealed record AppState
     /// <summary>Última comprobación de una copia (que se puede restaurar).</summary>
     public BackupCheckRecord? BackupCheck { get; init; }
 
+    /// <summary>Reinicio diario de BDS (desde el Panel).</summary>
+    public RestartSettings Restart { get; init; } = new();
+
+    public RestartRecord? LastRestart { get; init; }
+
     /// <summary>Cuenta de Microsoft conectada para descargar mundos de Realms (secretos cifrados).</summary>
     public RealmsSession? Realms { get; init; }
 }
@@ -69,6 +74,10 @@ public sealed record MapRenderRecord(DateTimeOffset At, string EngineId, bool Su
 public sealed record RealmsSession(string ProtectedRefreshToken, string ProtectedSigningKey, string? Gamertag, string? Xuid, DateTimeOffset ConnectedAt);
 
 public sealed record BdsPinSetting(string Version);
+
+public sealed record RestartSettings(bool Enabled = false, string Time = "05:30", string WarningMinutes = "5,1", bool SkipIfPlayersOnline = true);
+
+public sealed record RestartRecord(DateTimeOffset At, bool Restarted, string Message);
 
 public sealed record BackupCheckRecord(DateTimeOffset At, string File, bool Ok, string Message);
 
