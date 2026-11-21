@@ -36,6 +36,9 @@ public sealed record AppState
     /// <summary>Resultado de la última actualización (manual o programada).</summary>
     public UpdateRecord? LastUpdate { get; init; }
 
+    /// <summary>Versión de BDS fijada desde el panel (manda sobre CUBEKEEPER_BDS_VERSION); null = la de la variable.</summary>
+    public BdsPinSetting? BdsPin { get; init; }
+
     /// <summary>Cuenta de Microsoft conectada para descargar mundos de Realms (secretos cifrados).</summary>
     public RealmsSession? Realms { get; init; }
 }
@@ -61,6 +64,8 @@ public sealed record MapRenderRecord(DateTimeOffset At, string EngineId, bool Su
 
 /// <summary>Sesión de Realms: token de renovación y clave de firma, ambos cifrados con Data Protection.</summary>
 public sealed record RealmsSession(string ProtectedRefreshToken, string ProtectedSigningKey, string? Gamertag, string? Xuid, DateTimeOffset ConnectedAt);
+
+public sealed record BdsPinSetting(string Version);
 
 public sealed record UpdateRecord(DateTimeOffset At, string? From, string To, bool Succeeded, string Message);
 

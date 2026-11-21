@@ -19,6 +19,7 @@ public static class DependencyInjection
         services.AddSingleton(TimeProvider.System);
         services.AddSingleton<DataPaths>();
         services.AddSingleton<AppStateStore>();
+        services.AddSingleton<VersionPin>();
         services.AddSingleton<IConsoleLog>(sp => new ConsoleLog(sp.GetRequiredService<TimeProvider>()));
 
         var userAgent = $"CubeKeeper/{typeof(DependencyInjection).Assembly.GetName().Version?.ToString(3)}";

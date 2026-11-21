@@ -18,6 +18,7 @@
 @inject DataPaths Paths
 @inject ConfigurationAdvisor Advisor
 @inject UpdateService Updates
+@inject CubeKeeper.Infrastructure.Versions.VersionPin Pin
 @inject MaintenanceScheduler Scheduler
 @inject TimeProvider Time
 @inject CubeKeeper.Web.Hosting.ConnectionInfoService Connection
@@ -79,7 +80,17 @@
         <h2>Versión de BDS</h2>
         @if (IsPinned)
         {
-            <p class="muted">Versión fijada: <strong>@Options.Value.Bds.PinnedVersion</strong> (sin actualizaciones automáticas)</p>
+            <p class="muted">
+                Versión fijada: <strong>@Pin.Version</strong> (sin actualizaciones automáticas)
+                <span class="small">· @(Pin.FromPanel ? "fijada desde el panel" : "de CUBEKEEPER_BDS_VERSION")</span>
+            </p>
+            @if (Pin.FromPanel && Pin.EnvironmentVersion is { } envVersion && _isAdmin)
+            {
+                <p class="muted small">
+                    La variable <code>CUBEKEEPER_BDS_VERSION</code> dice @envVersion, pero manda la fijada desde el panel.
+                    <button class="btn btn-ghost" disabled="@_busy" @onclick="UseEnvironmentVersionAsync">Usar la de la variable</button>
+                </p>
+            }
         }
         else
         {
@@ -111,6 +122,16 @@
                 <p class="ok">Está al día.</p>
             }
         }
+        @if (NewerPublished is { } newer)
+        {
+            <p class="alert alert-warn">
+                Mojang ha publicado la <strong>@newer.Version</strong> (tienes la @_snap.InstalledVersion).
+                @if (_isAdmin)
+                {
+                    <span>Al instalarla queda fijada; antes se hace una copia del mundo y, si no arranca, se vuelve sola a la actual.</span>
+                }
+            </p>
+        }
         <div class="actions">
             <button class="btn" disabled="@_busy" @onclick="CheckAsync">Comprobar</button>
             <AuthorizeView Roles="@PanelRoles.Admin" Context="adminContext">
@@ -119,6 +140,10 @@
                     <button class="btn btn-primary" disabled="@(_busy || !Options.Value.Bds.AcceptEula)" @onclick="InstallAsync">
                         @(_snap.InstalledVersion is null || IsPinned ? $"Instalar {_latest.Version}" : $"Actualizar a {_latest.Version}")
                     </button>
+                }
+                @if (NewerPublished is { } newerRelease)
+                {
+                    <button class="btn btn-primary" disabled="@(_busy || !Options.Value.Bds.AcceptEula)" @onclick="InstallNewestAsync">Instalar @newerRelease.Version</button>
                 }
             </AuthorizeView>
         </div>
@@ -215,7 +240,17 @@
     private bool _isAdmin;
     private IReadOnlyList<CubeKeeper.Core.Properties.SettingDeviation> _deviations = [];
 
-    private bool IsPinned => !string.IsNullOrWhiteSpace(Options.Value.Bds.PinnedVersion);
+    private bool IsPinned => Pin.IsPinned;
+
+    private BdsRelease? _newest;
+
+    /// <summary>Con versión fijada: la última publicada, si es más nueva que la instalada (y no es la que ya se ofrece).</summary>
+    private BdsRelease? NewerPublished =>
+        IsPinned && _newest is not null && _snap.InstalledVersion is not null &&
+        BdsVersion.TryParse(_snap.InstalledVersion, out var installedVersion) && installedVersion is not null &&
+        _newest.Version > installedVersion && !(IsNewer && _latest is not null && _latest.Version.Equals(_newest.Version))
+            ? _newest
+            : null;
 
     private bool IsAlive => _snap.Status.IsProcessAlive();
     private bool CanStart => !IsAlive && _snap.Status is not ServerStatus.NotInstalled and not ServerStatus.Installing;
@@ -234,6 +269,25 @@
         Presence.Changed += OnPresenceChanged;
         await LoadPropertiesAsync();
         _isAdmin = await IsAdminAsync();
+        // Comprueba las versiones sin bloquear la página (así el botón «Instalar» sale solo tras el aviso al móvil).
+        _ = InvokeAsync(async () =>
+        {
+            try
+            {
+                await LoadVersionsAsync();
+                StateHasChanged();
+            }
+            catch (Exception ex) when (ex is HttpRequestException or InvalidOperationException or TaskCanceledException)
+            {
+                Logger.LogDebug(ex, "No se pudieron comprobar las versiones al abrir el panel");
+            }
+        });
+    }
+
+    private async Task LoadVersionsAsync()
+    {
+        _latest = await Versions.GetLatestAsync(Options.Value.Bds.Channel);
+        _newest = IsPinned ? await Versions.GetNewestPublishedAsync(Options.Value.Bds.Channel) : null;
     }
 
     private async Task LoadPropertiesAsync()
@@ -288,7 +342,7 @@
 
     private Task CheckAsync() => RunAsync(async () =>
     {
-        _latest = await Versions.GetLatestAsync(Options.Value.Bds.Channel);
+        await LoadVersionsAsync();
         if (_latest is null)
         {
             throw new InvalidOperationException("No se pudo obtener la última versión. Revisa la consola del contenedor.");
@@ -322,6 +376,34 @@
         _messageIsError = !result.Succeeded;
         await LoadPropertiesAsync();
         await AuditAsync("server.install", _latest!.Version.Text, result.Message);
+    }, null);
+
+    /// <summary>Instala la última publicada aunque haya una versión fijada; si va bien, queda fijada.</summary>
+    private Task InstallNewestAsync() => RunAsync(async () =>
+    {
+        if (!await IsAdminAsync())
+        {
+            throw new InvalidOperationException("Solo un administrador puede instalar o actualizar.");
+        }
+        var release = NewerPublished ?? throw new InvalidOperationException("No hay una versión más nueva que instalar.");
+        var result = await Updates.UpdateAsync(release, []);
+        _message = result.Message;
+        _messageIsError = !result.Succeeded;
+        await LoadVersionsAsync();
+        await LoadPropertiesAsync();
+        await AuditAsync("server.install", release.Version.Text, result.Message);
+    }, null);
+
+    private Task UseEnvironmentVersionAsync() => RunAsync(async () =>
+    {
+        if (!await IsAdminAsync())
+        {
+            throw new InvalidOperationException("Solo un administrador puede cambiar la versión fijada.");
+        }
+        Pin.UseEnvironment();
+        await LoadVersionsAsync();
+        await AuditAsync("server.pin", Pin.Version, "Vuelve a mandar CUBEKEEPER_BDS_VERSION");
+        _message = $"Ahora manda CUBEKEEPER_BDS_VERSION ({Pin.Version}).";
     }, null);
 
     private async Task RunAsync(Func<Task> action, string? okMessage, string? auditAction = null)

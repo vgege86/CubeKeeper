@@ -26,7 +26,8 @@ public sealed class UpdateService(
     IOptions<CubeKeeperOptions> options,
     TimeProvider time,
     ILogger<UpdateService> logger,
-    Notifications.Notifier? notifier = null)
+    Notifications.Notifier? notifier = null,
+    Versions.VersionPin? pin = null)
 {
     private bool _scheduledRun;
     private readonly CubeKeeperOptions _options = options.Value;
@@ -34,7 +35,7 @@ public sealed class UpdateService(
 
     public bool IsBusy => _gate.CurrentCount == 0;
 
-    public bool IsPinned => !string.IsNullOrWhiteSpace(_options.Bds.PinnedVersion);
+    public bool IsPinned => pin?.IsPinned ?? !string.IsNullOrWhiteSpace(_options.Bds.PinnedVersion);
 
     /// <summary>Actualización automática activa (activada y sin versión fijada).</summary>
     public bool AutoUpdateActive => _options.Updates.AutoUpdate && !IsPinned;
@@ -239,6 +240,11 @@ public sealed class UpdateService(
     {
         var record = new UpdateRecord(time.GetUtcNow(), from, to, ok, message);
         state.Update(s => s with { LastUpdate = record });
+        if (ok)
+        {
+            // Con versión fijada, la instalada pasa a ser la fijada (al instalar una más nueva o volver atrás).
+            pin?.Follow(to);
+        }
         console.Append(ConsoleLineKind.System, message);
         if (notifier is not null && (!ok || _scheduledRun))
         {

@@ -13,7 +13,8 @@ namespace CubeKeeper.Infrastructure.Versions;
 public sealed class VersionResolver(
     HttpClient http,
     IOptions<CubeKeeperOptions> options,
-    ILogger<VersionResolver> logger) : IVersionSource
+    ILogger<VersionResolver> logger,
+    VersionPin? pin = null) : IVersionSource
 {
     public const string HttpClientName = "bds-versions";
 
@@ -22,13 +23,14 @@ public sealed class VersionResolver(
     public async Task<BdsRelease?> GetLatestAsync(ReleaseChannel channel, CancellationToken ct = default)
     {
         var latest = await ResolveLatestAsync(channel, ct).ConfigureAwait(false);
-        if (latest is null || string.IsNullOrWhiteSpace(_options.PinnedVersion) || !string.IsNullOrWhiteSpace(_options.DirectDownloadUrl))
+        var pinnedText = pin is not null ? pin.Version : _options.PinnedVersion;
+        if (latest is null || string.IsNullOrWhiteSpace(pinnedText) || !string.IsNullOrWhiteSpace(_options.DirectDownloadUrl))
         {
             return latest;
         }
-        if (!BdsVersion.TryParse(_options.PinnedVersion, out var pinned) || pinned is null)
+        if (!BdsVersion.TryParse(pinnedText, out var pinned) || pinned is null)
         {
-            throw new InvalidOperationException($"CUBEKEEPER_BDS_VERSION no es una versión válida: '{_options.PinnedVersion}'.");
+            throw new InvalidOperationException($"CUBEKEEPER_BDS_VERSION no es una versión válida: '{pinnedText}'.");
         }
         return latest.WithVersion(pinned);
     }
