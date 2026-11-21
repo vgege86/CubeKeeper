@@ -27,6 +27,7 @@
 @inject CubeKeeper.Infrastructure.Security.KeyEncryptionSecret KeySecret
 @inject CubeKeeper.Infrastructure.Storage.StorageService Storage
 @inject RestartScheduler Restarts
+@inject CubeKeeper.Infrastructure.Resources.ResourceMonitor Resources
 
 <PageTitle>Panel · CubeKeeper</PageTitle>
 
@@ -200,6 +201,53 @@
     </section>
 
     <section class="card">
+        <div class="card-head">
+            <h2>Recursos</h2>
+            <div class="segmented" role="group" aria-label="Periodo">
+                @foreach (var (hours, text) in new[] { (1, "1 h"), (6, "6 h"), (24, "24 h") })
+                {
+                    <button class="@(_resourceHours == hours ? "on" : null)" aria-pressed="@(_resourceHours == hours)" @onclick="() => _resourceHours = hours">@text</button>
+                }
+            </div>
+        </div>
+        @if (!Resources.Supported)
+        {
+            <p class="muted">Solo se mide en Linux (en el NAS).</p>
+        }
+        else
+        {
+            var now = Time.GetUtcNow();
+            var from = now.AddHours(-_resourceHours);
+            var history = Resources.History(TimeSpan.FromHours(_resourceHours));
+            var latest = Resources.Latest;
+            <h3 class="sub">Memoria</h3>
+            <p class="small">
+                @if (latest?.ServerMemory is long sm) {<span>Servidor <strong>@Format.Size(sm)</strong></span>}
+                @if (latest?.ContainerMemory is long cm)
+                {
+                    <span> · contenedor @Format.Size(cm)@(latest.ContainerLimit is long cl ? $" de {Format.Size(cl)} ({latest.ContainerMemoryPercent:0}%)" : "")</span>
+                }
+                @if (latest is null) {<span class="muted">Midiendo…</span>}
+            </p>
+            <LineChart Label="Memoria del contenedor en las últimas horas"
+                       Points="@history.Select(s => (s.At, s.ContainerMemory is long m ? (double?)m : null)).ToList()"
+                       From="from" To="now" Format="@(v => Format.Size((long)v))"
+                       Reference="@(latest?.ContainerLimit is long lim ? lim : null)"
+                       ReferenceLabel="@(latest?.ContainerLimit is long lim2 ? $"límite {Format.Size(lim2)}" : null)" />
+            <h3 class="sub">CPU del servidor</h3>
+            <p class="small">
+                @if (latest?.ServerCpuPercent is double cpu) {<span><strong>@cpu.ToString("0.#")%</strong> de @Resources.Cpus.ToString("0.#") CPU</span>}
+                else {<span class="muted">@(_snap.ProcessId is null ? "El servidor no está en marcha." : "Midiendo…")</span>}
+            </p>
+            <LineChart Label="CPU del servidor en las últimas horas"
+                       Points="@history.Select(s => (s.At, s.ServerCpuPercent)).ToList()"
+                       From="from" To="now" Format="@(v => v.ToString("0.#") + " %")"
+                       Max="@CpuMax(history)" />
+            <p class="muted small">Se mide cada 30 s y se guardan las últimas 24 h (se pierden al reiniciar la app). Avisa al móvil si la memoria se acerca al límite.</p>
+        }
+    </section>
+
+    <section class="card">
         <h2>Reinicio programado</h2>
         <p class="muted small">
             Reiniciar el servidor cada día libera la memoria que BDS va acumulando. Avisa antes por el chat.
@@ -283,6 +331,16 @@
 
     private IReadOnlyList<CubeKeeper.Infrastructure.Storage.DiskUsage> _lowDisks = [];
 
+    private int _resourceHours = 6;
+
+    private static double CpuMax(IReadOnlyList<CubeKeeper.Infrastructure.Resources.ResourceSample> history)
+    {
+        var top = history.Select(s => s.ServerCpuPercent ?? 0).DefaultIfEmpty(0).Max();
+        return top <= 10 ? 10 : top <= 25 ? 25 : top <= 50 ? 50 : 100;
+    }
+
+    private void OnResourcesSampled() => _ = InvokeAsync(StateHasChanged);
+
     private bool _restartEnabled;
     private TimeOnly _restartTime = new(5, 30);
     private string _restartWarnings = "5,1";
@@ -336,6 +394,7 @@
         _snap = Server.Snapshot;
         Server.StateChanged += OnStateChanged;
         Presence.Changed += OnPresenceChanged;
+        Resources.Sampled += OnResourcesSampled;
         await LoadPropertiesAsync();
         _isAdmin = await IsAdminAsync();
         LoadRestartSettings();
@@ -524,5 +583,6 @@
     {
         Server.StateChanged -= OnStateChanged;
         Presence.Changed -= OnPresenceChanged;
+        Resources.Sampled -= OnResourcesSampled;
     }
 }

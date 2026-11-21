@@ -89,6 +89,8 @@ public static class DependencyInjection
         services.AddSingleton<Family.FamilyService>();
         services.AddHostedService(sp => sp.GetRequiredService<Family.FamilyService>());
         services.AddSingleton<Addons.AddonService>();
+        services.AddSingleton<Resources.ResourceMonitor>();
+        services.AddHostedService(sp => sp.GetRequiredService<Resources.ResourceMonitor>());
         services.AddSingleton<Scheduling.RestartScheduler>();
         services.AddHostedService(sp => sp.GetRequiredService<Scheduling.RestartScheduler>());
         services.AddSingleton<Scheduling.MaintenanceScheduler>();

@@ -293,3 +293,31 @@ a.user:hover { text-decoration: underline; }
 .bar { height: 0.55rem; border-radius: 999px; background: var(--surface-2); overflow: hidden; margin-top: 0.3rem; border: 1px solid var(--border); }
 .bar span { display: block; height: 100%; background: var(--accent); }
 .disk-low .bar span { background: var(--error); }
+
+/* Gráficas (paleta validada: docs de visualización). Una serie usa --series-1. */
+:root {
+    --series-1: #2a78d6; --series-2: #eb6834; --series-3: #1baf7a; --series-4: #eda100;
+    --series-5: #e87ba4; --series-6: #008300; --series-7: #6250d6; --series-8: #e34948;
+    --chart-grid: #e7e9e2;
+}
+@media (prefers-color-scheme: dark) {
+    :root {
+        --series-1: #3987e5; --series-2: #d95926; --series-3: #199e70; --series-4: #c98500;
+        --series-5: #d55181; --series-6: #0ca30c; --series-7: #9085e9; --series-8: #e66767;
+        --chart-grid: #2a2f24;
+    }
+}
+.linechart { margin: 0.25rem 0 0.75rem; }
+.linechart-plot { position: relative; }
+.linechart-plot svg { display: block; width: 100%; height: 140px; overflow: visible; }
+.linechart-ymax { position: absolute; top: -0.2rem; left: 0.25rem; font-size: 0.75rem; color: var(--muted); background: var(--surface); padding: 0 0.25rem; pointer-events: none; }
+.linechart .grid { stroke: var(--chart-grid); stroke-width: 1; }
+.linechart .axis { stroke: var(--border); stroke-width: 1; }
+.linechart .reference { stroke: var(--muted); stroke-width: 1; }
+.linechart .line { fill: none; stroke: var(--series-1); stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; }
+.linechart .area { fill: var(--series-1); opacity: 0.1; }
+.linechart .hit { fill: transparent; }
+.linechart .hit:hover { fill: var(--text); opacity: 0.06; }
+.linechart-x { display: flex; justify-content: space-between; gap: 0.5rem; font-size: 0.75rem; color: var(--muted); margin-top: 0.2rem; }
+.linechart-ref { display: inline-flex; align-items: center; gap: 0.3rem; }
+.ref-key { display: inline-block; width: 1rem; height: 0; border-top: 1px solid var(--muted); }
