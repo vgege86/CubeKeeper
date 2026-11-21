@@ -10,6 +10,7 @@
 @using CubeKeeper.Web.Formatting
 @using Microsoft.Extensions.Options
 @inject BackupService Backups
+@inject CubeKeeper.Infrastructure.Storage.StorageService Storage
 @inject MaintenanceScheduler Scheduler
 @inject IServerController Server
 @inject IOptions<CubeKeeperOptions> Options
@@ -125,6 +126,41 @@
     }
 </section>
 
+<section class="card">
+    <div class="card-head">
+        <h2>Espacio en disco</h2>
+        <button class="btn btn-ghost" disabled="@_busy" @onclick="RefreshStorage">Volver a medir</button>
+    </div>
+    @foreach (var d in _storage.Disks)
+    {
+        <div class="disk @(d.Low ? "disk-low" : null)">
+            <div class="disk-line">
+                <strong>@d.Label</strong>
+                <span>@Format.Size(d.Free) libres de @Format.Size(d.Total) (@d.FreePercent.ToString("0")%)</span>
+            </div>
+            <div class="bar" role="img" aria-label="@($"{100 - d.FreePercent:0}% ocupado")"><span style="width:@((100 - d.FreePercent).ToString("0.#", System.Globalization.CultureInfo.InvariantCulture))%"></span></div>
+            @if (d.Low)
+            {
+                <p class="hint-warn small">Queda poco espacio. Borra copias antiguas o amplía el dataset: si se llena, las copias y el propio mundo pueden fallar.</p>
+            }
+        </div>
+    }
+    @if (_storage.Folders.Count > 0)
+    {
+        <dl class="facts small">
+            @foreach (var f in _storage.Folders)
+            {
+                <dt>@f.Label</dt>
+                <dd>@Format.Size(f.Bytes)</dd>
+            }
+        </dl>
+    }
+    <p class="muted small">
+        Avisa al móvil cuando queda menos del @Storage.Thresholds.WarnPercent.ToString("0.#")% o de @Storage.Thresholds.WarnGigabytes.ToString("0.#") GB libres
+        (<code>CUBEKEEPER_DISK_WARN_PERCENT</code> y <code>CUBEKEEPER_DISK_WARN_GB</code>). Medido @Format.When(_storage.At, Time).
+    </p>
+</section>
+
 @code {
     private IReadOnlyList<BackupEntry> _entries = [];
     private string _world = BackupService.DefaultLevelName;
@@ -136,11 +172,28 @@
 
     private BackupOptions Opt => Options.Value.Backups;
 
+    private CubeKeeper.Infrastructure.Storage.StorageReport _storage = new(DateTimeOffset.MinValue, [], []);
+
     protected override async Task OnInitializedAsync()
     {
         Backups.Changed += OnChanged;
         await LoadAsync();
+        // El espacio libre es inmediato; recorrer las carpetas (el mapa puede tener miles de archivos) va aparte.
+        _storage = new(Time.GetUtcNow(), Storage.MeasureDisks(), []);
+        _ = LoadStorageAsync(refresh: false);
     }
+
+    private async Task LoadStorageAsync(bool refresh)
+    {
+        var report = await Task.Run(() => Storage.GetReport(refresh));
+        await InvokeAsync(() =>
+        {
+            _storage = report;
+            StateHasChanged();
+        });
+    }
+
+    private void RefreshStorage() => _ = LoadStorageAsync(refresh: true);
 
     private async Task LoadAsync()
     {

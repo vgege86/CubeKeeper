@@ -286,3 +286,10 @@ a.user:hover { text-decoration: underline; }
 
 /* Realms: código para microsoft.com/link */
 .device-code { font-family: ui-monospace, monospace; font-size: 2rem; letter-spacing: 0.2em; font-weight: 700; margin: 0.5rem 0; user-select: all; }
+
+/* Espacio en disco */
+.disk { margin: 0.5rem 0 0.9rem; }
+.disk-line { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 0.25rem 1rem; }
+.bar { height: 0.55rem; border-radius: 999px; background: var(--surface-2); overflow: hidden; margin-top: 0.3rem; border: 1px solid var(--border); }
+.bar span { display: block; height: 100%; background: var(--accent); }
+.disk-low .bar span { background: var(--error); }

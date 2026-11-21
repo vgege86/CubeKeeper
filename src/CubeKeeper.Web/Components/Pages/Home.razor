@@ -25,6 +25,7 @@
 @inject NavigationManager Navigation
 @inject ILogger<Home> Logger
 @inject CubeKeeper.Infrastructure.Security.KeyEncryptionSecret KeySecret
+@inject CubeKeeper.Infrastructure.Storage.StorageService Storage
 
 <PageTitle>Panel · CubeKeeper</PageTitle>
 
@@ -35,6 +36,13 @@
     <p class="alert @(_messageIsError ? "alert-error" : "alert-ok")" role="status">@_message</p>
 }
 
+@if (_isAdmin && _lowDisks.Count > 0)
+{
+    <p class="alert alert-warn" role="status">
+        Queda poco espacio: @string.Join(" · ", _lowDisks.Select(d => $"{d.Label}, {Format.Size(d.Free)} libres")).
+        <a href="/copias">Ver en Copias</a>
+    </p>
+}
 @if (!KeySecret.IsSet)
 {
     <AuthorizeView Roles="@PanelRoles.Admin">
@@ -244,6 +252,8 @@
 
     private BdsRelease? _newest;
 
+    private IReadOnlyList<CubeKeeper.Infrastructure.Storage.DiskUsage> _lowDisks = [];
+
     /// <summary>Con versión fijada: la última publicada, si es más nueva que la instalada (y no es la que ya se ofrece).</summary>
     private BdsRelease? NewerPublished =>
         IsPinned && _newest is not null && _snap.InstalledVersion is not null &&
@@ -269,6 +279,10 @@
         Presence.Changed += OnPresenceChanged;
         await LoadPropertiesAsync();
         _isAdmin = await IsAdminAsync();
+        if (_isAdmin)
+        {
+            _lowDisks = Storage.MeasureDisks().Where(d => d.Low).ToList();
+        }
         // Comprueba las versiones sin bloquear la página (así el botón «Instalar» sale solo tras el aviso al móvil).
         _ = InvokeAsync(async () =>
         {

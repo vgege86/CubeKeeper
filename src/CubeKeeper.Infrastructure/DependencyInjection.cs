@@ -50,6 +50,8 @@ public static class DependencyInjection
         services.AddSingleton<Settings.PropertiesEditor>();
         services.AddSingleton<ConsoleCommandRunner>();
         services.AddSingleton<Backups.BackupService>();
+        services.AddSingleton<Storage.StorageService>();
+        services.AddHostedService<Storage.StorageMonitor>();
         services.AddSingleton<Updates.UpdateService>();
         services.AddSingleton<Access.AccessService>();
         services.AddHostedService(sp => sp.GetRequiredService<Access.AccessService>());

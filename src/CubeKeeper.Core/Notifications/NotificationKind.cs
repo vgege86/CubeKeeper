@@ -33,7 +33,7 @@ public static class NotificationKindText
         (NotificationKind.BackupFailed, "Copias fallidas", "No se ha podido hacer una copia programada del mundo."),
         (NotificationKind.Update, "Actualizaciones", "Una actualización ha fallado (y se ha vuelto atrás), o la programada ha ido bien."),
         (NotificationKind.NewVersion, "Versión nueva de BDS", "Mojang ha publicado una versión más nueva que la instalada (también con la versión fijada)."),
-        (NotificationKind.Maintenance, "Fallos de mantenimiento", "Falla el mapa nocturno, el segundo destino de las copias no está montado o la cuenta de Realms deja de funcionar."),
+        (NotificationKind.Maintenance, "Fallos de mantenimiento", "Queda poco espacio en disco, falla el mapa nocturno o la comprobación de copias, el segundo destino no está montado o la cuenta de Realms deja de funcionar."),
         (NotificationKind.PlayerJoin, "Entradas y salidas", "Cada vez que un jugador entra o sale."),
     ];
 }
