@@ -37,6 +37,9 @@ mundos, copias, usuarios y jugadores no se pierden.
 - Otro administrador puede desbloquear a un usuario o quitarle la verificación en dos pasos desde **Usuarios**.
 - **403 al abrir el panel:** entras desde una red que no está en `CUBEKEEPER_ALLOWED_NETWORKS` o en la Access List de
   NPM (por ejemplo, sin la VPN).
+- **En la app del móvil, al entrar sale «HTTP ERROR 400» o «La página había caducado»:** el móvil cerró la app en
+  segundo plano y, al volver, el formulario de login ya no era válido. Desde esta versión el panel vuelve a cargar el
+  login con ese aviso: escribe otra vez usuario y contraseña. Si sigue saliendo el 400, actualiza la app de TrueNAS.
 - **La página carga pero los botones no hacen nada:** falta *Websockets Support* en el proxy de NPM.
 - **La contraseña del YAML no funciona:** si lleva `$`, escríbelo doble (`$$`).
 

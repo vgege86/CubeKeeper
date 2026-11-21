@@ -95,6 +95,11 @@
     [CascadingParameter]
     private HttpContext HttpContext { get; set; } = default!;
 
+    [SupplyParameterFromQuery(Name = "caducado")]
+    private string? ExpiredFlag { get; set; }
+
+    private bool Expired => ExpiredFlag is "true" or "1";
+
     [SupplyParameterFromForm(FormName = "password")]
     private PasswordInput? Password { get; set; }
 
@@ -113,6 +118,11 @@
         Enable ??= new CodeInput();
         Disable ??= new DisableInput();
         Empty ??= new object();
+        if (Expired && !HttpMethods.IsPost(HttpContext.Request.Method))
+        {
+            _message = "La página había caducado y no se guardó nada. Vuelve a intentarlo.";
+            _messageIsError = true;
+        }
         await LoadAsync();
     }
 
