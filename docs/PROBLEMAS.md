@@ -64,8 +64,8 @@ En GitHub → *Packages → cubekeeper → Package settings*, la visibilidad deb
 
 - Dirección `192.168.1.21`, puerto `19132`, en **Servidores → Añadir servidor**.
 - **Xbox:** «Partidas LAN» muestra el servidor pero da error al unirse, y la Xbox no deja añadir servidores por IP.
-  Ver [Xbox: entrar desde Amigos con MCXboxBroadcast](TRUENAS.md#7c-xbox-entrar-desde-amigos-con-mcxboxbroadcast)
-  o [con BedrockConnect](TRUENAS.md#7b-xbox-entrar-con-bedrockconnect).
+  Ver [Xbox: entrar desde Amigos con MCXboxBroadcast](XBOX.md#opción-1-amigos-con-mcxboxbroadcast-recomendada)
+  o [con BedrockConnect](XBOX.md#opción-2-destacados-con-bedrockconnect).
 - **Error «Terracotta» o «desactualizado» en la Xbox:** el juego de la Xbox y el servidor no tienen la misma versión.
   Actualiza Minecraft en la Xbox (**Mis juegos y aplicaciones → Administrar → Actualizaciones**) o, si la Xbox aún
   no tiene la nueva, vuelve en el Panel a la versión que tenga.

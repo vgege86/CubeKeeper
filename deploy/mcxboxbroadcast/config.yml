@@ -1,4 +1,4 @@
-# MCXboxBroadcast: anuncia CubeKeeper en la pestaña «Amigos» de la Xbox (ver docs/TRUENAS.md, apartado 7c).
+# MCXboxBroadcast: anuncia CubeKeeper en la pestaña «Amigos» de la Xbox (ver docs/XBOX.md, opción 1).
 # Cópialo a /mnt/vms/mcxboxbroadcast/config.yml antes de arrancar la app.
 session:
   # El servidor de juego: la IP del NAS y el puerto de CubeKeeper (server-port, 19132).

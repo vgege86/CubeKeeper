@@ -42,7 +42,8 @@ lo descarga, lo arranca y lo para, lee su consola y le envía comandos. No neces
 
 Plan completo y decisiones: [docs/ARQUITECTURA.md](docs/ARQUITECTURA.md) ·
 Instalación en el NAS: [docs/TRUENAS.md](docs/TRUENAS.md) · Uso diario: [docs/USO.md](docs/USO.md) ·
-Si algo falla: [docs/PROBLEMAS.md](docs/PROBLEMAS.md) · Pruebas en el NAS: [docs/PRUEBAS.md](docs/PRUEBAS.md).
+Si algo falla: [docs/PROBLEMAS.md](docs/PROBLEMAS.md) · Pruebas en el NAS: [docs/PRUEBAS.md](docs/PRUEBAS.md) ·
+Xbox: [docs/XBOX.md](docs/XBOX.md).
 
 ## Configuración
 

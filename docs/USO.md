@@ -20,8 +20,8 @@ Hay dos tipos de usuario del panel:
 
 Estado del servidor (arrancar, parar, reiniciar), quién está jugando, versión de BDS y cómo conectarse (en PC con
 la dirección y el puerto; en la Xbox, desde Amigos con MCXboxBroadcast
-([TRUENAS.md](TRUENAS.md#7c-xbox-entrar-desde-amigos-con-mcxboxbroadcast)) o con BedrockConnect
-([TRUENAS.md](TRUENAS.md#7b-xbox-entrar-con-bedrockconnect))).
+([XBOX.md](XBOX.md#opción-1-amigos-con-mcxboxbroadcast-recomendada)) o con BedrockConnect
+([XBOX.md](XBOX.md#opción-2-destacados-con-bedrockconnect))).
 
 ### Recursos
 
@@ -51,7 +51,7 @@ fijada desde el panel, manda la del panel hasta que pulses **Usar la de la varia
 Antes de instalar una versión nueva, mira que la Xbox ya tenga esa versión del juego: si el servidor va por delante,
 la Xbox no puede entrar (error «Terracotta» o «versión desactualizada»). El mismo día que se actualice la Xbox con un
 protocolo nuevo, actualiza también MCXboxBroadcast o BedrockConnect si los usas
-([TRUENAS.md](TRUENAS.md#7c-xbox-entrar-desde-amigos-con-mcxboxbroadcast)).
+([XBOX.md](XBOX.md#opción-1-amigos-con-mcxboxbroadcast-recomendada)).
 
 Sin versión fijada, la comprueba cada día a las 05:00 y, si hay una nueva, avisa por el chat a los 5 y 1 minutos y
 actualiza.
