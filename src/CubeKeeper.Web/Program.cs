@@ -70,12 +70,18 @@ builder.Services.ConfigureApplicationCookie(o =>
 {
     o.Cookie.Name = "CubeKeeper.Auth";
     o.Cookie.HttpOnly = true;
-    o.Cookie.SameSite = SameSiteMode.Strict;
+    // Lax y no Strict: con Strict, el navegador no envía la cookie cuando el panel se abre desde fuera (la app instalada
+    // en Android, un enlace, el aviso de ntfy) y pediría el login cada vez aunque se marque «Recordarme». Lax sigue sin
+    // enviarla en formularios de otros sitios, y cada formulario del panel lleva además su token antifalsificación.
+    o.Cookie.SameSite = SameSiteMode.Lax;
     o.LoginPath = "/login";
     o.AccessDeniedPath = "/sin-permiso";
     o.ExpireTimeSpan = TimeSpan.FromDays(7);
     o.SlidingExpiration = true;
 });
+// La cookie antifalsificación, también Lax (por defecto es Strict): si no, al abrir el login desde la app instalada
+// no se enviaba ni se guardaba, y el primer intento de entrar fallaba siempre con «La página había caducado».
+builder.Services.AddAntiforgery(o => o.Cookie.SameSite = SameSiteMode.Lax);
 builder.Services.AddAuthorizationBuilder()
     .SetFallbackPolicy(new AuthorizationPolicyBuilder().RequireAuthenticatedUser().Build())
     .AddPolicy("Admin", p => p.RequireRole(PanelRoles.Admin));

@@ -133,7 +133,7 @@ socket de Docker, otro contenedor no puede llegar a esa consola.
   variante *chiseled*.
 - **Seguridad.** Usuario 568, `read_only`, `cap_drop: ALL`, `no-new-privileges` y límites de CPU y memoria. Panel
   detrás de NPM (Access List) **y** filtro de IP propio, porque con Host Network el puerto también responde en la
-  IP del NAS. Cookie `HttpOnly` y `SameSite=Strict`, bloqueo tras 5 intentos fallidos y contraseña inicial por
+  IP del NAS. Cookie `HttpOnly` y `SameSite=Lax` (con `Strict`, la app instalada en Android pedía el login cada vez; los formularios llevan además token antifalsificación), bloqueo tras 5 intentos fallidos y contraseña inicial por
   variable de entorno (o `_FILE`). Claves de Data Protection cifradas con AES-256-GCM y una clave derivada (PBKDF2)
   de `CUBEKEEPER_KEY_SECRET`, que va en la configuración de la app y no en el dataset; si el secreto falta o no
   coincide, la app no arranca (Data Protection crearía otra clave en silencio). Cabeceras: CSP estricta (sin
