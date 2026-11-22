@@ -4,8 +4,10 @@ Panel web para gestionar un servidor **Bedrock Dedicated Server** (BDS) en casa,
 CubeKeeper ejecuta el `bedrock_server` oficial como proceso hijo dentro de su propio contenedor:
 lo descarga, lo arranca y lo para, lee su consola y le envía comandos. No necesita el socket de Docker.
 
-> CubeKeeper no está afiliado a Mojang ni a Microsoft. Al instalar el servidor aceptas la
-> [EULA de Minecraft](https://www.minecraft.net/eula).
+> No es un producto oficial de Minecraft ni está aprobado por Mojang o Microsoft, ni afiliado a ellos. CubeKeeper
+> no incluye BDS: cada instalación lo descarga de la web oficial, y al instalarlo aceptas la
+> [EULA de Minecraft](https://www.minecraft.net/eula). Las herramientas de terceros (uNmINeD, bedrock-viz,
+> MCXboxBroadcast, BedrockConnect) tampoco se incluyen y tienen sus propias licencias.
 
 ## Estado
 
@@ -148,3 +150,7 @@ dotnet build tests/FakeBedrockServer -c Release
 ```bash
 cd e2e && npm ci && npx playwright install chromium && npx playwright test
 ```
+
+## Licencia
+
+[MIT](LICENSE): se puede usar, modificar y redistribuir libremente, manteniendo el aviso de copyright. Sin garantía.
