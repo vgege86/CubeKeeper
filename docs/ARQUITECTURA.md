@@ -181,7 +181,7 @@ socket de Docker, otro contenedor no puede llegar a esa consola.
 ### Pendiente de comprobar en el NAS
 
 - ~~El enlace `minecraft://?addExternalServer=…` desde Edge en la Xbox~~: comprobado que no añade el servidor. La Xbox
-  entra con BedrockConnect (reglas `$dnsrewrite` en AdGuard para todos los destacados; comprobado con The Hive, `nethernet.playhive.com`); el panel lo explica en lugar del botón.
+  entra con BedrockConnect (reglas `$dnsrewrite` en AdGuard para todos los destacados; comprobado con The Hive, `nethernet.playhive.com`); el panel lo explica en lugar del botón. Con la 26.62 la Xbox dejó de usar el DNS para los destacados: alternativa con MCXboxBroadcast (cuenta secundaria que anuncia el servidor en Amigos y pasa la negociación de NetherNet a BDS por HTTP; `deploy/mcxboxbroadcast`).
 
 - Realms con la cuenta real: la cadena de Xbox y la API de Realms solo se han probado contra servidores simulados.
 

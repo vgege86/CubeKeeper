@@ -1,0 +1,37 @@
+# MCXboxBroadcast: anuncia CubeKeeper en la pestaña «Amigos» de la Xbox (ver docs/TRUENAS.md, apartado 7c).
+# Cópialo a /mnt/vms/mcxboxbroadcast/config.yml antes de arrancar la app.
+session:
+  # El servidor de juego: la IP del NAS y el puerto de CubeKeeper (server-port, 19132).
+  remote-address: 192.168.1.21
+  remote-port: "19132"
+  # Cada cuánto actualiza el nombre del mundo y los jugadores en Xbox (mínimo 20 s).
+  update-interval: 30
+  # Copia del servidor el nombre, el modo de juego y los jugadores conectados.
+  query-server: true
+  # Si el servidor está parado, anuncia igualmente los datos de abajo (si no, desaparece de Amigos).
+  config-fallback: false
+  session-info:
+    host-name: CubeKeeper
+    world-name: Servidor de casa
+    game-mode: Survival
+    players: 0
+    max-players: 10
+  hide-old-sessions: true
+  allow-ipv6: false
+friend-sync:
+  update-interval: 60
+  # Acepta solo las solicitudes de amistad: así basta con agregar la cuenta desde la Xbox.
+  # Quien la agregue verá el servidor, pero para entrar sigue mandando el Acceso de CubeKeeper.
+  auto-friend: true
+  initial-invite: true
+  expiry:
+    # No borrar amigos que lleven tiempo sin jugar (los niños no tendrían que volver a agregarla).
+    enabled: false
+    days: 15
+    check: 1800
+notifications:
+  enabled: false
+  webhook-url: ""
+debug-mode: false
+suppress-session-update-message: true
+config-version: 9

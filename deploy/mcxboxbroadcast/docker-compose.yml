@@ -1,0 +1,41 @@
+# MCXboxBroadcast: CubeKeeper en la pestaña «Amigos» de la Xbox, sin DNS ni BedrockConnect
+# (ver docs/TRUENAS.md, apartado 7c). App aparte en TrueNAS (Apps → Discover Apps → ⋮ → Install via YAML),
+# nombre: mcxboxbroadcast.
+#
+# Antes de instalar: dataset vms/mcxboxbroadcast (preset Apps, de 568) con config.yml dentro
+# (deploy/mcxboxbroadcast/config.yml). La primera vez, mira el registro de la app: sale un código para
+# microsoft.com/link, que se usa con la cuenta SECUNDARIA (nunca la tuya ni la de los niños).
+services:
+  mcxboxbroadcast:
+    # Imagen oficial del proyecto (github.com/MCXboxBroadcast/Broadcaster). Solo publica «latest»: al actualizarse
+    # el juego, Apps → mcxboxbroadcast → Update (o Edit → Save) para bajar la nueva.
+    image: ghcr.io/mcxboxbroadcast/standalone:latest
+    restart: unless-stopped
+
+    # Red normal de Docker: solo sale a Internet (Xbox Live) y habla con el servidor por la IP del NAS.
+    # No abre puertos: la partida va de la Xbox a CubeKeeper directamente.
+    user: "568:568"
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+
+    environment:
+      TZ: Europe/Madrid
+
+    volumes:
+      # config.yml y la sesión de la cuenta (carpeta cache, se crea sola). Sin esto habría que iniciar sesión
+      # cada vez que se reinicie.
+      - /mnt/vms/mcxboxbroadcast:/opt/app/config
+
+    deploy:
+      resources:
+        limits:
+          cpus: "1"
+          memory: 512M
+
+    logging:
+      driver: json-file
+      options:
+        max-size: "5m"
+        max-file: "2"

@@ -135,24 +135,32 @@ desde ahí se entra al tuyo.
 Se desvían **todos** los destacados que consulta Minecraft (salen en el registro de AdGuard al abrir la pestaña
 Servidores). Así, si uno deja de funcionar, se prueba con otro sin tocar nada:
 
-| Servidor destacado | Dominio | En la Xbox (26.60) |
-|---|---|---|
-| The Hive | `nethernet.playhive.com` | ✅ Sale el menú |
-| Lifeboat | `mco.lbsg.net` | Funcionó el primer día; luego entraba al Lifeboat real |
-| Mineville / InPvP (MegaSMP, GenWars, OneBlockOnline) | `play.inpvp.net` | Sin probar |
-| MegaSMP | `play.megasmp.gg` | Sin probar |
-| Enchanted | `play.enchanted.gg` | Sin probar |
-| CubeCraft | `mco.cubecraft.net` | Sin probar (BedrockConnect no lo da como compatible) |
+| Servidor destacado | Dominio |
+|---|---|
+| The Hive | `nethernet.playhive.com` y `hivebedrock.network` (con `||` cubre `geo.`, `fr.`, `sg.`…) |
+| Lifeboat | `mco.lbsg.net` |
+| Mineville / InPvP | `play.inpvp.net` |
+| Galaxite | `play.galaxite.net` |
+| Enchanted | `play.enchanted.gg` |
+| MegaSMP | `play.megasmp.gg` |
+| CubeCraft | `mco.cubecraft.net` (BedrockConnect no lo da como compatible) |
+
+> **Noviembre de 2026: con la Xbox en 26.62 ha dejado de funcionar con todos.** AdGuard marca los dominios como
+> «Reescrito», pero la Xbox entra en el servidor real y en el registro de BedrockConnect no aparece nada: el juego
+> ya no usa esa respuesta para conectarse ([issue #712](https://github.com/Pugmatt/BedrockConnect/issues/712)).
+> Antes funcionaba con The Hive (26.60). Si te pasa, usa [MCXboxBroadcast](#7c-xbox-entrar-desde-amigos-con-mcxboxbroadcast).
 
 1. En **AdGuard → Filtros → Reglas de filtrado personalizadas**, pega este bloque y guarda:
 
    ```
    ! CubeKeeper: destacados de Minecraft → BedrockConnect (menú para entrar al servidor de casa desde la Xbox)
+   ||hivebedrock.network^$dnsrewrite=104.238.130.180
    ||nethernet.playhive.com^$dnsrewrite=104.238.130.180
    ||mco.lbsg.net^$dnsrewrite=104.238.130.180
    ||play.inpvp.net^$dnsrewrite=104.238.130.180
-   ||play.megasmp.gg^$dnsrewrite=104.238.130.180
+   ||play.galaxite.net^$dnsrewrite=104.238.130.180
    ||play.enchanted.gg^$dnsrewrite=104.238.130.180
+   ||play.megasmp.gg^$dnsrewrite=104.238.130.180
    ||mco.cubecraft.net^$dnsrewrite=104.238.130.180
    ```
 
@@ -235,6 +243,79 @@ mismo día suele hacer falta también la versión nueva de BDS: CubeKeeper avisa
 - **Sale el menú pero no conecta a CubeKeeper**: la Xbox se conecta al NAS directamente, como con el público; revisa
   que en `custom_servers.json` esté `192.168.1.21` y el puerto `19132`.
 - Desde el propio NAS no se puede hacer ping a esa IP (es normal con macvlan); desde otro equipo de casa sí.
+
+## 7c. Xbox: entrar desde Amigos con MCXboxBroadcast
+
+[MCXboxBroadcast](https://github.com/MCXboxBroadcast/Broadcaster) es una app pequeña que inicia sesión con una
+cuenta de Microsoft **secundaria** y se queda siempre «jugando» en CubeKeeper. Quien tenga esa cuenta como amiga ve
+el servidor en la pestaña **Amigos** del juego y entra desde ahí, como a la partida de un amigo. Sin DNS, sin
+AdGuard y sin BedrockConnect. No sustituye a CubeKeeper: solo anuncia el servidor.
+
+Cómo funciona: la Xbox pide unirse a través de Xbox Live, MCXboxBroadcast pasa esa petición a CubeKeeper
+(TCP `19132`) y la partida va directamente de la Xbox al NAS. Cada jugador entra con su propia cuenta, así que el
+Acceso, la Familia y las estadísticas funcionan igual. Con el acceso en **Abierto**, cualquiera que agregue la
+cuenta podría entrar: mejor **Solo aprobados**.
+
+Hace falta que el juego de la Xbox tenga la **misma versión** que el servidor (en el Panel se ve la del servidor).
+
+1. **Cuenta secundaria.** Crea una cuenta de Microsoft nueva (gratis, en `signup.live.com`) y entra una vez en
+   `xbox.com` para que tenga gamertag. No uses la tuya ni la de los niños: el proyecto avisa de que la cuenta
+   podría ser sancionada porque imita a un cliente del juego. Si la cuenta de los niños es infantil, en
+   `family.microsoft.com` tiene que poder agregar amigos y unirse a partidas multijugador.
+2. **Dataset** `vms/mcxboxbroadcast` (preset Apps, de 568) y copia dentro
+   [`deploy/mcxboxbroadcast/config.yml`](../deploy/mcxboxbroadcast/config.yml). Ya trae la IP del NAS y el puerto;
+   el nombre que sale en Amigos se cambia en `host-name` y `world-name`.
+
+   ```bash
+   sudo chown -R 568:568 /mnt/vms/mcxboxbroadcast
+   ```
+
+3. **Apps → Discover Apps → ⋮ → Install via YAML**, nombre `mcxboxbroadcast`, con
+   [`deploy/mcxboxbroadcast/docker-compose.yml`](../deploy/mcxboxbroadcast/docker-compose.yml). No hay nada que
+   cambiar.
+4. **Iniciar sesión.** En el registro de la app sale un código:
+
+   ```bash
+   sudo docker logs -f ix-mcxboxbroadcast-mcxboxbroadcast-1
+   ```
+
+   `To sign in, use a web browser to open the page https://www.microsoft.com/link and enter the code XXXXXXXX`.
+   Ábrelo en el móvil e inicia sesión con la **cuenta secundaria**. La sesión se guarda en el dataset (carpeta
+   `cache`): no hay que repetirlo al reiniciar.
+5. **Agregar como amigo.** En la Xbox (o en la app de Xbox del móvil), con la cuenta de cada jugador, busca el
+   gamertag de la cuenta secundaria y agrégalo. La app acepta sola las solicitudes y le manda una invitación.
+6. **Jugar:** Minecraft → **Jugar → Amigos** → «CubeKeeper» en *Partidas de amigos*. Si es la primera vez y el
+   acceso está en **Solo aprobados**, apruébalo en **Acceso** como siempre.
+
+Con esto ya no hacen falta las reglas de AdGuard ni BedrockConnect (puedes desactivarlas con `!` o borrarlas).
+
+**Otros dispositivos.** En PC (también ROG Ally y otras portátiles con Windows), móvil y tablet se puede añadir el
+servidor por IP (`192.168.1.21`, puerto `19132`) y no hace falta nada de esto; pero si la cuenta del jugador tiene
+la secundaria como amiga, también lo verán en Amigos. PlayStation y Switch funcionan como la Xbox.
+
+**Desde fuera de casa:**
+
+- **PC, ROG Ally, móvil o tablet:** con la VPN de WireGuard conectada, igual que en casa (`192.168.1.21:19132`).
+  Es lo recomendado: no se abre nada en el router.
+- **Xbox fuera de casa** (por ejemplo, en casa de un amigo): no puede usar WireGuard. La petición le llega igual por
+  Amigos, pero la partida tiene que llegar al NAS desde Internet. Sin tocar el router puede funcionar o no, según
+  la red de los dos lados (sin probar). Si hace falta, se abriría en el router solo el puerto UDP de la partida
+  (`server-udp-ports`, 19140) hacia `192.168.1.21`, con el acceso en **Solo aprobados**. El panel nunca se abre a
+  Internet. Pruébalo antes en casa y, si lo necesitas, lo vemos.
+
+**Si no funciona:**
+
+- **No aparece en Amigos:** en el registro de la app tiene que salir que la sesión se ha creado y actualizado. Si
+  el servidor está parado, desaparece (se puede dejar visible con `config-fallback: true`). Comprueba que el
+  jugador y la cuenta secundaria son amigos en los dos sentidos.
+- **Aparece pero da error al unirse:** mira el número del error. Si el juego dice que la versión no coincide,
+  actualiza la Xbox o instala en el Panel la que tenga la Xbox. Si es *InitialConnection-81* o *-84*,
+  MCXboxBroadcast no llega a CubeKeeper: revisa `remote-address` (`192.168.1.21`) y que el servidor esté en marcha.
+- **Tras actualizarse el juego deja de funcionar:** **Apps → mcxboxbroadcast → Update** (o Edit → Save) para bajar
+  la última imagen. El proyecto publica soporte para cada versión nueva en pocos días.
+- **La app se reinicia sin parar con «Permission denied»:** el dataset no es de 568 (`sudo chown -R 568:568
+  /mnt/vms/mcxboxbroadcast`).
+- **Pide iniciar sesión otra vez:** Microsoft caducó la sesión; repite el paso 4.
 
 ## 8. Actualizar
 
