@@ -2,8 +2,8 @@
 # (ver docs/TRUENAS.md, apartado 7c). App aparte en TrueNAS (Apps → Discover Apps → ⋮ → Install via YAML),
 # nombre: mcxboxbroadcast.
 #
-# Antes de instalar: dataset vms/mcxboxbroadcast (preset Apps, de 568) con config.yml dentro
-# (deploy/mcxboxbroadcast/config.yml). La primera vez, mira el registro de la app: sale un código para
+# Antes de instalar: dataset vms/mcxboxbroadcast con config.yml dentro (deploy/mcxboxbroadcast/config.yml) y de
+# 1001:1001, el usuario «app» de la imagen (sudo chown -R 1001:1001 /mnt/vms/mcxboxbroadcast). La primera vez, mira el registro de la app: sale un código para
 # microsoft.com/link, que se usa con la cuenta SECUNDARIA (nunca la tuya ni la de los niños).
 services:
   mcxboxbroadcast:
@@ -14,7 +14,9 @@ services:
 
     # Red normal de Docker: solo sale a Internet (Xbox Live) y habla con el servidor por la IP del NAS.
     # No abre puertos: la partida va de la Xbox a CubeKeeper directamente.
-    user: "568:568"
+    # Sin «user: 568:568»: el programa está en /opt/app, que solo puede abrir el usuario «app» (1001) de la imagen;
+    # con otro usuario sale «Unable to access jarfile» y se reinicia sin parar (comprobado en el NAS). Va como 1001,
+    # no como root, sin capacidades y sin poder escalar privilegios.
     cap_drop:
       - ALL
     security_opt:

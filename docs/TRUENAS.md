@@ -262,12 +262,22 @@ Hace falta que el juego de la Xbox tenga la **misma versión** que el servidor (
    `xbox.com` para que tenga gamertag. No uses la tuya ni la de los niños: el proyecto avisa de que la cuenta
    podría ser sancionada porque imita a un cliente del juego. Si la cuenta de los niños es infantil, en
    `family.microsoft.com` tiene que poder agregar amigos y unirse a partidas multijugador.
-2. **Dataset** `vms/mcxboxbroadcast` (preset Apps, de 568) y copia dentro
-   [`deploy/mcxboxbroadcast/config.yml`](../deploy/mcxboxbroadcast/config.yml). Ya trae la IP del NAS y el puerto;
-   el nombre que sale en Amigos se cambia en `host-name` y `world-name`.
+2. **Dataset** `vms/mcxboxbroadcast` con
+   [`deploy/mcxboxbroadcast/config.yml`](../deploy/mcxboxbroadcast/config.yml) dentro. Ya trae la IP del NAS y el
+   puerto; el nombre que sale en Amigos se cambia en `host-name` y `world-name`. Desde la shell:
 
    ```bash
-   sudo chown -R 568:568 /mnt/vms/mcxboxbroadcast
+   sudo mkdir -p /mnt/vms/mcxboxbroadcast
+   ```
+
+   ```bash
+   sudo curl -fsSL -o /mnt/vms/mcxboxbroadcast/config.yml https://raw.githubusercontent.com/vgege86/CubeKeeper/main/deploy/mcxboxbroadcast/config.yml
+   ```
+
+   La carpeta tiene que ser del usuario `app` de la imagen (1001), no de 568:
+
+   ```bash
+   sudo chown -R 1001:1001 /mnt/vms/mcxboxbroadcast
    ```
 
 3. **Apps → Discover Apps → ⋮ → Install via YAML**, nombre `mcxboxbroadcast`, con
@@ -313,8 +323,10 @@ la secundaria como amiga, también lo verán en Amigos. PlayStation y Switch fun
   MCXboxBroadcast no llega a CubeKeeper: revisa `remote-address` (`192.168.1.21`) y que el servidor esté en marcha.
 - **Tras actualizarse el juego deja de funcionar:** **Apps → mcxboxbroadcast → Update** (o Edit → Save) para bajar
   la última imagen. El proyecto publica soporte para cada versión nueva en pocos días.
-- **La app se reinicia sin parar con «Permission denied»:** el dataset no es de 568 (`sudo chown -R 568:568
-  /mnt/vms/mcxboxbroadcast`).
+- **Se reinicia sin parar con «Unable to access jarfile»:** el YAML lleva `user: "568:568"`; quítalo (la imagen
+  tiene que ir con su usuario `app`, 1001).
+- **Se reinicia sin parar con «Permission denied»** o no guarda la sesión: la carpeta no es de 1001
+  (`sudo chown -R 1001:1001 /mnt/vms/mcxboxbroadcast`).
 - **Pide iniciar sesión otra vez:** Microsoft caducó la sesión; repite el paso 4.
 
 ## 8. Actualizar
