@@ -209,7 +209,7 @@ else
         _busy = true;
         _message = "Generando el mapa… puede tardar varios minutos. Puedes salir de la página: seguirá en segundo plano.";
         _messageIsError = false;
-        StateHasChanged();
+        // Blazor vuelve a pintar solo al primer await: no hace falta StateHasChanged() aquí.
         try
         {
             await AuditAsync("map.render", Maps.ActiveEngine.Name);

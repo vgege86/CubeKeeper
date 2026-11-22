@@ -100,7 +100,7 @@ Otros ajustes avanzados se pueden dar con la notación de .NET, por ejemplo
 
 ## Desarrollo
 
-Requisitos: SDK de .NET 10.
+Requisitos: SDK de .NET 11.
 
 ```bash
 dotnet test
@@ -114,7 +114,7 @@ En Windows (PowerShell):
 ```powershell
 dotnet build tests/FakeBedrockServer
 $env:CubeKeeper__Bds__LaunchCommand = "dotnet"
-$env:CubeKeeper__Bds__LaunchArguments = "$PWD\tests\FakeBedrockServer\bin\Debug\net10.0\FakeBedrockServer.dll"
+$env:CubeKeeper__Bds__LaunchArguments = "$PWD\tests\FakeBedrockServer\bin\Debug\net11.0\FakeBedrockServer.dll"
 dotnet run --project src/CubeKeeper.Web
 ```
 
@@ -125,7 +125,7 @@ dotnet build tests/FakeBedrockServer
 ```
 
 ```bash
-CubeKeeper__Bds__LaunchCommand=dotnet CubeKeeper__Bds__LaunchArguments="$PWD/tests/FakeBedrockServer/bin/Debug/net10.0/FakeBedrockServer.dll" dotnet run --project src/CubeKeeper.Web
+CubeKeeper__Bds__LaunchCommand=dotnet CubeKeeper__Bds__LaunchArguments="$PWD/tests/FakeBedrockServer/bin/Debug/net11.0/FakeBedrockServer.dll" dotnet run --project src/CubeKeeper.Web
 ```
 
 Abre `http://localhost:5229` y entra con `admin` / `desarrollo123` (solo en desarrollo; los datos van a `.devdata/`).

@@ -16,7 +16,7 @@ jobs:
       - uses: actions/checkout@v7
       - uses: actions/setup-dotnet@v6
         with:
-          dotnet-version: "10.0.x"
+          dotnet-version: "11.0.x"
       - run: dotnet restore
       - run: dotnet build --no-restore -c Release
       - run: dotnet test --no-build -c Release --logger "trx" --results-directory TestResults
@@ -32,7 +32,7 @@ jobs:
       - uses: actions/checkout@v7
       - uses: actions/setup-dotnet@v6
         with:
-          dotnet-version: "10.0.x"
+          dotnet-version: "11.0.x"
       - uses: actions/setup-node@v7
         with:
           node-version: "22"
@@ -89,6 +89,51 @@ jobs:
         id: ver
         run: |
           if [[ "${GITHUB_REF}" == refs/tags/v* ]]; then echo "version=${GITHUB_REF#refs/tags/v}" >> "$GITHUB_OUTPUT"; else echo "version=0.1.0-${GITHUB_SHA::7}" >> "$GITHUB_OUTPUT"; fi
+      # Antes de publicar, la imagen se arranca como en el NAS (solo lectura, sin capacidades, /data en un volumen)
+      # y se comprueba que responde. Así se detecta una imagen que no arranca (por ejemplo, un runtime de .NET de
+      # otra versión principal), que las pruebas anteriores no pueden ver.
+      - name: Construir la imagen para probarla
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          platforms: linux/amd64
+          load: true
+          tags: cubekeeper:prueba
+          build-args: VERSION=${{ steps.ver.outputs.version }}
+          cache-from: type=gha
+      - name: Probar que la imagen arranca y responde
+        run: |
+          docker run -d --name ck -p 18765:8765 \
+            --read-only --tmpfs /tmp --cap-drop ALL --security-opt no-new-privileges:true \
+            -e CUBEKEEPER_ADMIN_PASSWORD=contraseña-de-pruebas -e CUBEKEEPER_KEY_SECRET=secreto-de-pruebas-ci-123456 \
+            -v ck-data:/data cubekeeper:prueba
+          for i in $(seq 1 60); do
+            if curl -fsS http://localhost:18765/health; then echo; break; fi
+            if [ "$(docker inspect -f '{{.State.Running}}' ck)" != "true" ]; then break; fi
+            sleep 2
+          done
+          if ! curl -fsS http://localhost:18765/health > /dev/null || ! curl -fsS http://localhost:18765/login | grep -q CubeKeeper; then
+            echo "La imagen no arranca o no responde. Registro del contenedor:"
+            docker logs ck
+            exit 1
+          fi
+          echo "La imagen arranca: /health y /login responden."
+      # El servidor de Minecraft (BDS) va dentro de la imagen: se comprueba que en su sistema (Ubuntu) tiene todas las
+      # librerías que necesita y que arranca. Así un cambio de la imagen base no se descubre en el NAS.
+      - name: Probar el servidor de Minecraft (BDS) dentro de la imagen
+        run: |
+          URL=$(curl -fsSL https://net.web.minecraft-services.net/api/v1.0/download/links \
+            | jq -r '.result.links[] | select(.downloadType=="serverBedrockLinux") | .downloadUrl' || true)
+          if [ -z "$URL" ]; then URL="https://www.minecraft.net/bedrockdedicatedserver/bin-linux/bedrock-server-1.26.65.1.zip"; fi
+          echo "BDS: $URL"
+          curl -fsSL -A "Mozilla/5.0" -o bds.zip "$URL"
+          mkdir bds && unzip -q bds.zip -d bds && chmod -R a+rwX bds
+          docker run --rm --user 568:568 -v "$PWD/bds:/bds" -w /bds --entrypoint bash cubekeeper:prueba -c '
+            echo "Sistema: $(. /etc/os-release && echo $PRETTY_NAME)"
+            if ldd ./bedrock_server | grep "not found"; then echo "Faltan librerías para BDS en la imagen"; exit 1; fi
+            (sleep 60; echo stop) | timeout 90 ./bedrock_server > bds.log 2>&1 || true
+            cat bds.log | tail -20
+            grep -q "Server started" bds.log'
       - uses: docker/build-push-action@v7
         with:
           context: .

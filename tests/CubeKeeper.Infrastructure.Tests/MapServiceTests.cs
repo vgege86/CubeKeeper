@@ -68,7 +68,10 @@ public class MapServiceTests
 
         var exe = await maps.InstallAsync(MapEngines.Unmined, new MemoryStream(TarGz("unmined-cli", FakeRenderer)), "unmined-cli_linux-x64.tar.gz");
         Assert.EndsWith("unmined-cli", exe);
-        Assert.True(File.GetUnixFileMode(exe).HasFlag(UnixFileMode.UserExecute));
+        if (!OperatingSystem.IsWindows())
+        {
+            Assert.True(File.GetUnixFileMode(exe).HasFlag(UnixFileMode.UserExecute));
+        }
 
         var result = await maps.RenderAsync();
 

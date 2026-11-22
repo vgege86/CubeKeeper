@@ -57,7 +57,7 @@ internal sealed class SupervisorFixture : IAsyncDisposable
         {
             var baseDir = AppContext.BaseDirectory;
             var config = baseDir.Contains($"{Path.DirectorySeparatorChar}Release{Path.DirectorySeparatorChar}") ? "Release" : "Debug";
-            var dll = Path.GetFullPath(Path.Combine(baseDir, "..", "..", "..", "..", "FakeBedrockServer", "bin", config, "net10.0", "FakeBedrockServer.dll"));
+            var dll = Path.GetFullPath(Path.Combine(baseDir, "..", "..", "..", "..", "FakeBedrockServer", "bin", config, "net11.0", "FakeBedrockServer.dll"));
             return File.Exists(dll) ? dll : throw new FileNotFoundException("Compila FakeBedrockServer antes de los tests.", dll);
         }
     }

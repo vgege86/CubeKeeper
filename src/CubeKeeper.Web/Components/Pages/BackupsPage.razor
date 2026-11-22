@@ -213,7 +213,7 @@
     {
         _busy = true;
         _message = null;
-        StateHasChanged();
+        // Blazor vuelve a pintar solo al primer await: no hace falta StateHasChanged() aquí.
         try
         {
             var result = await Verifier.VerifyAsync();

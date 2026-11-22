@@ -35,14 +35,13 @@ public class StorageTests
     [Theory]
     [InlineData(100L, 5L, true)]    // 5 % libre
     [InlineData(1000L, 500L, true)] // la mitad libre, pero menos de 5 GB
-    public void Low_when_below_percent_or_gigabytes(long totalGb, long freeGb, bool low)
+    public async Task Low_when_below_percent_or_gigabytes(long totalGb, long freeGb, bool low)
     {
-        var f = new SupervisorFixture();
+        await using var f = new SupervisorFixture();
         var (storage, _, _) = Create(f);
         const long gb = 1024L * 1024 * 1024;
         Assert.Equal(low, storage.IsLow(totalGb * gb / 1000, freeGb * gb / 1000));
         Assert.False(storage.IsLow(1000 * gb, 500 * gb));
-        f.DisposeAsync().AsTask().Wait();
     }
 
     [Fact]

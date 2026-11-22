@@ -14,7 +14,7 @@ socket de Docker, otro contenedor no puede llegar a esa consola.
 
 ```
 ┌──────────── Contenedor cubekeeper (Host Network, UID 568, solo escribe en /data y /tmp) ────────────┐
-│ ASP.NET Core 10 (Kestrel :8765)                                                                     │
+│ ASP.NET Core 11 (Kestrel :8765)                                                                     │
 │  ├─ Blazor Web App: login estático (SSR) + páginas interactivas (Interactive Server / SignalR)      │
 │  ├─ /health: panel vivo + TCP a server-port si el servidor debe estar encendido                     │
 │  ├─ Identity (cookie, roles; TOTP más adelante) · filtro de IP · cabeceras de NPM                   │
@@ -129,7 +129,7 @@ socket de Docker, otro contenedor no puede llegar a esa consola.
   pueden cambiar con `CubeKeeper__Realms__*` si Microsoft o Mojang las mueven.
 - **Salud por TCP**, no por RakNet. Con NetherNet, BDS escucha en TCP en `server-port`. Se usa `server-ip` si está
   definida. Con el servidor parado a propósito, `/health` responde sano: el contenedor funciona.
-- **Imagen** `mcr.microsoft.com/dotnet/aspnet:10.0` (Ubuntu 24.04, la base de BDS) con `curl` y `tzdata`. Sin la
+- **Imagen** `mcr.microsoft.com/dotnet/aspnet:11.0` (Ubuntu 26.04; .NET 11 ya no publica imagen sobre 24.04. El CI comprueba que BDS tiene sus librerías y arranca en ella) con `curl` y `tzdata`. Sin la
   variante *chiseled*.
 - **Seguridad.** Usuario 568, `read_only`, `cap_drop: ALL`, `no-new-privileges` y límites de CPU y memoria. Panel
   detrás de NPM (Access List) **y** filtro de IP propio, porque con Host Network el puerto también responde en la

@@ -8,7 +8,7 @@ const path = require('path');
 
 const root = path.resolve(__dirname, '..');
 const panelDll = process.env.PANEL_DLL || path.join(root, 'artifacts', 'web', 'CubeKeeper.Web.dll');
-const fakeBds = process.env.FAKE_BDS_DLL || path.join(root, 'tests', 'FakeBedrockServer', 'bin', 'Release', 'net10.0', 'FakeBedrockServer.dll');
+const fakeBds = process.env.FAKE_BDS_DLL || path.join(root, 'tests', 'FakeBedrockServer', 'bin', 'Release', 'net11.0', 'FakeBedrockServer.dll');
 const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'cubekeeper-e2e-'));
 fs.mkdirSync(path.join(dataDir, 'server'), { recursive: true });
 fs.writeFileSync(path.join(dataDir, 'server', 'server.properties'), 'server-port=19232\nmax-players=10\n');
@@ -26,6 +26,8 @@ module.exports = defineConfig({
     baseURL: 'http://localhost:5229',
     viewport: { width: 1200, height: 900 },
     trace: process.env.CI ? 'retain-on-failure' : 'off',
+    // En local se puede usar un Chromium ya instalado (PW_CHROMIUM_PATH); en el CI, el que instala Playwright.
+    launchOptions: process.env.PW_CHROMIUM_PATH ? { executablePath: process.env.PW_CHROMIUM_PATH } : {},
   },
   webServer: [
     {

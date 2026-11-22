@@ -1,7 +1,7 @@
 # syntax=docker/dockerfile:1
 
 # ---------- Compilación ----------
-FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
+FROM mcr.microsoft.com/dotnet/sdk:11.0 AS build
 WORKDIR /src
 
 # Restaurar primero (capa cacheable).
@@ -23,7 +23,7 @@ RUN test -f /app/wwwroot/_framework/blazor.web.js
 # ---------- Ejecución ----------
 # En .NET 10 la imagen aspnet por defecto es Ubuntu 24.04 (noble), la misma base para la que
 # Mojang compila bedrock_server. No se usa la variante "chiseled": BDS necesita librerías del sistema.
-FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS final
+FROM mcr.microsoft.com/dotnet/aspnet:11.0 AS final
 
 # curl: healthcheck del contenedor (y arrastra libcurl4t64, que usa bedrock_server).
 # tzdata: zona horaria (TZ) para las tareas programadas y los registros.
