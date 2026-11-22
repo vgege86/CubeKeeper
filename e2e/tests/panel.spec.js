@@ -237,3 +237,27 @@ test('un enlace de aviso inventado no aprueba a nadie ni pide login', async ({ r
   // Una acción que no existe no hace nada (redirige al login como cualquier otra página).
   expect((await request.post('/acceso/aviso/x/borrar-todo', { maxRedirects: 0 })).status()).not.toBe(200);
 });
+
+test('abrir el panel desde fuera (app de Android, enlace) mantiene la sesión y el login funciona a la primera', async ({ browser }) => {
+  const ctx = await browser.newContext();
+  const page = await ctx.newPage();
+  // Sin sesión: el login abierto desde fuera entra al primer intento (antes caducaba siempre).
+  await page.goto('/login');                       // deja una cookie antifalsificación antigua
+  await page.goto('http://127.0.0.1:5300/lanzador');
+  await page.click('#login');
+  await page.fill('input[autocomplete=username]', ADMIN.user);
+  await page.fill('input[type=password]', ADMIN.password);
+  await page.check('input[type=checkbox]');
+  await page.click('button[type=submit]');
+  await expect(page).toHaveURL('/');
+  // Con «Recordarme», abrir el panel desde fuera no vuelve a pedir el login.
+  await page.goto('http://127.0.0.1:5300/lanzador');
+  await page.click('#go');
+  await expect(page).toHaveURL(/\/jugadores$/);
+  // Un formulario de otra web no puede usar la sesión (cerrarla, en este caso).
+  await page.goto('http://127.0.0.1:5300/lanzador');
+  await page.click('#evil button');
+  await page.goto('/jugadores');
+  await expect(page).toHaveURL(/\/jugadores$/);
+  await ctx.close();
+});

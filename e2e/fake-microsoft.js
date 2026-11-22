@@ -54,6 +54,16 @@ http.createServer((req, res) => {
       if (path === '/xsts') return send({ Token: 'xsts', NotAfter: '2099-01-01T00:00:00Z', DisplayClaims: { xui: [{ uhs: 'u', xid: '1', gtg: 'Papa86' }] } });
       return send({ Token: 't', DisplayClaims: { xui: [{ uhs: 'u' }] } });
     }
+    // Página de otro sitio (127.0.0.1 ≠ localhost) para simular abrir el panel desde fuera (lanzador de Android, enlace)
+    // y un formulario de otra web que intenta cerrar la sesión.
+    if (path === '/lanzador') {
+      const html = '<a id="go" href="http://localhost:5229/jugadores">Abrir</a>' +
+        '<a id="login" href="http://localhost:5229/login">Login</a>' +
+        '<form id="evil" method="post" action="http://localhost:5229/logout"><button>Salir</button></form>';
+      const data = Buffer.from(html);
+      res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8', 'Content-Length': data.length });
+      return res.end(data);
+    }
     if (path === '/hub/tags') return send({ results: [{ name: 'latest' }, { name: '1.73.0' }, { name: '1.72.1' }] });
     if (path === '/worlds') return send({ servers: [
       { id: 42, name: 'Casa', owner: '', ownerUUID: '1', state: 'OPEN', activeSlot: 3, expired: false },
