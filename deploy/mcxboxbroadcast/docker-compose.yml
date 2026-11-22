@@ -3,8 +3,9 @@
 # nombre: mcxboxbroadcast.
 #
 # Antes de instalar: dataset vms/mcxboxbroadcast con config.yml dentro (deploy/mcxboxbroadcast/config.yml) y de
-# 1001:1001, el usuario «app» de la imagen (sudo chown -R 1001:1001 /mnt/vms/mcxboxbroadcast). La primera vez, mira el registro de la app: sale un código para
-# microsoft.com/link, que se usa con la cuenta SECUNDARIA (nunca la tuya ni la de los niños).
+# 1001:1001, el usuario «app» de la imagen (sudo chown -R 1001:1001 /mnt/vms/mcxboxbroadcast).
+# La primera vez, mira el registro de la app: sale un código para microsoft.com/link, que se usa con la cuenta
+# SECUNDARIA (nunca la tuya ni la de los niños).
 services:
   mcxboxbroadcast:
     # Imagen oficial del proyecto (github.com/MCXboxBroadcast/Broadcaster). Solo publica «latest»: al actualizarse
