@@ -257,9 +257,14 @@
             <label class="check"><input type="checkbox" @bind="_restartEnabled" /> Reiniciar cada día</label>
             <div class="form-row">
                 <label>Hora <input type="time" @bind="_restartTime" disabled="@(!_restartEnabled)" /></label>
-                <label>Avisos (minutos antes) <input @bind="_restartWarnings" disabled="@(!_restartEnabled)" placeholder="5,1" inputmode="numeric" /></label>
+                <label>Avisos (minutos antes) <input @bind="_restartWarnings" disabled="@(!_restartEnabled)" placeholder="30,15,5,1" inputmode="numeric" /></label>
             </div>
-            <label class="check"><input type="checkbox" @bind="_restartSkip" disabled="@(!_restartEnabled)" /> No reiniciar si hay alguien jugando</label>
+            <label class="check"><input type="checkbox" @bind="_restartSkip" disabled="@(!_restartEnabled)" /> Esperar a que no quede nadie jugando</label>
+            <p class="muted small">
+                @(_restartSkip
+                    ? "Si a la hora hay alguien dentro, no se reinicia hasta que salgan todos (lo recuerda por el chat cada 10 minutos)."
+                    : "Se reinicia a la hora aunque haya alguien jugando (después de los avisos).")
+            </p>
             <div class="actions">
                 <button class="btn" disabled="@_busy" @onclick="SaveRestartAsync">Guardar</button>
             </div>
@@ -267,6 +272,11 @@
         <dl class="facts small">
             <dt>Próximo</dt>
             <dd>@(Restarts.Settings.Enabled ? (Restarts.NextRunAt is { } nr ? Format.When(nr, Time) : $"cada día a las {Restarts.Settings.Time}") : "desactivado")</dd>
+            @if (Restarts.WaitingSince is { } ws)
+            {
+                <dt>Pendiente</dt>
+                <dd class="hint-warn">Esperando a que no quede nadie (desde @Format.When(ws, Time))</dd>
+            }
             @if (Restarts.LastRun is { } lr)
             {
                 <dt>Último</dt>
@@ -344,7 +354,7 @@
 
     private bool _restartEnabled;
     private TimeOnly _restartTime = new(5, 30);
-    private string _restartWarnings = "5,1";
+    private string _restartWarnings = "30,15,5,1";
     private bool _restartSkip = true;
 
     private void LoadRestartSettings()
@@ -353,7 +363,7 @@
         _restartEnabled = r.Enabled;
         _restartTime = CubeKeeper.Core.Scheduling.DailySchedule.ParseTime(r.Time) ?? new TimeOnly(5, 30);
         _restartWarnings = r.WarningMinutes;
-        _restartSkip = r.SkipIfPlayersOnline;
+        _restartSkip = r.WaitForEmpty;
     }
 
     private Task SaveRestartAsync() => RunAsync(async () =>
@@ -368,7 +378,7 @@
         }
         LoadRestartSettings();
         await AuditAsync("server.restart.schedule", null,
-            _restartEnabled ? $"cada día a las {_restartTime:HH\\:mm}, avisos {_restartWarnings}{(_restartSkip ? ", salvo si hay gente" : "")}" : "desactivado");
+            _restartEnabled ? $"cada día a las {_restartTime:HH\\:mm}, avisos {_restartWarnings}{(_restartSkip ? ", esperando a que no quede nadie" : "")}" : "desactivado");
         _message = _restartEnabled ? $"Reinicio programado cada día a las {_restartTime:HH\\:mm}." : "Reinicio programado desactivado.";
     }, null);
 
