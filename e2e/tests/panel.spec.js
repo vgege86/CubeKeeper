@@ -174,6 +174,8 @@ test('el Panel guarda el reinicio programado y muestra los recursos', async ({ p
   const card = page.locator('section.card:has(h2:has-text("Reinicio programado"))');
   await card.locator('input[type=checkbox]').first().check();
   await card.locator('input[type=time]').fill('04:45');
+  await expect(card).toContainText('Esperar a que no quede nadie jugando');
+  await expect(card.locator('input[placeholder="30,15,5,1"]')).toBeVisible();
   await card.locator('button:has-text("Guardar")').click();
   await expect(page.locator('.alert-ok')).toContainText('04:45');
   await expect(card).toContainText('Próximo');

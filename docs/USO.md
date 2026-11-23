@@ -33,8 +33,15 @@ alcanzara, el sistema cerraría el servidor de golpe.
 ### Reinicio programado
 
 Reinicia el servidor cada día a la hora elegida (desactivado hasta que lo actives). Avisa por el chat a los minutos que
-pongas (por defecto 5 y 1) y, si marcas «No reiniciar si hay alguien jugando», ese día se lo salta. Tampoco reinicia si
-el servidor está parado o hay una copia o actualización en marcha. Elige una hora distinta de la del mapa nocturno
+pongas en **Avisos** (por defecto 30, 15, 5 y 1; si lo configuraste antes, cámbialo a `30,15,5,1`).
+
+- **«Esperar a que no quede nadie jugando» marcada** (por defecto): si a la hora hay alguien dentro, no reinicia hasta
+  que salgan todos. Mientras tanto lo recuerda por el chat cada 10 minutos, y en el Panel sale «Pendiente». En cuanto
+  no queda nadie, reinicia. Si después de 20 horas sigue habiendo gente, lo deja para el día siguiente. Los avisos
+  previos solo se mandan si hay alguien conectado.
+- **Sin marcar:** reinicia a la hora aunque haya alguien jugando, después de los avisos.
+
+No reinicia si el servidor está parado o hay una copia o actualización en marcha. Elige una hora distinta de la del mapa nocturno
 (04:15) y de la comprobación de versiones (05:00): por ejemplo 05:30.
 
 ### Versión de BDS

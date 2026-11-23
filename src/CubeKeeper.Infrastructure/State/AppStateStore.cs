@@ -78,7 +78,16 @@ public sealed record RealmsSession(string ProtectedRefreshToken, string Protecte
 
 public sealed record BdsPinSetting(string Version);
 
-public sealed record RestartSettings(bool Enabled = false, string Time = "05:30", string WarningMinutes = "5,1", bool SkipIfPlayersOnline = true);
+/// <param name="WaitForEmpty">
+/// Si hay gente jugando a la hora del reinicio, esperar a que no quede nadie (avisando por el chat cada 10 minutos).
+/// Sin marcar, se reinicia a la hora aunque haya alguien. Se guarda con el nombre antiguo (SkipIfPlayersOnline) para
+/// que la casilla siga marcada a quien la tenía.
+/// </param>
+public sealed record RestartSettings(
+    bool Enabled = false,
+    string Time = "05:30",
+    string WarningMinutes = "30,15,5,1",
+    [property: System.Text.Json.Serialization.JsonPropertyName("SkipIfPlayersOnline")] bool WaitForEmpty = true);
 
 public sealed record BedrockConnectWatch(string? InstalledVersion = null, string? NewestSeen = null, string? LastNotifiedVersion = null, DateTimeOffset? CheckedAt = null);
 

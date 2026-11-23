@@ -1,4 +1,5 @@
 using CubeKeeper.Core.Abstractions;
+using CubeKeeper.Core.Logs;
 using CubeKeeper.Core.Players;
 using CubeKeeper.Core.Server;
 using CubeKeeper.Infrastructure.Scheduling;
@@ -61,7 +62,7 @@ public class RestartSchedulerTests
         var startedAt = f.Supervisor.Snapshot.StartedAt;
         var clock = new ManualClock(Morning);
         var restart = Create(f, clock, new Players());
-        Assert.Null(restart.SaveSettings(true, "05:30", "5,1", skipIfPlayers: true));
+        Assert.Null(restart.SaveSettings(true, "05:30", "5,1", waitForEmpty: false));
 
         await restart.RunIfDueAsync(default);
         Assert.Equal(new DateTimeOffset(2026, 11, 21, 5, 30, 0, TimeSpan.Zero), restart.NextRunAt);
@@ -79,26 +80,100 @@ public class RestartSchedulerTests
         Assert.Equal(new DateTimeOffset(2026, 11, 22, 5, 30, 0, TimeSpan.Zero), restart.NextRunAt);
     }
 
+    /// <summary>Hay jugadores hasta que el reloj llega a <paramref name="until"/>.</summary>
+    private sealed class PlayersUntil(ManualClock clock, DateTimeOffset until, params string[] names) : IPlayerPresence
+    {
+        private readonly IReadOnlyList<OnlinePlayer> _players =
+            names.Select((n, i) => new OnlinePlayer(n, $"25354000000000{i}", DateTimeOffset.UtcNow)).ToList();
+        public IReadOnlyList<OnlinePlayer> Online => clock.Now < until ? _players : [];
+        public event Action? Changed;
+        public Task ResyncAsync(CancellationToken ct = default)
+        {
+            _ = Changed;
+            return Task.CompletedTask;
+        }
+    }
+
     [Fact]
-    public async Task Skips_when_someone_is_playing_or_the_server_is_stopped()
+    public async Task Does_nothing_when_the_server_is_stopped()
     {
         await using var f = new SupervisorFixture();
         var clock = new ManualClock(Morning);
         var restart = Create(f, clock, new Players("Alucard"));
-        restart.SaveSettings(true, "05:30", "", skipIfPlayers: true);
+        restart.SaveSettings(true, "05:30", "", waitForEmpty: true);
         await restart.RunIfDueAsync(default);
 
         clock.Now = Morning.AddMinutes(31);
         await restart.RunIfDueAsync(default);
         Assert.False(restart.LastRun!.Restarted);
         Assert.Contains("no estaba en marcha", restart.LastRun.Message);
+    }
 
+    [Fact]
+    public async Task Waits_until_nobody_is_left_reminding_every_ten_minutes()
+    {
+        await using var f = new SupervisorFixture();
         await f.Supervisor.StartAsync();
         await f.WaitForStatusAsync(ServerStatus.Running);
-        clock.Now = Morning.AddDays(1).AddMinutes(31);
+        var clock = new ManualClock(Morning);
+        // Alucard sigue jugando hasta las 06:05: 35 minutos después de la hora del reinicio.
+        var restart = Create(f, clock, new PlayersUntil(clock, Morning.AddMinutes(65), "Alucard"));
+        Assert.Null(restart.SaveSettings(true, "05:30", "30,15,5,1", waitForEmpty: true));
+
+        // A las 05:00 ya toca el primer aviso (30 minutos antes): se hace todo seguido con el reloj manual.
         await restart.RunIfDueAsync(default);
+        await f.WaitForStatusAsync(ServerStatus.Running);
+
+        Assert.True(restart.LastRun!.Restarted, restart.LastRun.Message);
+        Assert.Contains("tras esperar a que salieran todos", restart.LastRun.Message);
+        Assert.True(clock.Now >= Morning.AddMinutes(65), clock.Now.ToString("O"));
+        Assert.Null(restart.WaitingSince);
+        var lines = f.Console.Snapshot().Select(l => l.Text).ToList();
+        foreach (var m in new[] { "30 minutos", "15 minutos", "5 minutos", "1 minuto." })
+        {
+            Assert.Contains(lines, l => l.Contains($"Reinicio de mantenimiento en {m}"));
+        }
+        // A las 05:30, 05:40, 05:50 y 06:00: un recordatorio cada 10 minutos mientras quede alguien.
+        Assert.Equal(4, f.Console.Snapshot().Count(l =>
+            l.Kind == ConsoleLineKind.Command && l.Text.Contains("pendiente: el servidor se reiniciará en cuanto salgáis todos")));
+    }
+
+    [Fact]
+    public async Task Restarts_on_time_with_people_inside_when_not_waiting()
+    {
+        await using var f = new SupervisorFixture();
+        await f.Supervisor.StartAsync();
+        await f.WaitForStatusAsync(ServerStatus.Running);
+        var clock = new ManualClock(Morning);
+        var restart = Create(f, clock, new Players("Alucard"));
+        restart.SaveSettings(true, "05:30", "1", waitForEmpty: false);
+        await restart.RunIfDueAsync(default);
+
+        clock.Now = Morning.AddMinutes(29);
+        await restart.RunIfDueAsync(default);
+        await f.WaitForStatusAsync(ServerStatus.Running);
+
+        Assert.True(restart.LastRun!.Restarted);
+        Assert.Equal("Reiniciado.", restart.LastRun.Message);
+        Assert.True(clock.Now < Morning.AddMinutes(31));
+    }
+
+    [Fact]
+    public async Task Gives_up_after_waiting_too_long()
+    {
+        await using var f = new SupervisorFixture();
+        await f.Supervisor.StartAsync();
+        await f.WaitForStatusAsync(ServerStatus.Running);
+        var clock = new ManualClock(Morning);
+        var restart = Create(f, clock, new Players("Alucard"));
+        restart.SaveSettings(true, "05:30", "", waitForEmpty: true);
+        await restart.RunIfDueAsync(default);
+
+        clock.Now = Morning.AddMinutes(30);
+        await restart.RunIfDueAsync(default);
+
         Assert.False(restart.LastRun!.Restarted);
-        Assert.Contains("Alucard", restart.LastRun.Message);
+        Assert.Contains("seguía habiendo gente jugando (Alucard)", restart.LastRun.Message);
     }
 
     [Theory]
