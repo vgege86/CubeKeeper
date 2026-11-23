@@ -14,7 +14,7 @@ namespace CubeKeeper.Infrastructure.Tests;
 /// <summary>Monta un <see cref="ServerSupervisor"/> que lanza FakeBedrockServer en un directorio temporal.</summary>
 internal sealed class SupervisorFixture : IAsyncDisposable
 {
-    public SupervisorFixture(Action<BdsOptions>? configure = null, IDictionary<string, string>? env = null)
+    public SupervisorFixture(Action<BdsOptions>? configure = null, IDictionary<string, string>? env = null, ITcpPortProbe? ports = null)
     {
         Root = Path.Combine(Path.GetTempPath(), "cubekeeper-tests", Guid.NewGuid().ToString("N"));
         Paths = new DataPaths(Root);
@@ -39,7 +39,7 @@ internal sealed class SupervisorFixture : IAsyncDisposable
         Console = new ConsoleLog(TimeProvider.System);
         State = new AppStateStore(Paths);
         Supervisor = new ServerSupervisor(
-            Options.Create(options), Paths, Console, new NullInstaller(), State, TimeProvider.System, NullLoggerFactory.Instance);
+            Options.Create(options), Paths, Console, new NullInstaller(), State, TimeProvider.System, NullLoggerFactory.Instance, ports);
     }
 
     private readonly string[] _env;

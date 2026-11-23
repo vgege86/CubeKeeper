@@ -1,4 +1,4 @@
-# BedrockConnect en casa: el menú para que la Xbox entre a CubeKeeper (ver docs/TRUENAS.md, apartado 7b).
+# BedrockConnect en casa: el menú para que la Xbox entre a CubeKeeper (ver docs/XBOX.md, opción 2).
 # App aparte en TrueNAS (Apps → Discover Apps → ⋮ → Install via YAML), nombre: bedrockconnect.
 #
 # Antes de instalar, cambia los tres valores marcados con «CAMBIA»:

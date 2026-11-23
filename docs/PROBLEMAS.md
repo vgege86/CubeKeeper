@@ -58,13 +58,24 @@ En GitHub → *Packages → cubekeeper → Package settings*, la visibilidad deb
 
 - `error while loading shared libraries: libXXX.so`: falta una librería en la imagen. Dime cuál y la añado.
 - Puerto ocupado: comprueba que la app de itzg está parada (usan los mismos puertos).
+- **«Esperando a que se libere el puerto TCP 19132»** en la consola: quedan conexiones de hace menos de un minuto
+  (normalmente de MCXboxBroadcast) y BDS no podría abrir el puerto. Es normal y tarda menos de un minuto.
+- **«BDS ha arrancado pero no ha abierto el puerto TCP 19132»**: CubeKeeper lo reinicia solo una vez. Si sale
+  «sigue sin abrir el puerto», otro programa lo está usando: `sudo ss -tanp | grep ':19132'`.
 - «Se ha caído varias veces seguidas y ya no se reintenta»: mira la consola; tras arreglarlo, **Arrancar**.
 
 ## No puedo conectarme desde el juego
 
 - Dirección `192.168.1.21`, puerto `19132`, en **Servidores → Añadir servidor**.
-- **Xbox:** «Partidas LAN» muestra el servidor pero da el error «Boat» al unirse, y la Xbox no deja añadir servidores
-  por IP. Ver [Xbox: entrar con BedrockConnect](TRUENAS.md#7b-xbox-entrar-con-bedrockconnect).
+- **Xbox:** «Partidas LAN» muestra el servidor pero da error al unirse, y la Xbox no deja añadir servidores por IP.
+  Ver [Xbox: entrar desde Amigos con MCXboxBroadcast](XBOX.md#opción-1-amigos-con-mcxboxbroadcast-recomendada)
+  o [con BedrockConnect](XBOX.md#opción-2-destacados-con-bedrockconnect).
+- **Error «Terracotta» o «desactualizado» en la Xbox:** el juego de la Xbox y el servidor no tienen la misma versión.
+  Actualiza Minecraft en la Xbox (**Mis juegos y aplicaciones → Administrar → Actualizaciones**) o, si la Xbox aún
+  no tiene la nueva, vuelve en el Panel a la versión que tenga.
+- **Xbox con BedrockConnect: AdGuard marca «Reescrito» pero entras en el servidor real** y en el registro de
+  BedrockConnect no aparece nada: el juego ya no usa el DNS para ese destacado (pasa con la 26.62 en todos). Usa
+  MCXboxBroadcast.
 - Con el acceso en **Solo aprobados**, el juego dice que no estás invitado: apruébate en **Acceso** (con la inscripción).
 
 ## Copias

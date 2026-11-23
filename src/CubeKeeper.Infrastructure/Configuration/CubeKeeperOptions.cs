@@ -73,6 +73,15 @@ public sealed class BdsOptions
 
     public int RestartDelaySeconds { get; set; } = 5;
 
+    /// <summary>
+    /// Segundos que se espera tras «Server started» a que BDS escuche en el puerto TCP (server-port); si no, se
+    /// reinicia una vez. 0 desactiva la comprobación y la espera a que el puerto esté libre antes de arrancar.
+    /// </summary>
+    public int PortCheckSeconds { get; set; } = 60;
+
+    /// <summary>Solo para pruebas: hacer también la comprobación del puerto con <see cref="LaunchCommand"/>.</summary>
+    public bool PortCheckWithLaunchCommand { get; set; }
+
     /// <summary>Solo para desarrollo/pruebas: ejecutable alternativo (por ejemplo "dotnet").</summary>
     public string? LaunchCommand { get; set; }
 
