@@ -1,5 +1,7 @@
 using CubeKeeper.Core.Abstractions;
 using CubeKeeper.Core.Logs;
+using CubeKeeper.Core.Properties;
+using CubeKeeper.Core.Resources;
 using CubeKeeper.Core.Server;
 using CubeKeeper.Core.Versions;
 using CubeKeeper.Infrastructure.Configuration;
@@ -29,6 +31,7 @@ public sealed class ServerSupervisor : IServerController, IDisposable
     private readonly ILogger<ServerSupervisor> _logger;
     private readonly ILogger _bdsLogger;
     private readonly CrashLoopGuard _guard;
+    private readonly ITcpPortProbe _ports;
     private readonly SemaphoreSlim _lifecycle = new(1, 1);
     private readonly Lock _stateLock = new();
 
@@ -37,6 +40,7 @@ public sealed class ServerSupervisor : IServerController, IDisposable
     private bool _expectingExit;
     private ServerSnapshot _snapshot;
     private CancellationToken _hostStopping = CancellationToken.None;
+    private bool _portRetryUsed;
 
     public ServerSupervisor(
         IOptions<CubeKeeperOptions> options,
@@ -45,8 +49,10 @@ public sealed class ServerSupervisor : IServerController, IDisposable
         IServerInstaller installer,
         AppStateStore state,
         TimeProvider time,
-        ILoggerFactory loggerFactory)
+        ILoggerFactory loggerFactory,
+        ITcpPortProbe? ports = null)
     {
+        _ports = ports ?? new ProcTcpPortProbe();
         _options = options.Value.Bds;
         _paths = paths;
         _console = console;
@@ -127,7 +133,8 @@ public sealed class ServerSupervisor : IServerController, IDisposable
         {
             _state.Update(s => s with { DesiredRunning = true });
             _guard.Reset();
-            StartCore();
+            _portRetryUsed = false;
+            await StartCoreAsync(ct).ConfigureAwait(false);
         }
         finally
         {
@@ -157,7 +164,8 @@ public sealed class ServerSupervisor : IServerController, IDisposable
             _state.Update(s => s with { DesiredRunning = true });
             await StopCoreAsync(ct).ConfigureAwait(false);
             _guard.Reset();
-            StartCore();
+            _portRetryUsed = false;
+            await StartCoreAsync(ct).ConfigureAwait(false);
         }
         finally
         {
@@ -231,7 +239,8 @@ public sealed class ServerSupervisor : IServerController, IDisposable
             if (wasRunning || _state.Current.DesiredRunning)
             {
                 _guard.Reset();
-                StartCore();
+                _portRetryUsed = false;
+                await StartCoreAsync(ct).ConfigureAwait(false);
             }
             return result;
         }
@@ -250,6 +259,145 @@ public sealed class ServerSupervisor : IServerController, IDisposable
         catch (InvalidOperationException)
         {
             // Si no está en marcha, no hay nadie a quien avisar.
+        }
+    }
+
+    /// <summary>
+    /// Espera a que el puerto TCP del servidor esté libre y lanza el proceso. Debe llamarse con
+    /// <see cref="_lifecycle"/> tomado.
+    /// </summary>
+    private async Task StartCoreAsync(CancellationToken ct)
+    {
+        if (_process is { HasExited: false })
+        {
+            return;
+        }
+        if (CanLaunch && ChecksPort)
+        {
+            await WaitForPortFreeAsync(ct).ConfigureAwait(false);
+        }
+        StartCore();
+    }
+
+    /// <summary>Solo con el bedrock_server real (en las pruebas se lanza un servidor falso que no abre el puerto).</summary>
+    private bool ChecksPort => _options.PortCheckSeconds > 0 &&
+                               (string.IsNullOrWhiteSpace(_options.LaunchCommand) || _options.PortCheckWithLaunchCommand);
+
+    private async Task<int> ServerPortAsync(CancellationToken ct)
+    {
+        try
+        {
+            var doc = await ServerPropertiesDocument.LoadAsync(_paths.ServerProperties, ct).ConfigureAwait(false);
+            return doc.GetInt("server-port") is int p and > 0 and < 65536 ? p : 19132;
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            return 19132;
+        }
+    }
+
+    /// <summary>
+    /// BDS abre el puerto TCP sin SO_REUSEADDR: si quedan conexiones recientes (TIME_WAIT, unos 60 s en Linux), no
+    /// puede abrirlo y arranca sin que nadie pueda entrar. Se espera a que se liberen (como mucho 2 minutos).
+    /// </summary>
+    private async Task WaitForPortFreeAsync(CancellationToken ct)
+    {
+        var port = await ServerPortAsync(ct).ConfigureAwait(false);
+        var deadline = _time.GetUtcNow().AddMinutes(2);
+        var announced = false;
+        while (true)
+        {
+            var states = _ports.States(port);
+            if (states is null || TcpSockets.Busy(states) == 0)
+            {
+                if (announced)
+                {
+                    _console.Append(ConsoleLineKind.System, $"Puerto TCP {port} libre.");
+                }
+                return;
+            }
+            if (_time.GetUtcNow() >= deadline)
+            {
+                _console.Append(ConsoleLineKind.System,
+                    $"El puerto TCP {port} sigue ocupado tras 2 minutos; se arranca igualmente (puede que no se pueda entrar).");
+                _logger.LogWarning("Puerto TCP {Port} ocupado al arrancar BDS", port);
+                return;
+            }
+            if (!announced)
+            {
+                announced = true;
+                SetStatus(ServerStatus.Starting, runningVersion: null, startedAt: _time.GetLocalNow(), error: null);
+                _console.Append(ConsoleLineKind.System,
+                    $"Esperando a que se libere el puerto TCP {port} ({TcpSockets.Busy(states)} conexiones recientes, por " +
+                    "ejemplo de MCXboxBroadcast): si BDS arranca con él ocupado, nadie puede entrar. Suele tardar menos de un minuto.");
+            }
+            await Task.Delay(TimeSpan.FromSeconds(2), _time, ct).ConfigureAwait(false);
+        }
+    }
+
+    /// <summary>
+    /// Tras «Server started», comprueba que BDS escucha en el puerto TCP. Si no, lo reinicia una vez (esperando a que
+    /// el puerto se libere); si sigue sin abrirlo, lo deja en marcha y lo dice en la consola.
+    /// </summary>
+    private async Task VerifyListeningAsync(ServerProcess process)
+    {
+        try
+        {
+            var port = await ServerPortAsync(_hostStopping).ConfigureAwait(false);
+            var deadline = _time.GetUtcNow().AddSeconds(_options.PortCheckSeconds);
+            while (_time.GetUtcNow() < deadline)
+            {
+                await Task.Delay(TimeSpan.FromSeconds(2), _time, _hostStopping).ConfigureAwait(false);
+                if (!ReferenceEquals(_process, process) || process.HasExited)
+                {
+                    return;
+                }
+                var states = _ports.States(port);
+                if (states is null || TcpSockets.IsListening(states))
+                {
+                    return;
+                }
+            }
+
+            _logger.LogWarning("BDS no escucha en TCP {Port} tras arrancar", port);
+            await _lifecycle.WaitAsync(_hostStopping).ConfigureAwait(false);
+            try
+            {
+                if (!ReferenceEquals(_process, process) || process.HasExited)
+                {
+                    return;
+                }
+                if (_portRetryUsed)
+                {
+                    var msg = $"BDS sigue sin abrir el puerto TCP {port}: no se podrá entrar. Comprueba que ningún otro " +
+                              "programa lo usa y reinicia el servidor.";
+                    _console.Append(ConsoleLineKind.System, msg);
+                    lock (_stateLock)
+                    {
+                        _snapshot = _snapshot with { LastError = msg };
+                    }
+                    RaiseStateChanged();
+                    return;
+                }
+                _portRetryUsed = true;
+                _console.Append(ConsoleLineKind.System,
+                    $"BDS ha arrancado pero no ha abierto el puerto TCP {port} (estaba ocupado por conexiones recientes). " +
+                    "Se reinicia para que lo abra…");
+                await StopCoreAsync(_hostStopping).ConfigureAwait(false);
+                await StartCoreAsync(_hostStopping).ConfigureAwait(false);
+            }
+            finally
+            {
+                _lifecycle.Release();
+            }
+        }
+        catch (OperationCanceledException)
+        {
+            // Apagando.
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Fallo al comprobar el puerto de BDS");
         }
     }
 
@@ -400,7 +548,7 @@ public sealed class ServerSupervisor : IServerController, IDisposable
                 // Puede que entretanto alguien lo haya parado o arrancado a mano.
                 if (Snapshot.Status == ServerStatus.Crashed && _state.Current.DesiredRunning)
                 {
-                    StartCore();
+                    await StartCoreAsync(_hostStopping).ConfigureAwait(false);
                 }
             }
             finally
@@ -428,6 +576,10 @@ public sealed class ServerSupervisor : IServerController, IDisposable
         {
             case ServerStarted:
                 SetStatus(ServerStatus.Running);
+                if (ChecksPort && _process is { } started)
+                {
+                    _ = Task.Run(() => VerifyListeningAsync(started));
+                }
                 break;
             case ServerVersionReported v:
                 lock (_stateLock)

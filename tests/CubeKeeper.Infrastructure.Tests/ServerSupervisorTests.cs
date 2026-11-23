@@ -170,7 +170,8 @@ public class ServerSupervisorTests
 
         var result = await new BdsHealthProbe(f.Supervisor, f.Paths).CheckHealthAsync(new HealthCheckContext());
 
-        Assert.Equal(HealthStatus.Unhealthy, result.Status);
+        // En marcha pero sin puerto: aviso (Degraded), sin marcar el contenedor como roto.
+        Assert.Equal(HealthStatus.Degraded, result.Status);
     }
 }
 

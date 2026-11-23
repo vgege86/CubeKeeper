@@ -117,6 +117,13 @@ la secundaria como amiga, también lo verán en Amigos. PlayStation y Switch fun
 - **Se reinicia sin parar con «Permission denied»** o no guarda la sesión: la carpeta no es de 1001
   (`sudo chown -R 1001:1001 /mnt/vms/mcxboxbroadcast`).
 - **Pide iniciar sesión otra vez:** Microsoft caducó la sesión; repite el paso 4.
+- **Con MCXboxBroadcast encendido, CubeKeeper se queda en «Desplegando» al reiniciarse** (versiones anteriores a
+  esta): MCXboxBroadcast consulta el servidor por TCP 19132 cada 30 s, y BDS no puede abrir ese puerto si quedan
+  conexiones de menos de un minuto (no lo dice: arranca sin que se pueda entrar). CubeKeeper ahora espera a que el
+  puerto se libere antes de arrancar BDS (sale «Esperando a que se libere el puerto TCP 19132» en la consola, menos
+  de un minuto) y, si aun así BDS no lo abre, lo reinicia una vez. Si no puedes actualizar, para MCXboxBroadcast,
+  reinicia CubeKeeper y vuelve a arrancarlo; o pon en su `config.yml` `query-server: false` y
+  `config-fallback: true` (deja de consultar el servidor, pero en Amigos sale siempre, aunque esté parado).
 
 ---
 

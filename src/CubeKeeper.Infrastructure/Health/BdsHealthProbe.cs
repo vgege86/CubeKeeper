@@ -48,7 +48,9 @@ public sealed class BdsHealthProbe(IServerController controller, DataPaths paths
         }
         catch (Exception ex) when (ex is SocketException or OperationCanceledException)
         {
-            return HealthCheckResult.Unhealthy($"TCP {port} no responde", ex, data);
+            // El proceso está en marcha pero no se puede entrar: se avisa sin marcar el contenedor como roto, para que
+            // TrueNAS no deje la app en «Desplegando» y el panel siga accesible (el supervisor lo reintenta y lo dice).
+            return HealthCheckResult.Degraded($"BDS en marcha pero TCP {port} no responde", ex, data);
         }
     }
 

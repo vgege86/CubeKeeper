@@ -58,6 +58,10 @@ En GitHub → *Packages → cubekeeper → Package settings*, la visibilidad deb
 
 - `error while loading shared libraries: libXXX.so`: falta una librería en la imagen. Dime cuál y la añado.
 - Puerto ocupado: comprueba que la app de itzg está parada (usan los mismos puertos).
+- **«Esperando a que se libere el puerto TCP 19132»** en la consola: quedan conexiones de hace menos de un minuto
+  (normalmente de MCXboxBroadcast) y BDS no podría abrir el puerto. Es normal y tarda menos de un minuto.
+- **«BDS ha arrancado pero no ha abierto el puerto TCP 19132»**: CubeKeeper lo reinicia solo una vez. Si sale
+  «sigue sin abrir el puerto», otro programa lo está usando: `sudo ss -tanp | grep ':19132'`.
 - «Se ha caído varias veces seguidas y ya no se reintenta»: mira la consola; tras arreglarlo, **Arrancar**.
 
 ## No puedo conectarme desde el juego
